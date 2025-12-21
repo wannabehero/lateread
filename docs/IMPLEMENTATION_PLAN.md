@@ -1,0 +1,1122 @@
+# Lateread - Implementation Plan
+
+**Approach**: Vertical Slices (complete user flows)
+**LLM Provider**: Claude (Anthropic)
+**Scope**: Full implementation
+**Last Updated**: 2025-12-21
+
+---
+
+## Overview
+
+This implementation plan breaks down the Lateread project into 8 phases, each representing a complete vertical slice of functionality. Each phase delivers working, testable features that build upon previous phases.
+
+---
+
+## Phase 0: Project Foundation
+
+**Goal**: Set up project structure, dependencies, configuration, and database layer.
+
+### Tasks
+
+#### 0.1 Project Initialization
+- [ ] Initialize Bun project: `bun init`
+- [ ] Create directory structure:
+  ```
+  src/
+    ├── main.ts
+    ├── cron.ts
+    ├── bot/
+    ├── routes/
+    ├── components/
+    ├── workers/
+    ├── lib/
+    └── db/
+  test/
+  public/
+  scripts/
+  cache/articles/
+  ```
+- [ ] Create `.env.example` with all required environment variables
+- [ ] Create `.gitignore` (node_modules, .env, cache/, data/, coverage/)
+
+#### 0.2 Dependencies Installation
+```bash
+# Core dependencies
+bun add hono
+bun add grammy
+bun add drizzle-orm
+bun add drizzle-kit -d
+bun add jsdom @mozilla/readability
+bun add @types/jsdom -d
+bun add croner
+bun add zod
+
+# Frontend dependencies (will be copied to public/)
+# Kept as production deps for Docker build simplicity
+# TODO: Optimize with multi-stage Docker build (see DESIGN.md Technical Improvements #8)
+bun add htmx.org
+bun add @picocss/pico
+
+# LLM Provider SDK (operator chooses one based on their preference)
+# Install ONLY the provider you'll use:
+bun add @anthropic-ai/sdk          # For Claude (recommended)
+# bun add openai                   # For OpenAI
+# bun add @google/generative-ai    # For Gemini
+# (none needed for local models)
+
+# Set LLM_PROVIDER and LLM_API_KEY in .env accordingly
+```
+
+#### 0.3 Configuration Module (`src/lib/config.ts`)
+- [ ] Create Zod schema for environment variables
+- [ ] Define all config fields with types:
+  - Server: PORT, NODE_ENV
+  - Database: DATABASE_URL
+  - Telegram: TELEGRAM_BOT_TOKEN, BOT_USERNAME
+  - LLM: LLM_PROVIDER, LLM_API_KEY
+  - Auth: SESSION_SECRET, SESSION_MAX_AGE_DAYS
+  - Cache: CACHE_DIR, CACHE_MAX_AGE_DAYS
+  - Processing: PROCESSING_TIMEOUT_SECONDS, MAX_RETRY_ATTEMPTS, RETRY_DELAY_MINUTES
+- [ ] Parse and validate `process.env` on module import
+- [ ] Export typed `config` object
+- [ ] Provide sensible defaults for optional values
+
+#### 0.4 Database Schema (`src/db/schema.ts`)
+- [ ] Define `users` table
+- [ ] Define `telegramUsers` table
+- [ ] Define `articles` table with status enum
+- [ ] Define `articleSummaries` table
+- [ ] Define `tags` table
+- [ ] Define `articleTags` junction table
+- [ ] Define `authTokens` table
+- [ ] Add indexes per design doc
+- [ ] Export all table definitions
+
+#### 0.5 Database Connection (`src/lib/db.ts`)
+- [ ] Import config module
+- [ ] Create SQLite connection using `bun:sqlite`
+- [ ] Initialize Drizzle with SQLite dialect
+- [ ] Enable WAL mode for better concurrency
+- [ ] Export typed `db` instance
+- [ ] Create `runMigrations()` function using drizzle-kit
+
+#### 0.6 Asset Copy Script (`scripts/copy-assets.ts`)
+- [ ] Create script to copy HTMX from node_modules to public/
+- [ ] Copy Pico CSS from node_modules to public/
+- [ ] Ensure public/ directory exists
+- [ ] Log success message
+
+#### 0.7 TypeScript Configuration
+- [ ] Create `tsconfig.json` with strict mode
+- [ ] Configure JSX for Hono (jsxImportSource: "hono/jsx")
+- [ ] Set module resolution to bundler
+- [ ] Configure paths for absolute imports
+
+**Deliverable**: Project skeleton with working database connection and configuration.
+
+**Testing**:
+- Run `bun run src/lib/config.ts` - should validate config without errors
+- Run `bun run src/lib/db.ts` - should create database file
+- Run migrations - should create all tables
+
+---
+
+## Phase 1: Authentication Flow
+
+**Goal**: Complete Telegram-based authentication from landing page to logged-in session.
+
+### Tasks
+
+#### 1.1 Auth Library (`src/lib/auth.ts`)
+- [ ] Implement `createAuthToken()`:
+  - Generate UUID token
+  - Store in database with 5-minute expiration
+  - userId starts as NULL (not claimed yet)
+  - Return token and formatted Telegram deep link
+- [ ] Implement `claimAuthToken()`:
+  - Validate token exists and not expired
+  - Create User record (new!)
+  - Create TelegramUser record with telegramId and username
+  - Update token with userId
+  - Return user object
+- [ ] Implement `cleanupExpiredTokens()`:
+  - Delete tokens where expiresAt < NOW()
+  - Return count of deleted tokens
+
+#### 1.2 Layout Component (`src/components/Layout.tsx`)
+- [ ] Create base HTML layout with:
+  - `<head>` with meta tags, title, Pico CSS
+  - HTMX script tag
+  - Custom styles link
+  - `<header>` with navigation (Home, Unread, Archive)
+  - `<main>` slot for children
+  - `<footer>` with app info
+- [ ] Add `hx-boost="true"` to navigation links
+- [ ] Accept `title` and `children` props
+
+#### 1.3 Auth Routes (`src/routes/auth.tsx`)
+- [ ] Create Hono router instance
+- [ ] `GET /` (when not authenticated):
+  - Check session cookie for user ID
+  - If not authenticated: render login page with "Login with Telegram" button
+  - If authenticated: redirect to `/articles`
+- [ ] `POST /auth/telegram`:
+  - Call `createAuthToken()`
+  - Return JSON with token and telegramUrl
+- [ ] `GET /auth/check/:token`:
+  - Query auth token from database
+  - Check if expired → return `{ status: 'expired' }`
+  - Check if userId is NULL → return `{ status: 'pending' }`
+  - If userId exists → create session cookie, return `{ status: 'success', userId }`
+- [ ] `POST /auth/logout`:
+  - Clear session cookie
+  - Redirect to `/`
+
+#### 1.4 Login Page Client-Side (`public/auth.js`)
+- [ ] "Login with Telegram" button click handler:
+  - POST to `/auth/telegram`
+  - Display "Open Telegram" button with deep link
+  - Start polling `/auth/check/{token}` every 2 seconds
+- [ ] Poll handler:
+  - On `pending`: continue polling
+  - On `expired`: show error, display login button again
+  - On `success`: redirect to `/articles`
+  - Stop polling after 5 minutes (timeout)
+
+#### 1.5 Bot Setup (`src/bot/index.ts`)
+- [ ] Import Grammy and config
+- [ ] Create Bot instance with token from config
+- [ ] Store bot username from config
+- [ ] Export `setupBot()` function
+- [ ] Export `bot` instance
+- [ ] Use polling mode (not webhooks)
+
+#### 1.6 Bot Auth Handler (`src/bot/handlers.ts`)
+- [ ] Implement `/start` command:
+  - Send welcome message
+  - Explain how to use the bot
+- [ ] Implement `/login {token}` command:
+  - Extract token from command text
+  - Validate token via `claimAuthToken()`
+  - Pass telegramId and username from message
+  - If valid: reply "✅ Login successful! Return to the app."
+  - If invalid/expired: reply with error message
+- [ ] Register handlers in `registerHandlers(bot)` function
+
+#### 1.7 Session Middleware (`src/lib/session.ts`)
+- [ ] Create session middleware for Hono using signed cookies
+- [ ] Use SESSION_SECRET from config
+- [ ] Set cookie expiration from SESSION_MAX_AGE_DAYS
+- [ ] Export `getSession()` and `setSession()` helpers
+
+#### 1.8 Main Entry Point - Initial Version (`src/main.ts`)
+- [ ] Import config first (before other modules)
+- [ ] Initialize database connection
+- [ ] Run migrations
+- [ ] Create Hono app
+- [ ] Add session middleware
+- [ ] Register auth routes
+- [ ] Setup Telegram bot
+- [ ] Start bot polling
+- [ ] Start HTTP server on configured PORT
+- [ ] Log startup message with URLs
+
+**Deliverable**: Complete authentication flow - user can log in via Telegram and get session.
+
+**Testing**:
+- Manual: Visit `/`, click "Login with Telegram", complete flow
+- Unit test: `auth.test.ts` - token creation, claiming, expiration
+- Integration test: Full auth flow with mock Telegram
+
+---
+
+## Phase 2: Article Capture Flow
+
+**Goal**: User can send URLs to Telegram bot and articles are captured in database.
+
+### Tasks
+
+#### 2.1 Bot Message Handlers (`src/bot/handlers.ts` - extend)
+- [ ] Add URL extraction helper:
+  - Parse message text for URLs
+  - Support forwarded messages
+  - Extract first URL only (ignore others)
+  - Return URL or null
+- [ ] Add message handler:
+  - Check if message contains URL
+  - Query TelegramUser by telegramId from message
+  - If user not found: reply "❌ Please log in first at https://lateread.app"
+  - Extract first URL from message
+  - Create article record in database:
+    - Generate UUID
+    - Set userId from telegram user
+    - Set url
+    - Set status = 'pending'
+    - Set processingAttempts = 0
+  - React to message with 👀 emoji
+  - Spawn worker with article ID (non-blocking)
+  - Handle worker result → update reaction to 👍 or 👎
+
+#### 2.2 Content Cache Module (`src/lib/content-cache.ts`)
+- [ ] Create `ContentCache` class:
+  - `get(articleId)`: Read HTML from cache file
+  - `set(articleId, content)`: Write HTML to cache file
+  - `delete(articleId)`: Delete cache file
+  - `exists(articleId)`: Check if cache file exists
+- [ ] Use Bun.file() API for all operations
+- [ ] Use config.CACHE_DIR for directory path
+- [ ] File naming: `{uuid}.html`
+- [ ] UTF-8 encoding
+- [ ] Create directory on-demand if missing
+- [ ] Implement `cleanupOldCache()` function:
+  - Scan all files in cache directory
+  - Delete files older than CACHE_MAX_AGE_DAYS
+  - Log count of deleted files
+- [ ] Export ContentCache instance and cleanup function
+
+#### 2.3 Readability Wrapper (`src/lib/readability.ts`)
+- [ ] Implement `extractCleanContent(url)`:
+  - Fetch URL with timeout (30 seconds)
+  - Set custom user agent
+  - Follow up to 5 redirects
+  - Parse HTML with JSDOM
+  - Extract OpenGraph metadata (title, description, image, site_name)
+  - Fallback to regular meta tags if OG missing
+  - Run Readability on parsed document
+  - Extract clean HTML content
+  - Extract plain text content
+  - Return structured result object
+- [ ] Error handling:
+  - Network errors (timeout, DNS, connection)
+  - Invalid HTML
+  - Readability failures (non-article pages)
+  - Return partial data or throw descriptive error
+
+#### 2.4 LLM Abstraction - Base (`src/lib/llm.ts`)
+- [ ] Define `LLMProvider` interface:
+  - `extractTags(content, existingTags)`: Promise<{tags, confidence}>
+  - `summarize(content)`: Promise<{oneSentence, oneParagraph, long}>
+- [ ] Implement `ClaudeProvider`:
+  - Install @anthropic-ai/sdk
+  - Use Claude Haiku (claude-3-5-haiku-20241022) for tag extraction
+  - Use Claude Sonnet (claude-3-5-sonnet-20241022) for summaries
+  - Implement tag extraction prompt:
+    - Provide article content (truncate to ~10k words)
+    - Provide existing tags for reuse
+    - Request JSON output: {tags: string[], confidence: number}
+    - Limit to 5-10 tags
+    - Prefer existing tags when semantically similar
+  - Implement summary prompt (placeholder for now, will implement in Phase 4):
+    - Request structured JSON with three lengths
+    - Return mock data for now
+- [ ] Implement `getLLMProvider()`:
+  - Check config.LLM_PROVIDER
+  - Return ClaudeProvider instance
+  - Throw error if SDK not installed
+- [ ] Error handling:
+  - Catch API errors
+  - Log errors with provider name
+  - Return empty tags on error
+
+#### 2.5 Article Worker (`src/workers/process-metadata.ts`)
+- [ ] Implement worker using Bun's Worker API
+- [ ] Set up `self.onmessage` handler
+- [ ] Processing steps:
+  1. Receive articleId from message
+  2. Query article from database
+  3. Update status to 'processing', increment processingAttempts
+  4. Fetch URL content using readability wrapper
+  5. Extract metadata and clean content
+  6. Generate tags using LLM provider:
+     - Load user's existing tags
+     - Call extractTags() with content and existing tags
+     - For each returned tag:
+       - Check if exists (case-insensitive)
+       - Create new tag if needed (autoGenerated = true)
+       - Collect tag IDs
+  7. Cache clean HTML using ContentCache
+  8. Update database in transaction:
+     - Set title, description, imageUrl, siteName
+     - Set status = 'completed'
+     - Set processedAt = NOW()
+     - Delete existing article-tag associations
+     - Insert new article-tag associations
+  9. Post success message to parent thread
+- [ ] Error handling:
+  - Catch all errors
+  - Update article status to 'failed'
+  - Store error in lastError field
+  - Post error message to parent thread
+- [ ] Overall timeout: 60 seconds
+
+#### 2.6 Worker Spawning Helper (`src/lib/worker.ts`)
+- [ ] Create helper to spawn worker with article ID
+- [ ] Handle worker messages (success/failure)
+- [ ] Update Telegram reactions based on result
+- [ ] Non-blocking execution (fire and forget with error handling)
+- [ ] Export `spawnArticleWorker(articleId, telegramChatId, messageId)` function
+
+#### 2.7 Update Main Entry (`src/main.ts` - extend)
+- [ ] Import bot handlers
+- [ ] Register bot handlers after bot setup
+
+**Deliverable**: User can send URLs to bot, articles are captured and processed automatically.
+
+**Testing**:
+- Manual: Send URL to bot, check database, check cache file
+- Unit test: `content-cache.test.ts`, `readability.test.ts`
+- Integration test: `process-metadata.test.ts` - full worker flow with mocks
+
+---
+
+## Phase 3: Article Reading Flow
+
+**Goal**: User can view list of articles and read them in clean interface.
+
+### Tasks
+
+#### 3.1 Article Routes (`src/routes/articles.tsx`)
+- [ ] Create Hono router instance
+- [ ] Implement HTMX detection helper:
+  - Check `hx-request` header (lowercase)
+  - Return boolean
+- [ ] Implement render helper:
+  - If HTMX request: return partial content
+  - If not: wrap in Layout component
+- [ ] `GET /` (when authenticated):
+  - Check session for user ID
+  - If not authenticated: render login page
+  - If authenticated: redirect to `/articles?status=unread`
+- [ ] `GET /articles`:
+  - Parse query params: status (unread|archived), tag
+  - Query articles from database:
+    - Filter by userId from session
+    - Filter by archived status
+    - Filter by tag if provided (join article_tags)
+    - Order by createdAt DESC
+    - Limit 50
+  - Load tags for each article (join)
+  - Render article list
+  - Check if HTMX request
+  - Return full page or partial
+- [ ] `GET /articles/:id`:
+  - Query article by ID
+  - Verify article belongs to current user (403 if not)
+  - Try to load cached HTML using ContentCache
+  - If cache miss: process on-demand:
+    - Fetch URL using readability wrapper
+    - Cache HTML
+    - Use cached result
+  - Load article tags
+  - Render reader view
+  - Check if HTMX request
+  - Return full page or partial
+
+#### 3.2 ArticleCard Component (`src/components/ArticleCard.tsx`)
+- [ ] Accept article prop with tags
+- [ ] Render structure:
+  - Thumbnail image (if imageUrl exists)
+  - Title (link to article)
+  - Description
+  - Site name
+  - Tags (using TagBadge component)
+  - "Read" button (hx-boost navigation)
+  - "Mark as Read" button (hx-post to /articles/:id/read)
+- [ ] HTMX attributes:
+  - Read button: `hx-boost="true"`
+  - Mark as Read: `hx-post`, `hx-swap="outerHTML"`, `hx-target="closest .article-card"`
+- [ ] Styling using Pico CSS classes
+
+#### 3.3 ArticleList Component (`src/components/ArticleList.tsx`)
+- [ ] Accept articles array prop
+- [ ] Render grid of ArticleCard components
+- [ ] Empty state when no articles:
+  - "No articles yet. Forward a link to the bot to get started!"
+- [ ] Responsive grid layout
+
+#### 3.4 TagBadge Component (`src/components/TagBadge.tsx`)
+- [ ] Accept tag prop
+- [ ] Accept optional href prop
+- [ ] Render badge with tag name
+- [ ] If href provided: make clickable with hx-boost
+- [ ] Link to `/articles?tag={name}`
+- [ ] Styling: small badge/pill design
+
+#### 3.5 ReaderView Component (`src/components/ReaderView.tsx`)
+- [ ] Accept article and content props
+- [ ] Render structure:
+  - Article header:
+    - Title
+    - Site name, publish date (if available)
+    - Original link ("View Original")
+    - Tags
+  - Summary section (initially hidden, will implement in Phase 4):
+    - "Summarize" button placeholder
+    - Empty div#summaries
+  - Content area:
+    - Render clean HTML (dangerouslySetInnerHTML equivalent)
+  - Footer:
+    - TTS controls placeholder (will implement in Phase 5)
+    - Archive button (will implement in Phase 5)
+  - Auto-mark-as-read trigger:
+    - Hidden div at bottom
+    - HTMX intersect trigger
+    - `hx-post="/articles/:id/read"`
+    - `hx-trigger="intersect once"`
+    - `hx-swap="none"`
+- [ ] Styling: clean, readable typography
+
+#### 3.6 API Routes - Mark as Read (`src/routes/api.tsx`)
+- [ ] Create Hono router instance
+- [ ] `POST /articles/:id/read`:
+  - Query article by ID
+  - Verify belongs to current user
+  - Update readAt = NOW()
+  - Return empty response (204 No Content)
+
+#### 3.7 Static File Serving (`src/main.ts` - extend)
+- [ ] Add static file middleware for `/public` directory
+- [ ] Serve HTMX, Pico CSS, custom CSS
+- [ ] Add custom CSS file (`public/styles.css`):
+  - Reader view typography
+  - Article card styling
+  - Tag badge styling
+  - Responsive adjustments
+
+#### 3.8 Update Main Entry (`src/main.ts` - extend)
+- [ ] Register article routes
+- [ ] Register API routes
+- [ ] Add static file serving
+
+**Deliverable**: User can browse articles and read them with clean formatting.
+
+**Testing**:
+- Manual: Browse articles, click to read, check auto-mark-as-read
+- Integration test: `articles.test.tsx` - route rendering, HTMX detection
+
+---
+
+## Phase 4: AI Features (Tagging & Summaries)
+
+**Goal**: Articles auto-tag during processing, summaries available on-demand.
+
+### Tasks
+
+#### 4.1 Complete Tag Extraction in Worker
+- [ ] Verify tag extraction in worker (implemented in Phase 2)
+- [ ] Test with real Claude API:
+  - Create test article
+  - Run worker
+  - Verify tags created and associated
+- [ ] Refine prompt if needed based on results
+- [ ] Handle edge cases:
+  - LLM returns no tags
+  - LLM returns duplicate tags
+  - LLM suggests too many tags (truncate to 10)
+
+#### 4.2 Tag Display in Article List
+- [ ] Verify ArticleCard renders tags correctly (implemented in Phase 3)
+- [ ] Test tag click navigation
+- [ ] Style tags with colors/badges
+
+#### 4.3 Tag Filtering
+- [ ] Update `GET /articles` route:
+  - Parse `tag` query param
+  - Join with tags table
+  - Filter articles by tag name (case-insensitive)
+- [ ] Add tag filter UI:
+  - List all user's tags in sidebar or header
+  - Click tag → navigate to `/articles?tag={name}`
+  - Use hx-boost navigation
+- [ ] Active tag highlighting
+
+#### 4.4 Summary Generation (`src/lib/llm.ts` - extend ClaudeProvider)
+- [ ] Implement `summarize(content)` method:
+  - Use Claude Sonnet (claude-3-5-sonnet-20241022)
+  - Truncate content if too long (max ~100k tokens)
+  - Prompt for three summary formats:
+    - One sentence: < 30 words
+    - One paragraph: 3-5 sentences, ~100 words
+    - Long: ~500 words, detailed
+  - Request structured JSON output
+  - Parse and return {oneSentence, oneParagraph, long}
+- [ ] Error handling:
+  - Catch API errors
+  - Return generic error message in summaries
+  - Log error details
+
+#### 4.5 Summary API Route (`src/routes/api.tsx` - extend)
+- [ ] `POST /articles/:id/summarize`:
+  - Query article by ID
+  - Verify belongs to current user
+  - Check if summary exists in article_summaries table
+  - If exists:
+    - Load cached summaries
+    - Render HTML with all three formats
+    - Return HTML fragment
+  - If not exists:
+    - Load cached HTML content
+    - Extract plain text from HTML
+    - Call LLM provider's summarize() method
+    - Store in article_summaries table
+    - Render HTML with summaries
+    - Return HTML fragment
+  - Error handling:
+    - Return error message HTML on LLM failure
+
+#### 4.6 Summary Display Component (`src/components/SummaryView.tsx`)
+- [ ] Create component for summary HTML fragment
+- [ ] Accept summaries prop: {oneSentence, oneParagraph, long}
+- [ ] Render structure:
+  - Section with three expandable/collapsible parts:
+    - "One Sentence" (shown by default)
+    - "One Paragraph" (shown by default)
+    - "Detailed Summary" (collapsible)
+  - Styling: distinct from article content
+- [ ] Export as JSX function
+
+#### 4.7 Update ReaderView (`src/components/ReaderView.tsx` - extend)
+- [ ] Update summary section:
+  - "Summarize Article" button
+  - Button attributes:
+    - `hx-post="/articles/:id/summarize"`
+    - `hx-target="#summaries"`
+    - `hx-swap="innerHTML"`
+  - Empty div#summaries for HTMX target
+  - Loading indicator (HTMX provides this automatically)
+
+**Deliverable**: Articles auto-tag during processing, users can generate summaries on-demand.
+
+**Testing**:
+- Manual: Check tags on saved articles, click Summarize button
+- Unit test: `llm.test.ts` - Claude provider tag and summary generation
+- Integration test: Summary generation API route
+
+---
+
+## Phase 5: Additional Features (Archive, Search, TTS)
+
+**Goal**: Add archive, tag filtering, search, and TTS functionality.
+
+### Tasks
+
+#### 5.1 Archive Functionality
+- [ ] `POST /articles/:id/archive` in API routes:
+  - Toggle article.archived boolean
+  - Return updated article card HTML
+- [ ] Update ArticleCard component:
+  - Add "Archive" button (or "Unarchive" if already archived)
+  - HTMX attributes: `hx-post="/articles/:id/archive"`, `hx-swap="outerHTML"`
+- [ ] Update ReaderView component:
+  - Add Archive button in footer
+  - Same HTMX attributes
+- [ ] Update article list route:
+  - Default to `?status=unread` (archived = false)
+  - Support `?status=archived` (archived = true)
+- [ ] Add navigation links:
+  - "Unread" → `/articles?status=unread`
+  - "Archive" → `/articles?status=archived`
+- [ ] Update Layout navigation with active state
+
+#### 5.2 Search Functionality (Phase 1 - Simple)
+- [ ] `GET /articles/search` route:
+  - Parse `q` query param
+  - Search article title and description (LIKE %query%)
+  - Return article list HTML
+- [ ] Add search form to articles list:
+  - Input field
+  - Search button
+  - HTMX attributes:
+    - `hx-get="/articles/search"`
+    - `hx-target="#article-list"`
+    - `hx-trigger="submit, keyup changed delay:500ms"`
+  - Clear button to reset
+- [ ] Empty state for no search results
+
+#### 5.3 TTS Implementation
+- [ ] Add TTS controls to ReaderView:
+  - "Listen" button (🔊 icon)
+  - Play/Pause/Stop controls
+  - Speed control (1x, 1.5x, 2x)
+- [ ] Create inline vanilla JS in ReaderView:
+  - Extract text from `.reader-content` div
+  - Create SpeechSynthesisUtterance
+  - Use Web Speech API
+  - Handle play, pause, stop events
+  - Update button states
+- [ ] Styling for controls:
+  - Fixed position or inline
+  - Clear visual states
+  - Mobile-friendly
+
+#### 5.4 PWA Manifest
+- [ ] Create `public/manifest.json`:
+  - name: "Lateread"
+  - short_name: "Lateread"
+  - description: "Read-later app"
+  - icons: (placeholder icons)
+  - start_url: "/"
+  - display: "standalone"
+  - theme_color: primary color
+  - background_color: background color
+- [ ] Add manifest link to Layout head
+- [ ] Create basic favicon and app icons (placeholder)
+
+#### 5.5 Additional UI Polish
+- [ ] Empty states for all list views
+- [ ] Loading states (HTMX indicators)
+- [ ] Error states (HTMX error handling)
+- [ ] Responsive design checks:
+  - Mobile navigation
+  - Tablet layout
+  - Desktop layout
+- [ ] Dark mode support (Pico CSS includes this)
+
+**Deliverable**: Full-featured reading experience with archive, search, and TTS.
+
+**Testing**:
+- Manual: Test all features on different devices
+- Integration test: Archive and search routes
+
+---
+
+## Phase 6: Background Jobs
+
+**Goal**: Set up cron jobs for retry, cleanup, and maintenance tasks.
+
+### Tasks
+
+#### 6.1 Retry Worker (`src/workers/retry.ts`)
+- [ ] Implement `retryFailedArticles()`:
+  - Query stuck articles:
+    - status IN ('pending', 'processing', 'failed')
+    - updatedAt < NOW() - RETRY_DELAY_MINUTES
+    - processingAttempts < MAX_RETRY_ATTEMPTS
+  - For each article:
+    - Log retry attempt
+    - Spawn worker with article ID
+    - Non-blocking (don't await)
+  - Query exhausted articles:
+    - status != 'completed'
+    - processingAttempts >= MAX_RETRY_ATTEMPTS
+  - Update to status = 'error', lastError = "Max retries exceeded"
+  - Log results (count retried, count marked error)
+- [ ] Export function
+
+#### 6.2 Cron Registry (`src/cron.ts`)
+- [ ] Import croner
+- [ ] Import all cron job functions:
+  - `retryFailedArticles` from workers/retry
+  - `cleanupOldCache` from lib/content-cache
+  - `cleanupExpiredTokens` from lib/auth
+- [ ] Implement `startCrons()`:
+  - Schedule retry job: every 5 minutes
+  - Schedule cache cleanup: daily at 3am
+  - Schedule token cleanup: hourly
+  - Log each job registration
+- [ ] Export function
+
+#### 6.3 Update Main Entry (`src/main.ts` - extend)
+- [ ] Import and call `startCrons()` after server starts
+- [ ] Log "Cron jobs started"
+
+#### 6.4 Health Check Endpoint
+- [ ] Add `GET /health` route:
+  - Return JSON: {status: 'ok', timestamp: Date.now()}
+  - Use for monitoring
+- [ ] Add `GET /health/db` route:
+  - Query database (simple SELECT 1)
+  - Return {status: 'ok', database: 'connected'}
+  - Return error if database unreachable
+
+**Deliverable**: Background jobs running automatically for maintenance.
+
+**Testing**:
+- Unit test: `retry.test.ts` - retry logic
+- Integration test: Run cron manually, verify execution
+- Manual: Wait for cron execution, check logs
+
+---
+
+## Phase 7: Testing
+
+**Goal**: Comprehensive test coverage for all modules.
+
+### Tasks
+
+#### 7.1 Test Setup
+- [ ] Create `test/setup.ts`:
+  - Helper to create in-memory SQLite database
+  - Run migrations on test database
+  - Clean up after tests
+- [ ] Create `test/fixtures.ts`:
+  - User creation helper
+  - Article creation helper
+  - Tag creation helper
+  - Auth token creation helper
+  - Mock HTML content
+  - Wait/polling helper
+- [ ] Create `test/mocks/llm.ts`:
+  - Mock LLM provider with configurable responses
+  - Mock tag extraction
+  - Mock summarization
+- [ ] Create `test/mocks/telegram.ts`:
+  - Mock bot messages
+  - Mock bot commands
+
+#### 7.2 Unit Tests - Library Modules
+- [ ] `lib/config.test.ts`:
+  - Valid config parsing
+  - Missing required fields throw errors
+  - Defaults applied correctly
+  - Type coercion works
+- [ ] `lib/content-cache.test.ts`:
+  - Save and retrieve content
+  - Return null for non-existent
+  - Handle unicode/emojis
+  - Create directory automatically
+  - Delete by ID
+  - Cleanup old files
+  - Preserve recent files
+- [ ] `lib/readability.test.ts`:
+  - Extract clean content (mock fetch)
+  - Extract OpenGraph metadata
+  - Fallback to meta tags
+  - Extract plain text
+  - Handle timeout
+  - Handle network errors
+  - Handle 404/500
+  - Follow redirects
+- [ ] `lib/auth.test.ts`:
+  - Generate tokens
+  - Set expiration correctly
+  - Claim valid tokens
+  - Reject expired tokens
+  - Reject non-existent tokens
+  - Create user on claim
+  - Cleanup expired tokens
+- [ ] `lib/llm.test.ts`:
+  - Claude provider initialization
+  - Tag extraction with existing tags
+  - Tag extraction returns valid format
+  - Summarization returns three formats
+  - Handle API errors gracefully
+
+#### 7.3 Unit Tests - Database
+- [ ] `db/schema.test.ts`:
+  - Migrations run successfully
+  - Unique constraints enforced
+  - Cascade deletes work
+  - Default values set
+  - Foreign keys enforced
+  - Indexes created
+  - Tag names lowercase
+
+#### 7.4 Integration Tests - Workers
+- [ ] `workers/process-metadata.test.ts`:
+  - Full processing pipeline (with mocks)
+  - Status transitions
+  - Cache file created
+  - Metadata extracted and saved
+  - Tags generated and associated
+  - Reuse existing tags
+  - Create new tags
+  - Handle network errors
+  - Handle Readability failures
+  - Handle LLM errors
+  - Increment attempts on failure
+  - Rollback on error
+  - Timeout after 60 seconds
+- [ ] `workers/retry.test.ts`:
+  - Detect stuck articles
+  - Retry pending/processing/failed
+  - Skip recent articles
+  - Skip completed articles
+  - Mark as error after max attempts
+  - Log results
+
+#### 7.5 Integration Tests - Routes
+- [ ] `routes/articles.test.tsx`:
+  - GET / - login when not authenticated
+  - GET / - articles when authenticated
+  - GET /articles - filter by status
+  - GET /articles - filter by tag
+  - GET /articles/:id - render reader
+  - GET /articles/:id - 404 for non-existent
+  - GET /articles/:id - 403 for other user's article
+  - HTMX request detection
+  - Full page vs partial rendering
+- [ ] `routes/api.test.tsx`:
+  - POST /articles/:id/read - mark as read
+  - POST /articles/:id/archive - toggle archive
+  - POST /articles/:id/summarize - generate summaries
+  - POST /articles/:id/summarize - return cached
+  - Auth required for all endpoints
+- [ ] `routes/auth.test.tsx`:
+  - POST /auth/telegram - create token
+  - GET /auth/check/:token - pending status
+  - GET /auth/check/:token - success status
+  - GET /auth/check/:token - expired status
+  - POST /auth/logout - clear session
+
+#### 7.6 End-to-End Tests
+- [ ] `test/e2e/article-capture.test.ts`:
+  - Full flow: Telegram message → worker → database → cache
+  - Verify all steps complete successfully
+  - Verify tags associated
+  - Verify reactions updated
+- [ ] `test/e2e/auth-flow.test.ts`:
+  - Full flow: Request token → Telegram login → poll → session
+  - Verify user created on claim
+  - Verify session set correctly
+- [ ] `test/e2e/reading.test.ts`:
+  - Full flow: Load article → read → summarize → mark as read
+  - Verify cache serving
+  - Verify summary caching
+  - Verify readAt timestamp
+
+#### 7.7 Test Coverage
+- [ ] Run coverage report: `bun test --coverage`
+- [ ] Review coverage gaps
+- [ ] Add tests for uncovered critical paths
+- [ ] Target: >80% overall, >90% for critical paths
+
+**Deliverable**: Comprehensive test suite with high coverage.
+
+**Testing**:
+- Run all tests: `bun test`
+- Check coverage: `bun test --coverage`
+- Fix any failing tests
+
+---
+
+## Phase 8: Deployment
+
+**Goal**: Deploy to Railway with CI/CD pipeline.
+
+### Tasks
+
+#### 8.1 Dockerfile
+- [ ] Create `Dockerfile`:
+  - FROM oven/bun:1
+  - Create non-root user (UID from env)
+  - Copy package files, install dependencies
+  - Copy source code
+  - Run copy-assets script
+  - Create data and cache directories
+  - Set ownership to non-root user
+  - Switch to non-root user
+  - Expose port 3000
+  - CMD: bun run src/main.ts
+- [ ] Create `.dockerignore`:
+  - node_modules
+  - .env
+  - data/
+  - cache/
+  - coverage/
+  - .git
+
+#### 8.2 Railway Configuration
+- [ ] Create Railway project from GitHub repo
+- [ ] Configure environment variables in Railway:
+  - TELEGRAM_BOT_TOKEN
+  - BOT_USERNAME
+  - LLM_PROVIDER=claude
+  - LLM_API_KEY
+  - SESSION_SECRET (generate: `openssl rand -base64 32`)
+  - DATABASE_URL=/app/data/app.db
+  - CACHE_DIR=/app/data/cache/articles
+  - NODE_ENV=production
+  - SESSION_MAX_AGE_DAYS=180
+  - UID=1000
+- [ ] Add persistent volume:
+  - Mount point: /app/data
+  - Size: 5GB (adjust as needed)
+- [ ] Configure health check endpoint: /health
+
+#### 8.3 GitHub Actions CI/CD
+- [ ] Create `.github/workflows/deploy.yml`:
+  - Trigger: push to main, PRs
+  - Jobs:
+    - test: Run tests and coverage
+    - deploy: Deploy to Railway (main branch only)
+  - Steps for test job:
+    - Checkout code
+    - Setup Bun
+    - Install dependencies
+    - Copy assets
+    - Run tests
+    - Generate coverage
+    - Upload coverage artifact
+  - Steps for deploy job:
+    - Checkout code
+    - Install Railway CLI
+    - Deploy: railway up
+- [ ] Add GitHub secret: RAILWAY_TOKEN
+- [ ] Test workflow with PR
+
+#### 8.4 Production Environment Setup
+- [ ] Generate SESSION_SECRET: `openssl rand -base64 32`
+- [ ] Create Telegram bot via BotFather
+- [ ] Get bot token and username
+- [ ] Get Claude API key from Anthropic
+- [ ] Set all environment variables in Railway
+- [ ] Verify volume mounted correctly
+
+#### 8.5 Deployment Scripts
+- [ ] Create `scripts/migrate.ts`:
+  - Run database migrations
+  - Can be run separately if needed
+- [ ] Update package.json scripts:
+  - `dev`: bun --watch src/main.ts
+  - `start`: bun run src/main.ts
+  - `test`: bun test
+  - `test:watch`: bun test --watch
+  - `test:coverage`: bun test --coverage
+  - `migrate`: bun run scripts/migrate.ts
+  - `copy-assets`: bun run scripts/copy-assets.ts
+
+#### 8.6 Documentation
+- [ ] Create README.md:
+  - Project overview
+  - Features list
+  - Tech stack
+  - **LLM Provider Setup** section:
+    - Explain that operators choose their provider
+    - List install commands for each: Claude, OpenAI, Gemini, local
+    - Example: "For Claude: `bun add @anthropic-ai/sdk`"
+    - Note about setting LLM_PROVIDER and LLM_API_KEY in .env
+  - Local development setup
+  - Environment variables
+  - Deployment instructions
+  - License
+- [ ] Update .env.example with all variables (including LLM_PROVIDER options)
+- [ ] Create CONTRIBUTING.md (if open source)
+
+#### 8.7 First Deployment
+- [ ] Push to main branch
+- [ ] Watch GitHub Actions workflow
+- [ ] Verify deployment in Railway
+- [ ] Check logs for startup errors
+- [ ] Test health endpoint: curl https://app.railway.app/health
+- [ ] Test Telegram bot: /start command
+- [ ] Test full flow: Send article URL
+
+#### 8.8 Post-Deployment Verification
+- [ ] Test authentication flow end-to-end
+- [ ] Test article capture and processing
+- [ ] Test article reading
+- [ ] Test summaries generation
+- [ ] Test archive functionality
+- [ ] Test search
+- [ ] Monitor logs for errors
+- [ ] Check database file size
+- [ ] Check cache directory
+- [ ] Verify cron jobs running
+
+**Deliverable**: Production deployment on Railway with CI/CD pipeline.
+
+**Testing**:
+- Build Docker image locally: `docker build -t lateread .`
+- Run locally: `docker run -p 3000:3000 --env-file .env lateread`
+- Test Railway deployment in staging environment
+- Run full manual test checklist (from design doc)
+
+---
+
+## Implementation Order Summary
+
+```
+Phase 0: Foundation (1-2 days)
+  → Project setup, config, database schema
+
+Phase 1: Authentication (2-3 days)
+  → Complete Telegram auth flow, session management
+
+Phase 2: Article Capture (3-4 days)
+  → Telegram bot handlers, workers, content extraction, basic tagging
+
+Phase 3: Article Reading (2-3 days)
+  → Web UI, article list, reader view, basic interactions
+
+Phase 4: AI Features (2-3 days)
+  → Tag refinement, summary generation, UI integration
+
+Phase 5: Additional Features (2-3 days)
+  → Archive, search, TTS, PWA manifest
+
+Phase 6: Background Jobs (1-2 days)
+  → Cron setup, retry mechanism, cleanup jobs
+
+Phase 7: Testing (3-4 days)
+  → Unit tests, integration tests, E2E tests, coverage
+
+Phase 8: Deployment (1-2 days)
+  → Docker, Railway, CI/CD, documentation
+
+Total: ~17-26 days (3-5 weeks)
+```
+
+---
+
+## Development Tips
+
+### Daily Workflow
+1. Check off completed tasks in this document
+2. Run tests frequently: `bun test --watch`
+3. Test manually in browser after each vertical slice
+4. Commit working code at end of each task
+5. Push to feature branch, create PR when phase complete
+
+### Debugging
+- Use `console.log()` liberally during development
+- Check Railway logs: `railway logs` or in dashboard
+- Test workers in isolation before integrating
+- Use in-memory database for fast test iteration
+
+### Code Quality
+- Run biome for linting (if added)
+- Keep functions small and focused
+- Write comments for complex logic
+- Follow TypeScript strict mode
+- Keep components pure (no side effects)
+
+### Testing Strategy
+- Write tests alongside implementation
+- Use TDD for critical paths (auth, workers)
+- Mock external APIs (Telegram, Claude)
+- Use fixtures for consistent test data
+- Aim for >80% coverage overall
+
+---
+
+## Next Steps
+
+1. Review this implementation plan
+2. Set up local development environment
+3. Start with Phase 0: Foundation
+4. Work through phases sequentially
+5. Test each phase thoroughly before moving to next
+6. Update this document as you progress (check off tasks)
+7. Ask questions when clarification needed
+
+---
+
+## Questions & Clarifications
+
+**If you encounter:**
+- Ambiguous requirements → Refer to DESIGN.md
+- Technical blockers → Ask for guidance
+- Missing details → Make reasonable assumptions, document them
+- Better approaches → Propose alternative, discuss trade-offs
+
+**Remember:**
+- Vertical slices mean each phase delivers working features
+- Test as you build, don't save testing for the end
+- Keep it simple - avoid over-engineering
+- The design doc is the source of truth
+
+---
+
+Good luck with the implementation! 🚀

@@ -2404,6 +2404,11 @@ bun run src/index.ts
 5. **Webhook mode** for Telegram bot
 6. **Service worker** for offline PWA support
 7. **Advanced LLM features** (question answering, semantic search)
+8. **Multi-stage Docker build** to optimize production image:
+   - Build stage: Install all dependencies (including dev deps like htmx, pico)
+   - Copy assets stage: Run copy-assets.ts script
+   - Production stage: Copy only runtime dependencies and assets
+   - Reduces node_modules size in production (exclude TypeScript, drizzle-kit, htmx/pico sources)
 
 ---
 

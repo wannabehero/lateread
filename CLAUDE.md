@@ -161,14 +161,59 @@ bun install              # Install all dependencies
 - **Mock external APIs**: Telegram, LLM providers (fixtures in `test/mocks/`)
 - **Coverage target**: >80% overall, >90% for critical paths (auth, workers)
 
+## Coding Style Guidelines
+
+### TypeScript
+- **Type imports**: Always use `import type` for type-only imports due to `verbatimModuleSyntax`
+  ```typescript
+  import type { FC } from "hono/jsx";
+  import type { Context } from "hono";
+  ```
+- **Strict mode**: All code must type-check with strict mode enabled
+- **No type assertions**: Prefer proper type checking over `as` casts
+
+### Components
+- **Extract reusable components**: If JSX is repeated more than twice, extract to a component
+- **Component location**: Group related components in subdirectories (e.g., `components/auth/`)
+- **Props interfaces**: Always define typed props interfaces for components
+- **Functional components**: Use Hono's `FC` type for all components
+
+### HTMX Patterns
+- **HTMX-first**: Use HTMX for all dynamic interactions - avoid vanilla JavaScript
+- **No inline scripts**: Never use `<script>` tags for behavior (exception: very rare cases like redirects)
+- **HX-Redirect header**: Use `c.header("hx-redirect", "/path")` for redirects, not JavaScript
+- **Polling**: Use `hx-trigger="load, every Xs"` for polling patterns
+- **Target IDs**: Always specify unique IDs for `hx-target` to avoid conflicts
+
+### HTML Semantics
+- **Buttons vs Links**:
+  - Use `<button type="button">` for in-app actions (HTMX triggers)
+  - Use `<a href="...">` for navigation (internal or external links)
+  - Never use `<a role="button">` - remove the role attribute
+- **Button types**: Always specify `type="button"` or `type="submit"` on buttons
+- **Forms**: Use `method="post"` (lowercase) not `method="POST"`
+
+### Styling
+- **No emojis**: Never use emojis in code, comments, or console output
+- **Spell "lateread"**: Always lowercase, never "Lateread" or "LateRead"
+
+### Code Organization
+- **DRY principle**: Extract repeated code into functions/components
+- **File naming**: Use kebab-case for files (e.g., `auth-error.tsx`)
+- **Export patterns**: Use named exports for utilities, default export for route handlers
+
 ## Common Pitfalls to Avoid
 - ❌ Accessing `process.env` directly (use `config` module)
 - ❌ Defining cron jobs outside `src/cron.ts`
 - ❌ Using Node.js APIs (`node:fs`) instead of Bun APIs (`Bun.file()`)
 - ❌ Forgetting to normalize tag names to lowercase
 - ❌ Blocking bot message handlers with heavy processing (use workers)
-- ❌ Returning redirects for HTMX requests (breaks navigation)
+- ❌ Using JavaScript redirects instead of HX-Redirect header
 - ❌ Installing all LLM SDKs (only install chosen provider)
+- ❌ Using `<a role="button">` instead of proper semantic HTML
+- ❌ Forgetting `type="button"` on button elements
+- ❌ Writing vanilla JavaScript when HTMX can handle it
+- ❌ Repeating JSX patterns instead of extracting components
 
 ## Implementation Phases
 
@@ -194,6 +239,3 @@ See `docs/IMPLEMENTATION_PLAN.md` for detailed task breakdowns.
 - **`docs/IMPLEMENTATION_PLAN.md`**: 8-phase implementation roadmap
   - Task checklists, dependencies, testing requirements
   - Use for project planning and progress tracking
-- spell lateread as lowercase
-- always put appropriate "type" to html buttons
-- instead of <a> with role=button use <button>

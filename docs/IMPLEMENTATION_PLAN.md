@@ -133,105 +133,115 @@ bun add @anthropic-ai/sdk          # For Claude (recommended)
 
 ---
 
-## Phase 1: Authentication Flow
+## Phase 1: Authentication Flow ✅ COMPLETE
 
 **Goal**: Complete Telegram-based authentication from landing page to logged-in session.
 
 ### Tasks
 
 #### 1.1 Auth Library (`src/lib/auth.ts`)
-- [ ] Implement `createAuthToken()`:
+- [x] Implement `createAuthToken()`:
   - Generate UUID token
   - Store in database with 5-minute expiration
   - userId starts as NULL (not claimed yet)
-  - Return token and formatted Telegram deep link
-- [ ] Implement `claimAuthToken()`:
+  - Return token and formatted Telegram deep link (`/start login_{token}`)
+- [x] Implement `claimAuthToken()`:
   - Validate token exists and not expired
-  - Create User record (new!)
+  - Create User record (new!) or use existing
   - Create TelegramUser record with telegramId and username
   - Update token with userId
   - Return user object
-- [ ] Implement `cleanupExpiredTokens()`:
+- [x] Implement `cleanupExpiredTokens()`:
   - Delete tokens where expiresAt < NOW()
   - Return count of deleted tokens
+- [x] Export `TOKEN_EXPIRATION_MINUTES` constant
+- [x] Implement `getAuthTokenStatus()` for polling
 
 #### 1.2 Layout Component (`src/components/Layout.tsx`)
-- [ ] Create base HTML layout with:
-  - `<head>` with meta tags, title, Pico CSS
+- [x] Create base HTML layout with:
+  - `<head>` with meta tags, title, Pico CSS conditional theme
   - HTMX script tag
   - Custom styles link
   - `<header>` with navigation (Home, Unread, Archive)
   - `<main>` slot for children
   - `<footer>` with app info
-- [ ] Add `hx-boost="true"` to navigation links
-- [ ] Accept `title` and `children` props
+- [x] Add `hx-boost="true"` to navigation links
+- [x] Accept `title`, `children`, `isAuthenticated`, `currentPath` props
+- [x] Use Pico CSS conditional theme for dark mode support
 
 #### 1.3 Auth Routes (`src/routes/auth.tsx`)
-- [ ] Create Hono router instance
-- [ ] `GET /` (when not authenticated):
+- [x] Create Hono router instance
+- [x] `GET /` (when not authenticated):
   - Check session cookie for user ID
   - If not authenticated: render login page with "Login with Telegram" button
-  - If authenticated: redirect to `/articles`
-- [ ] `POST /auth/telegram`:
+  - If authenticated: redirect to `/articles?status=unread`
+- [x] `POST /auth/telegram`:
   - Call `createAuthToken()`
-  - Return JSON with token and telegramUrl
-- [ ] `GET /auth/check/:token`:
+  - Return HTMX fragment with Telegram deep link and polling component
+- [x] `GET /auth/check/:token`:
   - Query auth token from database
-  - Check if expired → return `{ status: 'expired' }`
-  - Check if userId is NULL → return `{ status: 'pending' }`
-  - If userId exists → create session cookie, return `{ status: 'success', userId }`
-- [ ] `POST /auth/logout`:
+  - Check if expired → return AuthError component
+  - Check if userId is NULL → return AuthPolling component (pending)
+  - If userId exists → set session cookie, return HX-Redirect header
+- [x] `POST /auth/logout`:
   - Clear session cookie
   - Redirect to `/`
 
-#### 1.4 Login Page Client-Side (`public/auth.js`)
-- [ ] "Login with Telegram" button click handler:
-  - POST to `/auth/telegram`
-  - Display "Open Telegram" button with deep link
-  - Start polling `/auth/check/{token}` every 2 seconds
-- [ ] Poll handler:
-  - On `pending`: continue polling
-  - On `expired`: show error, display login button again
-  - On `success`: redirect to `/articles`
-  - Stop polling after 5 minutes (timeout)
+#### 1.4 Auth Components (HTMX-based, no vanilla JS)
+- [x] `AuthError` component (`src/components/auth/AuthError.tsx`):
+  - Reusable error message with retry button
+  - Props: message, buttonText
+- [x] `AuthPolling` component (`src/components/auth/AuthPolling.tsx`):
+  - HTMX-based polling with configurable triggers
+  - Props: token, message, immediate
+  - Initial polling: `load, every 2s`
+  - Continuation polling: `load delay:2s`
+- [x] Use HX-Redirect header instead of JavaScript redirects
 
 #### 1.5 Bot Setup (`src/bot/index.ts`)
-- [ ] Import Grammy and config
-- [ ] Create Bot instance with token from config
-- [ ] Store bot username from config
-- [ ] Export `setupBot()` function
-- [ ] Export `bot` instance
-- [ ] Use polling mode (not webhooks)
+- [x] Import Grammy and config
+- [x] Create Bot instance with token from config
+- [x] Store bot username from config
+- [x] Export `setupBot()` function
+- [x] Export `bot` instance
+- [x] Use polling mode (not webhooks)
+- [x] Add error handler
+- [x] Export `startBot()` and `stopBot()` functions
 
 #### 1.6 Bot Auth Handler (`src/bot/handlers.ts`)
-- [ ] Implement `/start` command:
-  - Send welcome message
+- [x] Implement `/start` command:
+  - Handle deep link payload (`login_{token}`)
+  - Send welcome message for regular start
   - Explain how to use the bot
-- [ ] Implement `/login {token}` command:
+- [x] Implement `/login {token}` command:
   - Extract token from command text
   - Validate token via `claimAuthToken()`
-  - Pass telegramId and username from message
-  - If valid: reply "✅ Login successful! Return to the app."
+  - Pass telegramId, username, firstName, lastName from message
+  - If valid: reply "Login successful!"
   - If invalid/expired: reply with error message
-- [ ] Register handlers in `registerHandlers(bot)` function
+- [x] Implement `/help` command with full feature list
+- [x] Register handlers in `registerHandlers(bot)` function
 
 #### 1.7 Session Middleware (`src/lib/session.ts`)
-- [ ] Create session middleware for Hono using signed cookies
-- [ ] Use SESSION_SECRET from config
-- [ ] Set cookie expiration from SESSION_MAX_AGE_DAYS
-- [ ] Export `getSession()` and `setSession()` helpers
+- [x] Create session helpers using signed cookies
+- [x] Use SESSION_SECRET from config with Bun.hash for signing
+- [x] Set cookie expiration from SESSION_MAX_AGE_DAYS
+- [x] Export `getSession()`, `setSession()`, `clearSession()` helpers
+- [x] HTTP-only, secure (in production), SameSite=Lax cookies
 
 #### 1.8 Main Entry Point - Initial Version (`src/main.ts`)
-- [ ] Import config first (before other modules)
-- [ ] Initialize database connection
-- [ ] Run migrations
-- [ ] Create Hono app
-- [ ] Add session middleware
-- [ ] Register auth routes
-- [ ] Setup Telegram bot
-- [ ] Start bot polling
-- [ ] Start HTTP server on configured PORT
-- [ ] Log startup message with URLs
+- [x] Import config first (before other modules)
+- [x] Initialize database connection
+- [x] Run migrations
+- [x] Create Hono app
+- [x] Add request logger middleware
+- [x] Add static file serving for `/public/*`
+- [x] Register auth routes
+- [x] Setup Telegram bot
+- [x] Start bot polling
+- [x] Start HTTP server on configured PORT
+- [x] Log startup message with URLs
+- [x] Add graceful shutdown handler (SIGINT)
 
 **Deliverable**: Complete authentication flow - user can log in via Telegram and get session.
 

@@ -127,10 +127,29 @@ export function registerHandlers(bot: Bot) {
     }
 
     // Spawn worker (non-blocking)
+    const chatId = ctx.chat.id;
+    const messageId = ctx.message.message_id;
+
     spawnArticleWorker({
       articleId: article.id,
-      telegramChatId: ctx.chat.id,
-      telegramMessageId: ctx.message.message_id,
+      onSuccess: async () => {
+        try {
+          await ctx.api.setMessageReaction(chatId, messageId, [
+            { type: "emoji", emoji: "👍" },
+          ]);
+        } catch (err) {
+          console.error("Failed to update Telegram reaction:", err);
+        }
+      },
+      onFailure: async () => {
+        try {
+          await ctx.api.setMessageReaction(chatId, messageId, [
+            { type: "emoji", emoji: "👎" },
+          ]);
+        } catch (err) {
+          console.error("Failed to update Telegram reaction:", err);
+        }
+      },
     });
   });
 

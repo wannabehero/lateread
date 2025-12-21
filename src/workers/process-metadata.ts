@@ -76,7 +76,7 @@ self.onmessage = async (event: MessageEvent) => {
   }
 };
 
-async function processArticle(article: any) {
+async function processArticle(article: typeof articles.$inferSelect) {
   // Step 3: Fetch URL content
   const extracted = await extractCleanContent(article.url);
 

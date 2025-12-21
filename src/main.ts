@@ -1,10 +1,11 @@
 // IMPORTANT: Config must be imported FIRST before any other modules
+import { config } from "./lib/config";
+
 import { Hono } from "hono";
 import { serveStatic } from "hono/bun";
 import { logger } from "hono/logger";
 import { registerHandlers } from "./bot/handlers";
 import { bot, setupBot, startBot, stopBot } from "./bot/index";
-import { config } from "./lib/config";
 import { runMigrations } from "./lib/db";
 import authRoutes from "./routes/auth";
 

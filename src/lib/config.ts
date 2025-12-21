@@ -18,7 +18,7 @@ const configSchema = z.object({
   LLM_PROVIDER: z
     .enum(["claude", "openai", "gemini", "local"])
     .default("claude"),
-  LLM_API_KEY: z.string().optional(),
+  LLM_API_KEY: z.string(),
 
   // Authentication & Session
   SESSION_SECRET: z

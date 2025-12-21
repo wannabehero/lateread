@@ -1,5 +1,9 @@
+import { eq } from "drizzle-orm";
 import type { Bot, Context } from "grammy";
+import { articles, telegramUsers } from "../db/schema";
 import { claimAuthToken } from "../lib/auth";
+import { db } from "../lib/db";
+import { spawnArticleWorker } from "../lib/worker";
 
 /**
  * Register all bot command handlers
@@ -68,7 +72,85 @@ export function registerHandlers(bot: Bot) {
     );
   });
 
+  // Handle messages with URLs
+  bot.on("message:text", async (ctx) => {
+    const url = extractUrl(ctx.message.text);
+
+    if (!url) {
+      // No URL found, ignore message
+      return;
+    }
+
+    // Check if user is authenticated
+    const telegramId = ctx.from?.id.toString();
+
+    if (!telegramId) {
+      return;
+    }
+
+    // Query TelegramUser by telegramId
+    const [telegramUser] = await db
+      .select()
+      .from(telegramUsers)
+      .where(eq(telegramUsers.telegramId, telegramId))
+      .limit(1);
+
+    if (!telegramUser) {
+      await ctx.reply(
+        "Please log in first at the web app to start saving articles.\n\n" +
+          "Once you're logged in, send me any URL and I'll save it for you.",
+      );
+      return;
+    }
+
+    // Create article record
+    const [article] = await db
+      .insert(articles)
+      .values({
+        userId: telegramUser.userId,
+        url: url,
+        status: "pending",
+        processingAttempts: 0,
+      })
+      .returning();
+
+    if (!article) {
+      console.error(`Failed to create article record for ${url}`);
+      return;
+    }
+
+    // React with eyes emoji
+    try {
+      await ctx.react("👀");
+    } catch (error) {
+      console.error("Failed to add reaction:", error);
+    }
+
+    // Spawn worker (non-blocking)
+    spawnArticleWorker({
+      articleId: article.id,
+      telegramChatId: ctx.chat.id,
+      telegramMessageId: ctx.message.message_id,
+    });
+  });
+
   console.log("Bot handlers registered");
+}
+
+/**
+ * Extract first URL from message text
+ */
+function extractUrl(text: string): string | null {
+  // Simple URL regex - matches http:// and https://
+  const urlRegex = /(https?:\/\/[^\s]+)/gi;
+  const matches = text.match(urlRegex);
+
+  if (matches && matches.length > 0) {
+    // Return first URL only
+    return matches[0];
+  }
+
+  return null;
 }
 
 /**

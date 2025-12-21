@@ -252,22 +252,22 @@ bun add @anthropic-ai/sdk          # For Claude (recommended)
 
 ---
 
-## Phase 2: Article Capture Flow
+## Phase 2: Article Capture Flow ✅ COMPLETE
 
 **Goal**: User can send URLs to Telegram bot and articles are captured in database.
 
 ### Tasks
 
 #### 2.1 Bot Message Handlers (`src/bot/handlers.ts` - extend)
-- [ ] Add URL extraction helper:
+- [x] Add URL extraction helper:
   - Parse message text for URLs
   - Support forwarded messages
   - Extract first URL only (ignore others)
   - Return URL or null
-- [ ] Add message handler:
+- [x] Add message handler:
   - Check if message contains URL
   - Query TelegramUser by telegramId from message
-  - If user not found: reply "❌ Please log in first at https://lateread.app"
+  - If user not found: reply "Please log in first at https://lateread.app"
   - Extract first URL from message
   - Create article record in database:
     - Generate UUID
@@ -280,24 +280,24 @@ bun add @anthropic-ai/sdk          # For Claude (recommended)
   - Handle worker result → update reaction to 👍 or 👎
 
 #### 2.2 Content Cache Module (`src/lib/content-cache.ts`)
-- [ ] Create `ContentCache` class:
+- [x] Create `ContentCache` class:
   - `get(articleId)`: Read HTML from cache file
   - `set(articleId, content)`: Write HTML to cache file
   - `delete(articleId)`: Delete cache file
   - `exists(articleId)`: Check if cache file exists
-- [ ] Use Bun.file() API for all operations
-- [ ] Use config.CACHE_DIR for directory path
-- [ ] File naming: `{uuid}.html`
-- [ ] UTF-8 encoding
-- [ ] Create directory on-demand if missing
-- [ ] Implement `cleanupOldCache()` function:
+- [x] Use Bun.file() API for all operations
+- [x] Use config.CACHE_DIR for directory path
+- [x] File naming: `{uuid}.html`
+- [x] UTF-8 encoding
+- [x] Create directory on-demand if missing
+- [x] Implement `cleanupOldCache()` function:
   - Scan all files in cache directory
   - Delete files older than CACHE_MAX_AGE_DAYS
   - Log count of deleted files
-- [ ] Export ContentCache instance and cleanup function
+- [x] Export ContentCache instance and cleanup function
 
 #### 2.3 Readability Wrapper (`src/lib/readability.ts`)
-- [ ] Implement `extractCleanContent(url)`:
+- [x] Implement `extractCleanContent(url)`:
   - Fetch URL with timeout (30 seconds)
   - Set custom user agent
   - Follow up to 5 redirects
@@ -308,17 +308,17 @@ bun add @anthropic-ai/sdk          # For Claude (recommended)
   - Extract clean HTML content
   - Extract plain text content
   - Return structured result object
-- [ ] Error handling:
+- [x] Error handling:
   - Network errors (timeout, DNS, connection)
   - Invalid HTML
   - Readability failures (non-article pages)
   - Return partial data or throw descriptive error
 
 #### 2.4 LLM Abstraction - Base (`src/lib/llm.ts`)
-- [ ] Define `LLMProvider` interface:
+- [x] Define `LLMProvider` interface:
   - `extractTags(content, existingTags)`: Promise<{tags, confidence}>
   - `summarize(content)`: Promise<{oneSentence, oneParagraph, long}>
-- [ ] Implement `ClaudeProvider`:
+- [x] Implement `ClaudeProvider`:
   - Install @anthropic-ai/sdk
   - Use Claude Haiku (claude-3-5-haiku-20241022) for tag extraction
   - Use Claude Sonnet (claude-3-5-sonnet-20241022) for summaries
@@ -331,19 +331,19 @@ bun add @anthropic-ai/sdk          # For Claude (recommended)
   - Implement summary prompt (placeholder for now, will implement in Phase 4):
     - Request structured JSON with three lengths
     - Return mock data for now
-- [ ] Implement `getLLMProvider()`:
+- [x] Implement `getLLMProvider()`:
   - Check config.LLM_PROVIDER
   - Return ClaudeProvider instance
   - Throw error if SDK not installed
-- [ ] Error handling:
+- [x] Error handling:
   - Catch API errors
   - Log errors with provider name
   - Return empty tags on error
 
 #### 2.5 Article Worker (`src/workers/process-metadata.ts`)
-- [ ] Implement worker using Bun's Worker API
-- [ ] Set up `self.onmessage` handler
-- [ ] Processing steps:
+- [x] Implement worker using Bun's Worker API
+- [x] Set up `self.onmessage` handler
+- [x] Processing steps:
   1. Receive articleId from message
   2. Query article from database
   3. Update status to 'processing', increment processingAttempts
@@ -364,23 +364,24 @@ bun add @anthropic-ai/sdk          # For Claude (recommended)
      - Delete existing article-tag associations
      - Insert new article-tag associations
   9. Post success message to parent thread
-- [ ] Error handling:
+- [x] Error handling:
   - Catch all errors
   - Update article status to 'failed'
   - Store error in lastError field
   - Post error message to parent thread
-- [ ] Overall timeout: 60 seconds
+- [x] Overall timeout: 60 seconds
 
 #### 2.6 Worker Spawning Helper (`src/lib/worker.ts`)
-- [ ] Create helper to spawn worker with article ID
-- [ ] Handle worker messages (success/failure)
-- [ ] Update Telegram reactions based on result
-- [ ] Non-blocking execution (fire and forget with error handling)
-- [ ] Export `spawnArticleWorker(articleId, telegramChatId, messageId)` function
+- [x] Create helper to spawn worker with article ID
+- [x] Handle worker messages (success/failure)
+- [x] Update Telegram reactions based on result
+- [x] Non-blocking execution (fire and forget with error handling)
+- [x] Export `spawnArticleWorker({articleId, telegramChatId, messageId})` function (using object params)
 
 #### 2.7 Update Main Entry (`src/main.ts` - extend)
-- [ ] Import bot handlers
-- [ ] Register bot handlers after bot setup
+- [x] Import bot handlers
+- [x] Register bot handlers after bot setup
+- [x] Fix config import to be first (before all other imports)
 
 **Deliverable**: User can send URLs to bot, articles are captured and processed automatically.
 

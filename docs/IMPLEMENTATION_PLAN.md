@@ -13,15 +13,15 @@ This implementation plan breaks down the Lateread project into 8 phases, each re
 
 ---
 
-## Phase 0: Project Foundation
+## Phase 0: Project Foundation ✅ COMPLETE
 
 **Goal**: Set up project structure, dependencies, configuration, and database layer.
 
 ### Tasks
 
 #### 0.1 Project Initialization
-- [ ] Initialize Bun project: `bun init`
-- [ ] Create directory structure:
+- [x] Initialize Bun project: `bun init`
+- [x] Create directory structure:
   ```
   src/
     ├── main.ts
@@ -37,8 +37,8 @@ This implementation plan breaks down the Lateread project into 8 phases, each re
   scripts/
   cache/articles/
   ```
-- [ ] Create `.env.example` with all required environment variables
-- [ ] Create `.gitignore` (node_modules, .env, cache/, data/, coverage/)
+- [x] Create `.env.example` with all required environment variables
+- [x] Create `.gitignore` (node_modules, .env, cache/, data/, coverage/)
 
 #### 0.2 Dependencies Installation
 ```bash
@@ -69,8 +69,8 @@ bun add @anthropic-ai/sdk          # For Claude (recommended)
 ```
 
 #### 0.3 Configuration Module (`src/lib/config.ts`)
-- [ ] Create Zod schema for environment variables
-- [ ] Define all config fields with types:
+- [x] Create Zod schema for environment variables
+- [x] Define all config fields with types:
   - Server: PORT, NODE_ENV
   - Database: DATABASE_URL
   - Telegram: TELEGRAM_BOT_TOKEN, BOT_USERNAME
@@ -78,47 +78,58 @@ bun add @anthropic-ai/sdk          # For Claude (recommended)
   - Auth: SESSION_SECRET, SESSION_MAX_AGE_DAYS
   - Cache: CACHE_DIR, CACHE_MAX_AGE_DAYS
   - Processing: PROCESSING_TIMEOUT_SECONDS, MAX_RETRY_ATTEMPTS, RETRY_DELAY_MINUTES
-- [ ] Parse and validate `process.env` on module import
-- [ ] Export typed `config` object
-- [ ] Provide sensible defaults for optional values
+- [x] Parse and validate `process.env` on module import (using `z.treeifyError()` for clean error output)
+- [x] Export typed `config` object
+- [x] Provide sensible defaults for optional values
 
 #### 0.4 Database Schema (`src/db/schema.ts`)
-- [ ] Define `users` table
-- [ ] Define `telegramUsers` table
-- [ ] Define `articles` table with status enum
-- [ ] Define `articleSummaries` table
-- [ ] Define `tags` table
-- [ ] Define `articleTags` junction table
-- [ ] Define `authTokens` table
-- [ ] Add indexes per design doc
-- [ ] Export all table definitions
+- [x] Define `users` table
+- [x] Define `telegramUsers` table
+- [x] Define `articles` table with status enum
+- [x] Define `articleSummaries` table
+- [x] Define `tags` table
+- [x] Define `articleTags` junction table
+- [x] Define `authTokens` table
+- [x] Add indexes per design doc
+- [x] Export all table definitions
 
 #### 0.5 Database Connection (`src/lib/db.ts`)
-- [ ] Import config module
-- [ ] Create SQLite connection using `bun:sqlite`
-- [ ] Initialize Drizzle with SQLite dialect
-- [ ] Enable WAL mode for better concurrency
-- [ ] Export typed `db` instance
-- [ ] Create `runMigrations()` function using drizzle-kit
+- [x] Import config module
+- [x] Create SQLite connection using `bun:sqlite`
+- [x] Initialize Drizzle with SQLite dialect
+- [x] Enable WAL mode for better concurrency
+- [x] Export typed `db` instance
+- [x] Create `runMigrations()` function using drizzle-kit
 
 #### 0.6 Asset Copy Script (`scripts/copy-assets.ts`)
-- [ ] Create script to copy HTMX from node_modules to public/
-- [ ] Copy Pico CSS from node_modules to public/
-- [ ] Ensure public/ directory exists
-- [ ] Log success message
+- [x] Create script to copy HTMX from node_modules to public/
+- [x] Copy Pico CSS from node_modules to public/
+- [x] Ensure public/ directory exists
+- [x] Log success message
+- [x] Add `postinstall` script to package.json for automatic asset copying
 
 #### 0.7 TypeScript Configuration
-- [ ] Create `tsconfig.json` with strict mode
-- [ ] Configure JSX for Hono (jsxImportSource: "hono/jsx")
-- [ ] Set module resolution to bundler
-- [ ] Configure paths for absolute imports
+- [x] Create `tsconfig.json` with strict mode
+- [x] Configure JSX for Hono (jsxImportSource: "hono/jsx")
+- [x] Set module resolution to bundler
+- [x] Configure paths for absolute imports
+
+#### 0.8 Additional Setup (Completed)
+- [x] Create `drizzle.config.ts` for migrations
+- [x] Generate initial database migration
+- [x] Add npm scripts to package.json (dev, start, test, db:*, copy-assets)
+- [x] Create `public/styles.css` with custom styles
+- [x] Exclude generated assets from git (htmx.min.js, pico.min.css)
+- [x] Add `.gitkeep` to preserve public/ directory structure
+- [x] Remove all emojis from code and console statements
 
 **Deliverable**: Project skeleton with working database connection and configuration.
 
 **Testing**:
-- Run `bun run src/lib/config.ts` - should validate config without errors
-- Run `bun run src/lib/db.ts` - should create database file
-- Run migrations - should create all tables
+- ✅ Run `bun run src/lib/config.ts` - validates config without errors
+- ✅ Run `bun run src/lib/db.ts` - creates database file
+- ✅ Run migrations - creates all tables
+- ✅ All tests pass with clean console output (no emojis, no warnings)
 
 ---
 

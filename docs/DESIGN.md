@@ -1084,7 +1084,7 @@ import { setupBot } from './bot';
 **Exports:**
 ```typescript
 export const db: DrizzleDatabase
-export function runMigrations(): Promise<void>
+export function runMigrations(): void
 ```
 
 **Responsibilities:**

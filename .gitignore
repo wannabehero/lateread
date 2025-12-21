@@ -1,3 +1,28 @@
 mise.local.toml
 node_modules
 .DS_Store
+
+# Environment variables
+.env
+.env.local
+
+# Data and cache directories
+cache/
+data/
+*.db
+*.db-shm
+*.db-wal
+
+# Test coverage
+coverage/
+
+# Build output
+dist/
+
+# Public assets (generated from node_modules)
+public/htmx.min.js
+public/pico.min.css
+
+# IDE
+.vscode/
+.idea/

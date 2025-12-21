@@ -194,3 +194,4 @@ See `docs/IMPLEMENTATION_PLAN.md` for detailed task breakdowns.
 - **`docs/IMPLEMENTATION_PLAN.md`**: 8-phase implementation roadmap
   - Task checklists, dependencies, testing requirements
   - Use for project planning and progress tracking
+- spell lateread as lowercase

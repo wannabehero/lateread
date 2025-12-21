@@ -195,3 +195,5 @@ See `docs/IMPLEMENTATION_PLAN.md` for detailed task breakdowns.
   - Task checklists, dependencies, testing requirements
   - Use for project planning and progress tracking
 - spell lateread as lowercase
+- always put appropriate "type" to html buttons
+- instead of <a> with role=button use <button>

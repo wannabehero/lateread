@@ -10,6 +10,7 @@ import { runMigrations } from "./lib/db";
 import apiRoutes from "./routes/api";
 import articlesRoutes from "./routes/articles";
 import authRoutes from "./routes/auth";
+import homeRoutes from "./routes/home";
 
 console.log("Starting lateread...");
 console.log(`Environment: ${config.NODE_ENV}`);
@@ -28,6 +29,7 @@ app.use("*", logger());
 app.use("/public/*", serveStatic({ root: "./" }));
 
 // Register routes
+app.route("/", homeRoutes);
 app.route("/", authRoutes);
 app.route("/", articlesRoutes);
 app.route("/", apiRoutes);

@@ -45,10 +45,9 @@ api.post("/api/articles/:id/archive", requireAuth("json-401"), async (c) => {
   try {
     await toggleArticleArchive(articleId, userId);
 
-    // Load updated article with tags for card rendering
-    const updatedArticle = await getArticleById(articleId, userId);
-
-    return c.html(<ArticleCard article={updatedArticle} />);
+    // Return empty content to remove card from current view
+    // User can navigate to other view (archive/unarchive) to see the article
+    return c.html(<div />);
   } catch (error) {
     const errorMessage =
       error instanceof Error ? error.message : "Unknown error";

@@ -15,6 +15,7 @@ interface Article {
   siteName: string | null;
   createdAt: Date;
   readAt: Date | null;
+  archived: boolean;
   tags: Tag[];
 }
 
@@ -25,6 +26,7 @@ interface ArticleCardProps {
 export const ArticleCard: FC<ArticleCardProps> = ({ article }) => {
   const displayTitle = article.title || article.url;
   const isRead = article.readAt !== null;
+  const isArchived = article.archived;
 
   return (
     <article class={`article-card ${isRead ? "read" : ""}`}>
@@ -72,7 +74,7 @@ export const ArticleCard: FC<ArticleCardProps> = ({ article }) => {
             hx-swap="outerHTML"
             hx-target="closest .article-card"
           >
-            Archive
+            {isArchived ? "Unarchive" : "Archive"}
           </button>
         </div>
       </div>

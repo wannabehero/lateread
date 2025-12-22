@@ -21,8 +21,8 @@ export interface LLMProvider {
 
 export class ClaudeProvider implements LLMProvider {
   private client: any;
-  private taggingModel = "claude-3-5-haiku-20241022";
-  private summaryModel = "claude-3-5-sonnet-20241022";
+  private taggingModel = "claude-haiku-4-5";
+  private summaryModel = "claude-sonnet-4-5";
 
   constructor(apiKey: string) {
     // Dynamic import to avoid requiring the SDK if not using Claude

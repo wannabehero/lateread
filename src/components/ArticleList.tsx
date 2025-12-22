@@ -16,6 +16,7 @@ interface Article {
   siteName: string | null;
   createdAt: Date;
   readAt: Date | null;
+  archived: boolean;
   tags: Tag[];
 }
 

@@ -30,15 +30,66 @@
     defaultOption.textContent = "Default Voice";
     voiceSelect.appendChild(defaultOption);
 
+    const ttsControls = document.querySelector(".tts-controls");
+    const articleLanguage = ttsControls?.dataset.language || "";
+
+    const matchingVoices = [];
+    const otherVoices = [];
+
     voices.forEach((voice, index) => {
-      const option = document.createElement("option");
-      option.value = index;
-      option.textContent = `${voice.name} (${voice.lang})`;
-      if (voice.default) {
-        option.textContent += " - Default";
+      const voiceData = { voice, index };
+
+      if (
+        articleLanguage &&
+        voice.lang.toLowerCase().startsWith(articleLanguage.toLowerCase())
+      ) {
+        matchingVoices.push(voiceData);
+      } else {
+        otherVoices.push(voiceData);
       }
-      voiceSelect.appendChild(option);
     });
+
+    if (matchingVoices.length > 0 && articleLanguage) {
+      const matchingGroup = document.createElement("optgroup");
+      matchingGroup.label = `${articleLanguage.toUpperCase()} Voices`;
+      matchingVoices.forEach(({ voice, index }) => {
+        const option = document.createElement("option");
+        option.value = index;
+        option.textContent = `${voice.name} (${voice.lang})`;
+        if (voice.default) {
+          option.textContent += " - Default";
+        }
+        matchingGroup.appendChild(option);
+      });
+      voiceSelect.appendChild(matchingGroup);
+    }
+
+    if (otherVoices.length > 0) {
+      const otherGroup = document.createElement("optgroup");
+      otherGroup.label = articleLanguage ? "Other Voices" : "All Voices";
+      otherVoices.forEach(({ voice, index }) => {
+        const option = document.createElement("option");
+        option.value = index;
+        option.textContent = `${voice.name} (${voice.lang})`;
+        if (voice.default) {
+          option.textContent += " - Default";
+        }
+        otherGroup.appendChild(option);
+      });
+      voiceSelect.appendChild(otherGroup);
+    }
+
+    if (matchingVoices.length === 0 && otherVoices.length === 0) {
+      voices.forEach((voice, index) => {
+        const option = document.createElement("option");
+        option.value = index;
+        option.textContent = `${voice.name} (${voice.lang})`;
+        if (voice.default) {
+          option.textContent += " - Default";
+        }
+        voiceSelect.appendChild(option);
+      });
+    }
   }
 
   loadVoices();

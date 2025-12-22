@@ -124,15 +124,17 @@ async function processArticle(article: typeof articles.$inferSelect) {
     `[Worker ${article.id}] Found ${existingTagNames.length} existing tags`,
   );
 
-  // Call LLM to extract tags
-  console.log(`[Worker ${article.id}] Calling LLM for tag extraction`);
-  const { tags: extractedTags } = await llmProvider.extractTags(
+  // Call LLM to extract tags and detect language
+  console.log(
+    `[Worker ${article.id}] Calling LLM for tag extraction and language detection`,
+  );
+  const { tags: extractedTags, language } = await llmProvider.extractTags(
     extracted.textContent,
     existingTagNames,
   );
 
   console.log(
-    `[Worker ${article.id}] LLM extracted ${extractedTags.length} tags: ${extractedTags.join(", ")}`,
+    `[Worker ${article.id}] LLM extracted ${extractedTags.length} tags: ${extractedTags.join(", ")}, language: ${language}`,
   );
 
   // Process tags: create new ones or reuse existing
@@ -197,6 +199,7 @@ async function processArticle(article: typeof articles.$inferSelect) {
         description: extracted.description,
         imageUrl: extracted.imageUrl,
         siteName: extracted.siteName,
+        language: language,
         status: "completed",
         processedAt: new Date(),
         updatedAt: new Date(),

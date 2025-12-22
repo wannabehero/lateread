@@ -20,6 +20,7 @@ export interface ArticleWithTags {
   description: string | null;
   imageUrl: string | null;
   siteName: string | null;
+  language: string | null;
   status: "pending" | "processing" | "completed" | "failed" | "error";
   archived: boolean;
   processingAttempts: number;

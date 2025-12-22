@@ -14,6 +14,7 @@ interface Article {
   url: string;
   imageUrl: string | null;
   siteName: string | null;
+  language: string | null;
   createdAt: Date;
   readAt: Date | null;
   archived: boolean;
@@ -71,7 +72,7 @@ export const ReaderView: FC<ReaderViewProps> = ({ article, content }) => {
         <div id="summaries"></div>
       </section>
 
-      <TtsControls />
+      <TtsControls language={article.language} />
 
       <article
         class="reader-content"

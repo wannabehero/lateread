@@ -1,9 +1,13 @@
 import type { FC } from "hono/jsx";
 
-export const TtsControls: FC = () => {
+interface TtsControlsProps {
+  language?: string | null;
+}
+
+export const TtsControls: FC<TtsControlsProps> = ({ language }) => {
   return (
     <>
-      <div class="tts-controls">
+      <div class="tts-controls" data-language={language || ""}>
         <button type="button" id="tts-listen" class="tts-button">
           Listen
         </button>

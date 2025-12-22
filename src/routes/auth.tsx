@@ -1,5 +1,7 @@
+import { eq, and, desc } from "drizzle-orm";
 import { Hono } from "hono";
 import { Layout } from "../components/Layout";
+import { ArticleList } from "../components/ArticleList";
 import { AuthError } from "../components/auth/AuthError";
 import { AuthPolling } from "../components/auth/AuthPolling";
 import {
@@ -8,19 +10,69 @@ import {
   TOKEN_EXPIRATION_MINUTES,
 } from "../lib/auth";
 import { config } from "../lib/config";
+import { db, articles, tags, articleTags } from "../lib/db";
 import { clearSession, getSession, setSession } from "../lib/session";
 
 const auth = new Hono();
 
 /**
- * GET / - Home/Login page
+ * GET / - Home/Login page or article list if authenticated
  */
-auth.get("/", (c) => {
+auth.get("/", async (c) => {
   const session = getSession(c);
 
-  // If authenticated, redirect to articles
+  // If authenticated, show article list (unread articles)
   if (session?.userId) {
-    return c.redirect("/articles?status=unread");
+    try {
+      // Query unread articles (not archived, completed status)
+      const articlesList = await db
+        .select()
+        .from(articles)
+        .where(
+          and(
+            eq(articles.userId, session.userId),
+            eq(articles.archived, false),
+            eq(articles.status, "completed")
+          )
+        )
+        .orderBy(desc(articles.createdAt))
+        .limit(50);
+
+      // Load tags for each article
+      const articlesWithTags = await Promise.all(
+        articlesList.map(async (article) => {
+          const articleTagsList = await db
+            .select({
+              id: tags.id,
+              name: tags.name,
+            })
+            .from(articleTags)
+            .innerJoin(tags, eq(articleTags.tagId, tags.id))
+            .where(eq(articleTags.articleId, article.id));
+
+          return {
+            ...article,
+            tags: articleTagsList,
+          };
+        })
+      );
+
+      return c.html(
+        <Layout title="Unread Articles - lateread" isAuthenticated={true} currentPath="/">
+          <ArticleList articles={articlesWithTags} status="unread" />
+        </Layout>
+      );
+    } catch (error) {
+      console.error("Error loading articles:", error);
+      return c.html(
+        <Layout title="Error - lateread" isAuthenticated={true}>
+          <div class="error">
+            <p>Failed to load articles. Please try again.</p>
+          </div>
+        </Layout>,
+        500
+      );
+    }
   }
 
   // Show login page

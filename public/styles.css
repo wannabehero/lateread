@@ -1,9 +1,213 @@
 /* Lateread Custom Styles */
 
-/* Reader View Typography */
+/* Article Card Styling */
+.article-card {
+  background: var(--pico-card-background-color);
+  border-radius: var(--pico-border-radius);
+  overflow: hidden;
+  transition: transform 0.2s ease, box-shadow 0.2s ease;
+  border: 1px solid var(--pico-card-border-color);
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+}
+
+.article-card:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+}
+
+.article-card.read {
+  opacity: 0.7;
+}
+
+.article-image {
+  width: 100%;
+  overflow: hidden;
+  background: var(--pico-muted-color);
+}
+
+.article-image img {
+  width: 100%;
+  aspect-ratio: 16 / 9;
+  object-fit: cover;
+  display: block;
+}
+
+.article-content {
+  padding: 1rem;
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+}
+
+.article-content h3 {
+  margin-top: 0;
+  margin-bottom: 0.5rem;
+  font-size: 1.1rem;
+  line-height: 1.3;
+}
+
+.article-content h3 a {
+  color: inherit;
+  text-decoration: none;
+}
+
+.article-content h3 a:hover {
+  color: var(--pico-primary);
+}
+
+.article-description {
+  color: var(--pico-muted-color);
+  font-size: 0.9rem;
+  line-height: 1.4;
+  margin-bottom: 0.5rem;
+  display: -webkit-box;
+  -webkit-line-clamp: 3;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+
+.article-meta {
+  font-size: 0.85rem;
+  color: var(--pico-muted-color);
+  margin-bottom: 0.5rem;
+}
+
+.article-tags {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.25rem;
+  margin-bottom: 0.75rem;
+  margin-top: auto;
+}
+
+.article-actions {
+  display: flex;
+  gap: 0.5rem;
+  margin-top: 0.5rem;
+}
+
+.article-actions a,
+.article-actions button {
+  flex: 1;
+  margin: 0;
+  font-size: 0.9rem;
+  padding: 0.5rem;
+}
+
+/* Tag Badge Styling */
+.tag-badge {
+  display: inline-block;
+  padding: 0.25rem 0.5rem;
+  font-size: 0.75rem;
+  border-radius: 1rem;
+  background-color: var(--pico-secondary-background);
+  color: var(--pico-contrast);
+  text-decoration: none;
+  transition: background-color 0.2s ease;
+  white-space: nowrap;
+}
+
+.tag-badge:hover {
+  background-color: var(--pico-secondary-hover);
+  color: var(--pico-contrast);
+}
+
+/* Article List Grid */
+.article-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
+  gap: 1.5rem;
+  margin-top: 1rem;
+}
+
+/* Empty State */
+.empty-state {
+  text-align: center;
+  padding: 3rem 1rem;
+  color: var(--pico-muted-color);
+}
+
+.empty-state p {
+  font-size: 1.1rem;
+}
+
+/* Error State */
+.error {
+  padding: 1rem;
+  border-radius: var(--pico-border-radius);
+  background: var(--pico-del-background-color);
+  color: var(--pico-del-color);
+  text-align: center;
+}
+
+/* Reader View */
+.reader-view {
+  max-width: 800px;
+  margin: 0 auto;
+}
+
+.reader-header {
+  margin-bottom: 2rem;
+  padding-bottom: 1rem;
+  border-bottom: 1px solid var(--pico-muted-border-color);
+}
+
+.reader-header h1 {
+  margin-bottom: 0.5rem;
+  line-height: 1.2;
+}
+
+.reader-meta {
+  display: flex;
+  gap: 1rem;
+  align-items: center;
+  color: var(--pico-muted-color);
+  font-size: 0.9rem;
+  margin-bottom: 0.5rem;
+}
+
+.reader-meta .site-name {
+  font-weight: 600;
+}
+
+.reader-meta a {
+  color: var(--pico-primary);
+}
+
+.reader-tags {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.25rem;
+  margin-top: 0.5rem;
+}
+
+.reader-summary {
+  margin-bottom: 2rem;
+  padding: 1rem;
+  background: var(--pico-card-background-color);
+  border-radius: var(--pico-border-radius);
+  border: 1px solid var(--pico-muted-border-color);
+}
+
+.reader-summary button {
+  margin-bottom: 0;
+}
+
+#summaries {
+  margin-top: 1rem;
+}
+
+.summary-placeholder {
+  padding: 1rem;
+  font-style: italic;
+  color: var(--pico-muted-color);
+}
+
 .reader-content {
   max-width: 65ch;
-  margin: 0 auto;
+  margin: 0 auto 2rem;
   line-height: 1.7;
   font-size: 1.1rem;
 }
@@ -12,51 +216,54 @@
   max-width: 100%;
   height: auto;
   border-radius: var(--pico-border-radius);
-  margin: 1rem 0;
+  margin: 1.5rem 0;
 }
 
 .reader-content pre {
   overflow-x: auto;
 }
 
-/* Article Card Styling */
-.article-card {
-  transition: transform 0.2s ease;
+.reader-content h1,
+.reader-content h2,
+.reader-content h3,
+.reader-content h4 {
+  margin-top: 1.5rem;
+  margin-bottom: 0.75rem;
 }
 
-.article-card:hover {
-  transform: translateY(-2px);
+.reader-content p {
+  margin-bottom: 1rem;
 }
 
-.article-thumbnail {
-  width: 100%;
-  aspect-ratio: 16 / 9;
-  object-fit: cover;
-  border-radius: var(--pico-border-radius);
+.reader-content a {
+  color: var(--pico-primary);
+  text-decoration: underline;
 }
 
-/* Tag Badge Styling */
-.tag-badge {
-  display: inline-block;
-  padding: 0.25rem 0.5rem;
-  margin: 0.25rem;
-  font-size: 0.85rem;
-  border-radius: var(--pico-border-radius);
-  background-color: var(--pico-secondary-background);
-  color: var(--pico-secondary);
-  text-decoration: none;
-  transition: background-color 0.2s ease;
+.reader-footer {
+  margin-top: 2rem;
+  padding-top: 1rem;
+  border-top: 1px solid var(--pico-muted-border-color);
 }
 
-.tag-badge:hover {
-  background-color: var(--pico-secondary-hover-background);
+.reader-actions {
+  display: flex;
+  gap: 0.5rem;
 }
 
-/* Responsive Grid for Article List */
-.article-grid {
-  display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
-  gap: 1rem;
+.reader-actions button {
+  margin: 0;
+}
+
+/* Auth Container */
+.auth-container {
+  max-width: 500px;
+  margin: 2rem auto;
+}
+
+.help-text {
+  text-align: center;
+  margin-top: 0.5rem;
 }
 
 /* Loading Indicator (HTMX) */
@@ -68,13 +275,32 @@
   display: inline-block;
 }
 
+.htmx-request.htmx-indicator {
+  display: inline-block;
+}
+
 /* Mobile Responsive Adjustments */
 @media (max-width: 768px) {
+  .article-grid {
+    grid-template-columns: 1fr;
+  }
+
   .reader-content {
     font-size: 1rem;
   }
 
-  .article-grid {
-    grid-template-columns: 1fr;
+  .reader-meta {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 0.25rem;
+  }
+
+  .article-actions {
+    flex-direction: column;
+  }
+
+  .article-actions a,
+  .article-actions button {
+    width: 100%;
   }
 }

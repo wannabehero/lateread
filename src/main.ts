@@ -7,6 +7,8 @@ import { logger } from "hono/logger";
 import { registerHandlers } from "./bot/handlers";
 import { bot, setupBot, startBot, stopBot } from "./bot/index";
 import { runMigrations } from "./lib/db";
+import apiRoutes from "./routes/api";
+import articlesRoutes from "./routes/articles";
 import authRoutes from "./routes/auth";
 
 console.log("Starting lateread...");
@@ -27,6 +29,8 @@ app.use("/public/*", serveStatic({ root: "./" }));
 
 // Register routes
 app.route("/", authRoutes);
+app.route("/", articlesRoutes);
+app.route("/", apiRoutes);
 
 // Setup and start Telegram bot
 setupBot();

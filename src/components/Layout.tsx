@@ -18,11 +18,45 @@ export const Layout: FC<LayoutProps> = ({
     <html lang="en">
       <head>
         <meta charset="UTF-8" />
-        <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+        <meta
+          name="viewport"
+          content="width=device-width, initial-scale=1.0, viewport-fit=cover"
+        />
         <title>{title}</title>
         <meta
           name="description"
           content="lateread - Privacy-focused read-later app"
+        />
+
+        {/* PWA Manifest */}
+        <link rel="manifest" href="/public/manifest.json" />
+        <meta name="theme-color" content="#1095c1" />
+        <meta name="apple-mobile-web-app-capable" content="yes" />
+        <meta
+          name="apple-mobile-web-app-status-bar-style"
+          content="black-translucent"
+        />
+        <meta name="apple-mobile-web-app-title" content="lateread" />
+        <meta name="format-detection" content="telephone=no" />
+
+        {/* Favicons */}
+        <link rel="icon" href="/public/favicon.ico" sizes="any" />
+        <link
+          rel="icon"
+          type="image/png"
+          sizes="32x32"
+          href="/public/icon-32.png"
+        />
+        <link
+          rel="icon"
+          type="image/png"
+          sizes="192x192"
+          href="/public/icon-192.png"
+        />
+        <link
+          rel="apple-touch-icon"
+          sizes="180x180"
+          href="/public/icon-180.png"
         />
 
         {/* Pico CSS */}

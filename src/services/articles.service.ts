@@ -42,11 +42,15 @@ export async function getArticlesWithTags(
     conditions.push(eq(articles.archived, filters.archived));
   }
 
-  // If filtering by tag, add tag name condition
+  // If filtering by tag, add tag conditions for efficient index usage
   // Tags are stored lowercase, so normalize the filter
+  // Index: (userId, name) - both columns needed for optimal performance
   if (filters.tag) {
     const tagName = filters.tag.toLowerCase();
-    conditions.push(eq(tags.name, tagName));
+    conditions.push(
+      eq(tags.userId, userId),
+      eq(tags.name, tagName)
+    );
   }
 
   // Single unified query with COALESCE + CASE WHEN for all scenarios

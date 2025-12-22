@@ -49,9 +49,7 @@ export const ArticleCard: FC<ArticleCardProps> = ({ article, status }) => {
 
       <div class="article-content">
         <h3>
-          <a href={`/articles/${article.id}`} hx-boost="true">
-            {displayTitle}
-          </a>
+          <a href={`/articles/${article.id}`}>{displayTitle}</a>
         </h3>
 
         {article.description && (
@@ -73,7 +71,7 @@ export const ArticleCard: FC<ArticleCardProps> = ({ article, status }) => {
         )}
 
         <div class="article-actions">
-          <a href={`/articles/${article.id}`} class="button" hx-boost="true">
+          <a href={`/articles/${article.id}`} class="button">
             Read
           </a>
           <button

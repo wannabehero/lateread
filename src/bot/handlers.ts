@@ -74,17 +74,24 @@ export function registerHandlers(bot: Bot) {
 
   // Handle messages with URLs
   bot.on("message:text", async (ctx) => {
+    console.log(
+      `[Bot] Received message from user ${ctx.from?.id}: "${ctx.message.text.substring(0, 100)}..."`,
+    );
+
     const url = extractUrl(ctx.message.text);
 
     if (!url) {
-      // No URL found, ignore message
+      console.log("[Bot] No URL found in message, ignoring");
       return;
     }
+
+    console.log(`[Bot] Extracted URL: ${url}`);
 
     // Check if user is authenticated
     const telegramId = ctx.from?.id.toString();
 
     if (!telegramId) {
+      console.log("[Bot] No telegram ID found, ignoring");
       return;
     }
 
@@ -96,6 +103,7 @@ export function registerHandlers(bot: Bot) {
       .limit(1);
 
     if (!telegramUser) {
+      console.log(`[Bot] User ${telegramId} not authenticated`);
       await ctx.reply(
         "Please log in first at the web app to start saving articles.\n\n" +
           "Once you're logged in, send me any URL and I'll save it for you.",
@@ -103,7 +111,12 @@ export function registerHandlers(bot: Bot) {
       return;
     }
 
+    console.log(
+      `[Bot] User authenticated: ${telegramUser.userId} (telegram: ${telegramId})`,
+    );
+
     // Create article record
+    console.log(`[Bot] Creating article record for URL: ${url}`);
     const [article] = await db
       .insert(articles)
       .values({
@@ -115,21 +128,25 @@ export function registerHandlers(bot: Bot) {
       .returning();
 
     if (!article) {
-      console.error(`Failed to create article record for ${url}`);
+      console.error(`[Bot] Failed to create article record for ${url}`);
       return;
     }
+
+    console.log(`[Bot] Article created with ID: ${article.id}`);
 
     // React with eyes emoji
     try {
       await ctx.react("👀");
+      console.log(`[Bot] Added 👀 reaction to message`);
     } catch (error) {
-      console.error("Failed to add reaction:", error);
+      console.error("[Bot] Failed to add reaction:", error);
     }
 
     // Spawn worker (non-blocking)
     const chatId = ctx.chat.id;
     const messageId = ctx.message.message_id;
 
+    console.log(`[Bot] Spawning worker for article ${article.id}`);
     spawnArticleWorker({
       articleId: article.id,
       onSuccess: async () => {

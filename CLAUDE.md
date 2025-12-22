@@ -313,13 +313,13 @@ Project follows **vertical slice approach** - each phase delivers complete, work
 - **Phase 7**: Testing (comprehensive test suite)
 - **Phase 8**: Deployment (Docker, Railway, CI/CD)
 
-See `docs/IMPLEMENTATION_PLAN.md` for detailed task breakdowns.
+See `docs/IMPLEMENTATION_PLAN_v1.md` for detailed task breakdowns.
 
 ## Documentation References
 
-- **`docs/DESIGN.md`**: Complete technical specification (2500+ lines)
+- **`docs/DESIGN_v1.md`**: Complete technical specification (2500+ lines)
   - Data model, module specs, flows, API endpoints
   - Refer here for detailed implementation guidance
-- **`docs/IMPLEMENTATION_PLAN.md`**: 8-phase implementation roadmap
+- **`docs/IMPLEMENTATION_PLAN_v1.md`**: 8-phase implementation roadmap
   - Task checklists, dependencies, testing requirements
   - Use for project planning and progress tracking

@@ -49,6 +49,7 @@ startBot().catch((error) => {
 const server = Bun.serve({
   port: config.PORT,
   fetch: app.fetch,
+  idleTimeout: 120, // 2 minutes for long-running LLM requests
 });
 
 console.log(`Server running at http://localhost:${config.PORT}`);

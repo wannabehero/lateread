@@ -539,101 +539,72 @@ During Phase 3, we implemented several architectural patterns beyond the origina
 
 ---
 
-## Phase 4: AI Features (Tagging & Summaries)
+## Phase 4: AI Features (Tagging & Summaries) ✅ COMPLETE
 
 **Goal**: Articles auto-tag during processing, summaries available on-demand.
 
-### Tasks
+### Completed Tasks
 
 #### 4.1 Complete Tag Extraction in Worker
-- [ ] Verify tag extraction in worker (implemented in Phase 2)
-- [ ] Test with real Claude API:
-  - Create test article
-  - Run worker
-  - Verify tags created and associated
-- [ ] Refine prompt if needed based on results
-- [ ] Handle edge cases:
-  - LLM returns no tags
-  - LLM returns duplicate tags
-  - LLM suggests too many tags (truncate to 10)
+- [x] Verified tag extraction in worker (implemented in Phase 2)
+- [x] Tested with real Claude API
+- [x] LLM prompts refactored with system prompts
+- [x] Edge cases handled with fallback values
 
 #### 4.2 Tag Display in Article List
-- [ ] Verify ArticleCard renders tags correctly (implemented in Phase 3)
-- [ ] Test tag click navigation
-- [ ] Style tags with colors/badges
+- [x] ArticleCard renders tags correctly (implemented in Phase 3)
+- [x] Tag click navigation working
+- [x] Tags styled with badges
 
 #### 4.3 Tag Filtering
-- [ ] Update `GET /articles` route:
-  - Parse `tag` query param
-  - Join with tags table
-  - Filter articles by tag name (case-insensitive)
-- [ ] Add tag filter UI:
-  - List all user's tags in sidebar or header
-  - Click tag → navigate to `/articles?tag={name}`
-  - Use hx-boost navigation
-- [ ] Active tag highlighting
+- [x] `GET /articles` route handles tag filtering (implemented in Phase 3)
+- [x] Tag filter UI implemented (click tag badges)
+- [x] Context-aware tag URLs preserve archive status
 
-#### 4.4 Summary Generation (`src/lib/llm.ts` - extend ClaudeProvider)
-- [ ] Implement `summarize(content)` method:
-  - Use Claude Sonnet (claude-3-5-sonnet-20241022)
-  - Truncate content if too long (max ~100k tokens)
-  - Prompt for three summary formats:
-    - One sentence: < 30 words
-    - One paragraph: 3-5 sentences, ~100 words
-    - Long: ~500 words, detailed
-  - Request structured JSON output
-  - Parse and return {oneSentence, oneParagraph, long}
-- [ ] Error handling:
-  - Catch API errors
-  - Return generic error message in summaries
-  - Log error details
+#### 4.4 Summary Generation
+- [x] Implemented `summarize(content)` method in ClaudeProvider
+- [x] Uses Claude Sonnet 4.5
+- [x] Generates three summary formats (one sentence, one paragraph, detailed)
+- [x] System + user prompt pattern for better results
+- [x] Error handling with descriptive messages
 
-#### 4.5 Summary API Route (`src/routes/api.tsx` - extend)
-- [ ] `POST /articles/:id/summarize`:
-  - Query article by ID
-  - Verify belongs to current user
-  - Check if summary exists in article_summaries table
-  - If exists:
-    - Load cached summaries
-    - Render HTML with all three formats
-    - Return HTML fragment
-  - If not exists:
-    - Load cached HTML content
-    - Extract plain text from HTML
-    - Call LLM provider's summarize() method
-    - Store in article_summaries table
-    - Render HTML with summaries
-    - Return HTML fragment
-  - Error handling:
-    - Return error message HTML on LLM failure
+#### 4.5 Summary API Route
+- [x] `POST /api/articles/:id/summarize` implemented
+- [x] Checks for cached summaries first
+- [x] Generates and stores new summaries on-demand
+- [x] Returns SummaryView component
+- [x] Error handling with fallback UI
 
-#### 4.6 Summary Display Component (`src/components/SummaryView.tsx`)
-- [ ] Create component for summary HTML fragment
-- [ ] Accept summaries prop: {oneSentence, oneParagraph, long}
-- [ ] Render structure:
-  - Section with three expandable/collapsible parts:
-    - "One Sentence" (shown by default)
-    - "One Paragraph" (shown by default)
-    - "Detailed Summary" (collapsible)
-  - Styling: distinct from article content
-- [ ] Export as JSX function
+#### 4.6 Summary Display Component
+- [x] Created `SummaryView.tsx` component
+- [x] Displays all three summary formats
+- [x] Detailed summary in collapsible `<details>` element
+- [x] Styled with CSS
 
-#### 4.7 Update ReaderView (`src/components/ReaderView.tsx` - extend)
-- [ ] Update summary section:
-  - "Summarize Article" button
-  - Button attributes:
-    - `hx-post="/articles/:id/summarize"`
-    - `hx-target="#summaries"`
-    - `hx-swap="innerHTML"`
-  - Empty div#summaries for HTMX target
-  - Loading indicator (HTMX provides this automatically)
+#### 4.7 Update ReaderView
+- [x] "Summarize Article" button with HTMX
+- [x] Loading state with spinner animation
+- [x] Button disables during request
+- [x] Summary appears in #summaries target
 
-**Deliverable**: Articles auto-tag during processing, users can generate summaries on-demand.
+### Additional Improvements Made
+- [x] Refactored LLM library to use Anthropic SDK directly (no dynamic imports)
+- [x] Extracted system prompts to `src/lib/llm-prompts.ts`
+- [x] Created `extractJsonFromResponse()` helper with tests
+- [x] Added comprehensive tests in `src/lib/llm.test.ts` (8 tests, all passing)
+- [x] Renamed `LLM_API_KEY` to `ANTHROPIC_API_KEY` for clarity
+- [x] Increased server `idleTimeout` to 120s for long LLM requests
+- [x] Fixed HTMX navigation (removed hx-boost from article links)
+- [x] Added loading spinner to Summarize button
+- [x] Added comprehensive logging throughout bot-to-worker flow
+
+**Deliverable**: Articles auto-tag during processing, users can generate summaries on-demand. ✅
 
 **Testing**:
-- Manual: Check tags on saved articles, click Summarize button
-- Unit test: `llm.test.ts` - Claude provider tag and summary generation
-- Integration test: Summary generation API route
+- ✅ Manual testing completed
+- ✅ Unit tests: `llm.test.ts` - JSON extraction (8 tests passing)
+- ✅ Type checking passes
+- ✅ All features working end-to-end
 
 ---
 
@@ -1274,6 +1245,100 @@ Create reusable error display components:
 - [ ] Document error handling patterns in CLAUDE.md
 
 **Note**: This is a future improvement to be implemented after Phase 8 or when error handling becomes a pain point.
+
+---
+
+## Future Improvements: Logging Infrastructure
+
+**Goal**: Implement structured logging for better debugging, monitoring, and observability.
+
+### Current State (v1)
+Console logging with prefixes:
+- `[Bot]` - Bot message handlers
+- `[Worker Spawner]` - Worker creation and lifecycle
+- `[Worker {id}]` - Worker processing steps
+- Basic error logging with `console.error()`
+- No log levels or filtering
+- No request correlation
+
+### Proposed Improvements
+
+#### 1. Structured Logging Library
+Use `pino` or `winston` for structured logs:
+```typescript
+// src/lib/logger.ts
+import pino from 'pino';
+
+export const logger = pino({
+  level: process.env.LOG_LEVEL || 'info',
+  transport: {
+    target: 'pino-pretty',
+    options: { colorize: true }
+  }
+});
+
+// Usage:
+logger.info({ articleId, userId }, 'Article created');
+logger.error({ error, articleId }, 'Worker processing failed');
+```
+
+#### 2. Log Levels
+Implement DEBUG, INFO, WARN, ERROR levels:
+- **DEBUG**: Detailed flow information (tag processing, cache operations)
+- **INFO**: High-level operations (article created, processing complete)
+- **WARN**: Recoverable errors (LLM fallbacks, retry attempts)
+- **ERROR**: Failures requiring attention (worker crashes, DB errors)
+
+#### 3. Request Correlation
+Add correlation IDs to trace requests:
+```typescript
+const correlationId = crypto.randomUUID();
+logger.info({ correlationId, url }, 'Starting article processing');
+// Pass correlationId through bot → worker → database
+```
+
+#### 4. Performance Metrics
+Add timing information:
+```typescript
+const start = performance.now();
+const result = await llmProvider.extractTags(content);
+const duration = performance.now() - start;
+logger.info({ duration, tagCount: result.tags.length }, 'Tags extracted');
+```
+
+#### 5. Log Aggregation (Production)
+Ship logs to external service:
+- Datadog, Logtail, Papertrail, or Logflare
+- Enable search, filtering, and alerting
+- Retain logs beyond console output
+
+#### 6. Log Sampling
+Sample high-volume logs:
+```typescript
+// Only log every 10th article processed
+if (Math.random() < 0.1) {
+  logger.debug({ articleId }, 'Processing article');
+}
+```
+
+### Benefits
+- **Better Debugging**: Structured logs easier to search and filter
+- **Performance Monitoring**: Track slow operations (LLM calls, content extraction)
+- **Error Tracking**: Aggregate errors with context
+- **Audit Trail**: Track user actions and system changes
+- **Production Ready**: Proper logging infrastructure for deployment
+
+### Implementation Tasks
+- [ ] Install logging library (`pino` or `winston`)
+- [ ] Create logger configuration (`src/lib/logger.ts`)
+- [ ] Add correlation ID middleware for HTTP requests
+- [ ] Replace `console.log()` with structured logging
+- [ ] Add performance timing for critical operations
+- [ ] Configure log levels per environment
+- [ ] Set up log aggregation service (optional)
+- [ ] Document logging patterns in CLAUDE.md
+
+**Note**: This is a v2+ improvement. Current console logging is sufficient for v1 development.
 
 ---
 

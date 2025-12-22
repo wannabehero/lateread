@@ -58,8 +58,13 @@ export const ReaderView: FC<ReaderViewProps> = ({ article, content }) => {
           hx-post={`/api/articles/${article.id}/summarize`}
           hx-target="#summaries"
           hx-swap="innerHTML"
+          hx-disabled-elt="this"
         >
-          Summarize Article
+          <span class="button-text">Summarize Article</span>
+          <span class="button-loading">
+            <span class="spinner"></span>
+            Generating summary...
+          </span>
         </button>
         <div id="summaries"></div>
       </section>

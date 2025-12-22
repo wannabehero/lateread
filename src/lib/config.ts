@@ -14,11 +14,8 @@ const configSchema = z.object({
   TELEGRAM_BOT_TOKEN: z.string().min(1, "TELEGRAM_BOT_TOKEN is required"),
   BOT_USERNAME: z.string().min(1, "BOT_USERNAME is required"),
 
-  // LLM Provider
-  LLM_PROVIDER: z
-    .enum(["claude", "openai", "gemini", "local"])
-    .default("claude"),
-  LLM_API_KEY: z.string(),
+  // LLM (Anthropic Claude)
+  ANTHROPIC_API_KEY: z.string().min(1, "ANTHROPIC_API_KEY is required"),
 
   // Authentication & Session
   SESSION_SECRET: z

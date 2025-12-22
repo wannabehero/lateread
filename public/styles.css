@@ -207,6 +207,48 @@
   color: var(--pico-muted-color);
 }
 
+.summary-container {
+  padding: 0;
+}
+
+.summary-container h3 {
+  margin-top: 0;
+  margin-bottom: 1rem;
+  font-size: 1.25rem;
+}
+
+.summary-section {
+  margin-bottom: 1.5rem;
+}
+
+.summary-section h4 {
+  margin-top: 0;
+  margin-bottom: 0.5rem;
+  font-size: 1rem;
+  color: var(--pico-primary);
+}
+
+.summary-section p {
+  margin: 0;
+  line-height: 1.6;
+}
+
+.summary-section details {
+  margin-top: 1rem;
+}
+
+.summary-section summary {
+  cursor: pointer;
+  font-weight: 600;
+  color: var(--pico-primary);
+}
+
+.summary-error {
+  padding: 1rem;
+  color: var(--pico-del-color);
+  text-align: center;
+}
+
 .reader-content {
   max-width: 65ch;
   margin: 0 auto 2rem;
@@ -280,6 +322,47 @@
 
 .htmx-request.htmx-indicator {
   display: inline-block;
+}
+
+/* Button Loading States */
+button .button-loading {
+  display: none;
+}
+
+button .button-text {
+  display: inline;
+}
+
+button.htmx-request .button-text {
+  display: none;
+}
+
+button.htmx-request .button-loading {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+button.htmx-request {
+  opacity: 0.7;
+  cursor: wait;
+}
+
+/* Spinner Animation */
+.spinner {
+  display: inline-block;
+  width: 1rem;
+  height: 1rem;
+  border: 2px solid rgba(255, 255, 255, 0.3);
+  border-top-color: currentColor;
+  border-radius: 50%;
+  animation: spin 0.8s linear infinite;
+}
+
+@keyframes spin {
+  to {
+    transform: rotate(360deg);
+  }
 }
 
 /* Mobile Responsive Adjustments */

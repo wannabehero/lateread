@@ -1,4 +1,6 @@
 import { Hono } from "hono";
+import { EmptyState } from "../components/EmptyState";
+import { SummaryView } from "../components/SummaryView";
 import { requireAuth } from "../middleware/auth";
 import {
   countArticles,
@@ -6,8 +8,8 @@ import {
   markArticleAsRead,
   toggleArticleArchive,
 } from "../services/articles.service";
+import { getOrGenerateSummary } from "../services/summaries.service";
 import type { AppContext } from "../types/context";
-import { EmptyState } from "../components/EmptyState";
 
 const api = new Hono<AppContext>();
 
@@ -79,7 +81,6 @@ api.post("/api/articles/:id/archive", requireAuth("json-401"), async (c) => {
 
 /**
  * POST /api/articles/:id/summarize - Generate article summary
- * (Placeholder for Phase 4)
  */
 api.post("/api/articles/:id/summarize", requireAuth("json-401"), async (c) => {
   const userId = c.get("userId");
@@ -87,26 +88,33 @@ api.post("/api/articles/:id/summarize", requireAuth("json-401"), async (c) => {
 
   try {
     // Verify article exists and belongs to user
-    await getArticleById(articleId, userId);
+    const article = await getArticleById(articleId, userId);
 
-    // Placeholder: Return message that feature is coming in Phase 4
-    return c.html(
-      <div class="summary-placeholder">
-        <p>
-          <em>Summary generation coming soon in Phase 4!</em>
-        </p>
-      </div>,
-    );
+    // Get or generate summary
+    const summary = await getOrGenerateSummary(articleId, article.url);
+
+    // Return summary view
+    return c.html(<SummaryView summary={summary} />);
   } catch (error) {
     const errorMessage =
       error instanceof Error ? error.message : "Unknown error";
 
     if (errorMessage === "Article not found") {
-      return c.json({ error: "Article not found" }, 404);
+      return c.html(
+        <div class="summary-error">
+          <p>Article not found</p>
+        </div>,
+        404,
+      );
     }
 
     console.error("Error generating summary:", error);
-    return c.json({ error: "Failed to generate summary" }, 500);
+    return c.html(
+      <div class="summary-error">
+        <p>Failed to generate summary. Please try again.</p>
+      </div>,
+      500,
+    );
   }
 });
 

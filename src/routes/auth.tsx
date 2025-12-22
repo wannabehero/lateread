@@ -1,4 +1,3 @@
-import { eq, and, desc } from "drizzle-orm";
 import { Hono } from "hono";
 import { Layout } from "../components/Layout";
 import { ArticleList } from "../components/ArticleList";
@@ -10,8 +9,8 @@ import {
   TOKEN_EXPIRATION_MINUTES,
 } from "../lib/auth";
 import { config } from "../lib/config";
-import { db, articles, tags, articleTags } from "../lib/db";
 import { clearSession, getSession, setSession } from "../lib/session";
+import { getArticlesWithTags } from "../services/articles.service";
 
 const auth = new Hono();
 
@@ -24,41 +23,16 @@ auth.get("/", async (c) => {
   // If authenticated, show article list (unread articles)
   if (session?.userId) {
     try {
-      // Query unread articles (not archived, completed status)
-      const articlesList = await db
-        .select()
-        .from(articles)
-        .where(
-          and(
-            eq(articles.userId, session.userId),
-            eq(articles.archived, false),
-            eq(articles.status, "completed")
-          )
-        )
-        .orderBy(desc(articles.createdAt))
-        .limit(50);
-
-      // Load tags for each article
-      const articlesWithTags = await Promise.all(
-        articlesList.map(async (article) => {
-          const articleTagsList = await db
-            .select({
-              id: tags.id,
-              name: tags.name,
-            })
-            .from(articleTags)
-            .innerJoin(tags, eq(articleTags.tagId, tags.id))
-            .where(eq(articleTags.articleId, article.id));
-
-          return {
-            ...article,
-            tags: articleTagsList,
-          };
-        })
-      );
+      const articlesWithTags = await getArticlesWithTags(session.userId, {
+        archived: false,
+      });
 
       return c.html(
-        <Layout title="Unread Articles - lateread" isAuthenticated={true} currentPath="/">
+        <Layout
+          title="Unread Articles - lateread"
+          isAuthenticated={true}
+          currentPath="/"
+        >
           <ArticleList articles={articlesWithTags} status="unread" />
         </Layout>
       );

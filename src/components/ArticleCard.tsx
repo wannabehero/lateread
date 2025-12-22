@@ -66,16 +66,14 @@ export const ArticleCard: FC<ArticleCardProps> = ({ article }) => {
           <a href={`/articles/${article.id}`} class="button" hx-boost="true">
             Read
           </a>
-          {!isRead && (
-            <button
-              type="button"
-              hx-post={`/api/articles/${article.id}/read`}
-              hx-swap="outerHTML"
-              hx-target="closest .article-card"
-            >
-              Mark as Read
-            </button>
-          )}
+          <button
+            type="button"
+            hx-post={`/api/articles/${article.id}/archive`}
+            hx-swap="outerHTML"
+            hx-target="closest .article-card"
+          >
+            Archive
+          </button>
         </div>
       </div>
     </article>

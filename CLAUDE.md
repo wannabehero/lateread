@@ -43,33 +43,103 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 **`src/cron.ts`** is the central registry for ALL scheduled tasks - never define cron jobs elsewhere.
 
-### 4. HTMX Pattern (Hybrid Approach)
+### 4. Services Layer Pattern
+
+**All database operations MUST go through services (`src/services/`):**
+- Services encapsulate database logic and business rules
+- Routes become thin controllers that only handle HTTP concerns
+- Makes testing easier (can mock services)
+- Improves code reusability across routes
+
+**Service structure:**
+```typescript
+// src/services/articles.service.ts
+export async function getArticlesWithTags(
+  userId: string,
+  filters: { archived?: boolean; tag?: string }
+): Promise<ArticleWithTags[]> {
+  // All DB queries and business logic here
+}
+```
+
+**Route usage:**
+```typescript
+import { getArticlesWithTags } from "../services/articles.service";
+
+articlesRouter.get("/articles", requireAuth("redirect"), async (c) => {
+  const userId = c.get("userId") as string;
+  const articles = await getArticlesWithTags(userId, { archived: false });
+  // ... render response
+});
+```
+
+**Existing services:**
+- `articles.service.ts`: Article CRUD, queries with tags, mark as read, archive
+- `tags.service.ts`: Tag operations, get or create tags
+- *(Add more as needed)*
+
+**Guidelines:**
+- Never write database queries directly in route handlers
+- Services throw errors with descriptive messages
+- Routes catch and translate service errors to HTTP responses
+- Services are stateless functions (no classes unless necessary)
+
+### 5. Authentication Middleware
+
+**Use `requireAuth()` middleware for all protected routes:**
+```typescript
+import { requireAuth } from "../middleware/auth";
+
+// For page routes (redirects to / if not authenticated)
+app.get("/articles", requireAuth("redirect"), async (c) => {
+  const userId = c.get("userId") as string; // Available after middleware
+  // ...
+});
+
+// For API routes (returns 401 JSON if not authenticated)
+app.post("/api/articles/:id", requireAuth("json-401"), async (c) => {
+  const userId = c.get("userId") as string;
+  // ...
+});
+```
+
+**Middleware strategies:**
+- `requireAuth("redirect")`: Redirects to `/` - use for page routes
+- `requireAuth("json-401")`: Returns `{error: "Unauthorized"}` 401 - use for API routes
+
+**Benefits:**
+- Consistent auth checks across all routes
+- Reduces boilerplate (no manual session checks)
+- Sets `userId` in context for route handlers
+- Clear separation of concerns
+
+### 6. HTMX Pattern (Hybrid Approach)
 - Detect `hx-request` header (lowercase) in route handlers
 - Return **full page with Layout** for direct navigation
 - Return **partial content** for HTMX requests
 - Progressive enhancement: works without JavaScript, enhanced with HTMX
 
-### 5. Worker Architecture
+### 7. Worker Architecture
 - Use Bun's native Worker API (no imports needed for `self.onmessage`, `self.postMessage`)
 - Workers receive `articleId` via message
 - Full processing pipeline: fetch → parse → extract → tag (LLM) → cache → database update
 - Workers post `{success: true/false, articleId, error?}` back to parent
 - Non-blocking spawning from bot handlers (fire and forget with error handling)
 
-### 6. Database Schema Critical Details
+### 8. Database Schema Critical Details
 - **Tags stored lowercase**: Always normalize with `tag.toLowerCase()` before insert/search
 - **Article status enum**: `pending → processing → completed` (or `failed → error` after retries)
 - **Cascade deletes**: article_tags and article_summaries cascade when article deleted
 - **User separation**: User table is auth-agnostic, TelegramUser links via foreign key
 
-### 7. Authentication Flow (OTP via Telegram)
+### 9. Authentication Flow (OTP via Telegram)
 1. Web app generates token → stores in `auth_tokens` table with `userId = NULL`
 2. User clicks Telegram deep link → bot receives `/login {token}`
 3. Bot validates token → **creates User + TelegramUser records** → sets `userId` on token
 4. Web app polls `/auth/check/{token}` → returns success when `userId` populated
 5. Tokens expire in 5 minutes, cleaned up hourly
 
-### 8. LLM Provider Strategy
+### 10. LLM Provider Strategy
 - **No LLM SDKs in package.json by default**
 - Operators install their chosen provider: `bun add @anthropic-ai/sdk` (or openai, etc.)
 - Set `LLM_PROVIDER` and `LLM_API_KEY` in .env
@@ -130,16 +200,20 @@ bun install              # Install all dependencies
 ## Critical Implementation Notes
 
 ### When Adding New Routes
-1. Check for `hx-request` header in handler
-2. Use session middleware for auth-protected routes
-3. Return Layout-wrapped component for full page, partial for HTMX
-4. Never use redirects for HTMX requests (breaks back button)
+1. Use `requireAuth()` middleware for protected routes (specify "redirect" or "json-401")
+2. Get userId from context: `const userId = c.get("userId") as string`
+3. Call service functions for all database operations
+4. Check for `hx-request` header to return full page or partial
+5. Return Layout-wrapped component for full page, partial for HTMX
+6. Never use redirects for HTMX requests (breaks back button)
 
 ### When Working with Database
-1. Always use Drizzle query builder (never raw SQL unless necessary)
-2. Use transactions for multi-table operations
-3. Schema changes require migration via drizzle-kit
-4. Use `bun:sqlite` (not node:sqlite3) for native SQLite
+1. **NEVER write database queries in route handlers** - always use services
+2. Create or use existing service functions in `src/services/`
+3. Services use Drizzle query builder (never raw SQL unless necessary)
+4. Use transactions for multi-table operations
+5. Schema changes require migration via drizzle-kit
+6. Use `bun:sqlite` (not node:sqlite3) for native SQLite
 
 ### When Spawning Workers
 1. Worker files must be standalone (import all dependencies)
@@ -184,6 +258,16 @@ bun install              # Install all dependencies
 - **HX-Redirect header**: Use `c.header("hx-redirect", "/path")` for redirects, not JavaScript
 - **Polling**: Use `hx-trigger="load, every Xs"` for polling patterns
 - **Target IDs**: Always specify unique IDs for `hx-target` to avoid conflicts
+- **Conditional attributes**: Use spread operator for conditional HTMX attributes:
+  ```tsx
+  <footer
+    {...(condition && {
+      "hx-post": "/api/endpoint",
+      "hx-trigger": "intersect once",
+      "hx-swap": "none",
+    })}
+  >
+  ```
 
 ### HTML Semantics
 - **Buttons vs Links**:

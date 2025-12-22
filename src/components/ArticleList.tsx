@@ -1,5 +1,6 @@
 import type { FC } from "hono/jsx";
 import { ArticleCard } from "./ArticleCard";
+import { EmptyState } from "./EmptyState";
 
 interface Tag {
   id: string;
@@ -26,17 +27,13 @@ interface ArticleListProps {
 
 export const ArticleList: FC<ArticleListProps> = ({ articles, status, tag }) => {
   if (articles.length === 0) {
-    return (
-      <div class="empty-state">
-        <p>
-          {tag
-            ? `No articles tagged with "${tag}"`
-            : status === "archived"
-            ? "No archived articles yet"
-            : "No articles yet. Forward a link to the bot to get started!"}
-        </p>
-      </div>
-    );
+    const message = tag
+      ? `No articles tagged with "${tag}"`
+      : status === "archived"
+      ? "No archived articles yet"
+      : "No articles yet. Forward a link to the bot to get started!";
+
+    return <EmptyState message={message} />;
   }
 
   return (

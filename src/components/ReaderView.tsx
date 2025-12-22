@@ -64,7 +64,14 @@ export const ReaderView: FC<ReaderViewProps> = ({ article, content }) => {
 
       <article class="reader-content" dangerouslySetInnerHTML={{ __html: content }} />
 
-      <footer class="reader-footer">
+      <footer
+        class="reader-footer"
+        {...(!article.readAt && {
+          "hx-post": `/api/articles/${article.id}/read`,
+          "hx-trigger": "intersect once",
+          "hx-swap": "none",
+        })}
+      >
         <div class="reader-actions">
           <button
             type="button"
@@ -75,16 +82,6 @@ export const ReaderView: FC<ReaderViewProps> = ({ article, content }) => {
           </button>
         </div>
       </footer>
-
-      {/* Auto-mark as read when user scrolls to bottom */}
-      {!article.readAt && (
-        <div
-          hx-post={`/api/articles/${article.id}/read`}
-          hx-trigger="intersect once"
-          hx-swap="none"
-          style="height: 1px;"
-        />
-      )}
     </div>
   );
 };

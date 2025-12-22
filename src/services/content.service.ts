@@ -3,7 +3,7 @@ import { extractCleanContent } from "../lib/readability";
 
 /**
  * Get article content from cache or fetch if missing
- * Returns the HTML content or an error message
+ * Throws error if content cannot be loaded
  */
 export async function getArticleContent(
   articleId: string,
@@ -19,16 +19,16 @@ export async function getArticleContent(
   // Cache miss - fetch on-demand
   console.log(`Cache miss for article ${articleId}, fetching on-demand...`);
 
-  try {
-    const extracted = await extractCleanContent(articleUrl);
-    content = extracted.content || "<p>Failed to extract article content</p>";
+  const extracted = await extractCleanContent(articleUrl);
 
-    // Cache for future reads
-    await contentCache.set(articleId, content);
-
-    return content;
-  } catch (error) {
-    console.error(`Failed to fetch article ${articleId}:`, error);
-    return `<div class="error"><p>Failed to load article content. <a href="${articleUrl}" target="_blank">View original</a></p></div>`;
+  if (!extracted.content) {
+    throw new Error("Failed to extract article content");
   }
+
+  content = extracted.content;
+
+  // Cache for future reads
+  await contentCache.set(articleId, content);
+
+  return content;
 }

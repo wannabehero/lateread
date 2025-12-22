@@ -1,4 +1,4 @@
-import { eq, and, desc, sql } from "drizzle-orm";
+import { eq, and, desc, sql, getTableColumns } from "drizzle-orm";
 import { db, articles, tags, articleTags } from "../lib/db";
 
 export interface ArticleWithTags {
@@ -42,66 +42,17 @@ export async function getArticlesWithTags(
     conditions.push(eq(articles.archived, filters.archived));
   }
 
-  // If filtering by tag, add join condition
+  // If filtering by tag, add tag name condition
+  // Tags are stored lowercase, so normalize the filter
   if (filters.tag) {
     const tagName = filters.tag.toLowerCase();
-
-    const results = await db
-      .select({
-        id: articles.id,
-        userId: articles.userId,
-        url: articles.url,
-        title: articles.title,
-        description: articles.description,
-        imageUrl: articles.imageUrl,
-        siteName: articles.siteName,
-        status: articles.status,
-        archived: articles.archived,
-        processingAttempts: articles.processingAttempts,
-        lastError: articles.lastError,
-        createdAt: articles.createdAt,
-        processedAt: articles.processedAt,
-        readAt: articles.readAt,
-        updatedAt: articles.updatedAt,
-        tags: sql<string>`json_group_array(json_object('id', ${tags.id}, 'name', ${tags.name}))`,
-      })
-      .from(articles)
-      .leftJoin(articleTags, eq(articles.id, articleTags.articleId))
-      .leftJoin(tags, eq(articleTags.tagId, tags.id))
-      .where(
-        and(
-          ...conditions,
-          eq(sql`lower(${tags.name})`, tagName)
-        )
-      )
-      .groupBy(articles.id)
-      .orderBy(desc(articles.createdAt))
-      .limit(50);
-
-    return results.map((row) => ({
-      ...row,
-      tags: JSON.parse(row.tags).filter((tag: { id: string; name: string }) => tag.id !== null),
-    }));
+    conditions.push(eq(tags.name, tagName));
   }
 
-  // No tag filter - get all articles with their tags
+  // Single unified query with COALESCE + CASE WHEN for all scenarios
   const results = await db
     .select({
-      id: articles.id,
-      userId: articles.userId,
-      url: articles.url,
-      title: articles.title,
-      description: articles.description,
-      imageUrl: articles.imageUrl,
-      siteName: articles.siteName,
-      status: articles.status,
-      archived: articles.archived,
-      processingAttempts: articles.processingAttempts,
-      lastError: articles.lastError,
-      createdAt: articles.createdAt,
-      processedAt: articles.processedAt,
-      readAt: articles.readAt,
-      updatedAt: articles.updatedAt,
+      ...getTableColumns(articles),
       tags: sql<string>`COALESCE(json_group_array(
         CASE WHEN ${tags.id} IS NOT NULL
         THEN json_object('id', ${tags.id}, 'name', ${tags.name})
@@ -132,21 +83,7 @@ export async function getArticleById(
 ): Promise<ArticleWithTags> {
   const results = await db
     .select({
-      id: articles.id,
-      userId: articles.userId,
-      url: articles.url,
-      title: articles.title,
-      description: articles.description,
-      imageUrl: articles.imageUrl,
-      siteName: articles.siteName,
-      status: articles.status,
-      archived: articles.archived,
-      processingAttempts: articles.processingAttempts,
-      lastError: articles.lastError,
-      createdAt: articles.createdAt,
-      processedAt: articles.processedAt,
-      readAt: articles.readAt,
-      updatedAt: articles.updatedAt,
+      ...getTableColumns(articles),
       tags: sql<string>`COALESCE(json_group_array(
         CASE WHEN ${tags.id} IS NOT NULL
         THEN json_object('id', ${tags.id}, 'name', ${tags.name})

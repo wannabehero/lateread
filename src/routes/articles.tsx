@@ -111,9 +111,26 @@ articlesRouter.get("/articles/:id", requireAuth("redirect"), async (c) => {
     }
 
     console.error("Error loading article:", error);
+
+    // Try to get article URL for fallback link
+    let articleUrl: string | null = null;
+    try {
+      const article = await getArticleById(articleId, userId);
+      articleUrl = article.url;
+    } catch {
+      // Ignore - article lookup failed
+    }
+
     return c.html(
       <div class="error">
-        <p>Failed to load article. Please try again.</p>
+        <p>Failed to load article content.</p>
+        {articleUrl && (
+          <p>
+            <a href={articleUrl} target="_blank" rel="noopener noreferrer">
+              View original article
+            </a>
+          </p>
+        )}
       </div>,
       500
     );

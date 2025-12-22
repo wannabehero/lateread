@@ -50,6 +50,7 @@ articlesRouter.get("/articles", requireAuth("redirect"), async (c) => {
   // Parse query params
   const status = c.req.query("status") || "all";
   const tag = c.req.query("tag");
+  const query = c.req.query("q");
 
   const archived = status === "archived";
 
@@ -57,17 +58,25 @@ articlesRouter.get("/articles", requireAuth("redirect"), async (c) => {
     const articlesWithTags = await getArticlesWithTags(userId, {
       archived,
       tag,
+      query,
     });
 
     const content = (
-      <ArticleList articles={articlesWithTags} status={status} tag={tag} />
+      <ArticleList
+        articles={articlesWithTags}
+        status={status}
+        tag={tag}
+        query={query}
+      />
     );
 
-    const title = tag
-      ? `Articles tagged "${tag}"`
-      : status === "archived"
-        ? "Archived Articles"
-        : "Articles";
+    const title = query
+      ? `Search: "${query}"`
+      : tag
+        ? `Articles tagged "${tag}"`
+        : status === "archived"
+          ? "Archived Articles"
+          : "Articles";
 
     return renderWithLayout(c, title, content, `/articles?status=${status}`);
   } catch (error) {
@@ -93,7 +102,7 @@ articlesRouter.get("/articles/:id", requireAuth("redirect"), async (c) => {
     const article = await getArticleById(articleId, userId);
 
     // Get content from cache or fetch if missing
-    const content = await getArticleContent(articleId, article.url);
+    const content = await getArticleContent(userId, articleId, article.url);
 
     const readerContent = <ReaderView article={article} content={content} />;
 

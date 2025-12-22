@@ -183,7 +183,7 @@ async function processArticle(article: typeof articles.$inferSelect) {
 
   // Step 6: Cache clean HTML content
   console.log(`[Worker ${article.id}] Caching content to filesystem`);
-  await contentCache.set(article.id, extracted.content);
+  await contentCache.set(article.userId, article.id, extracted.content);
   console.log(`[Worker ${article.id}] Content cached successfully`);
 
   // Step 7: Update database in transaction

@@ -632,20 +632,39 @@ During Phase 3, we implemented several architectural patterns beyond the origina
   - "Archive" → `/articles?status=archived`
 - [ ] Update Layout navigation with active state
 
-#### 5.2 Search Functionality (Phase 1 - Simple)
-- [ ] `GET /articles/search` route:
+#### 5.2 Search Functionality ✅ COMPLETE
+- [x] Enhanced `/articles` route to handle `q` query parameter:
   - Parse `q` query param
-  - Search article title and description (LIKE %query%)
-  - Return article list HTML
-- [ ] Add search form to articles list:
-  - Input field
-  - Search button
+  - Search article title, description, AND summaries (LIKE %query%)
+  - Search cached content using ripgrep
+  - Combine results with OR logic
+  - Return article list HTML (full page or partial)
+- [x] Add search form to articles list:
+  - Input field with debounce (500ms)
+  - Clear button (appears when query present)
   - HTMX attributes:
-    - `hx-get="/articles/search"`
-    - `hx-target="#article-list"`
-    - `hx-trigger="submit, keyup changed delay:500ms"`
-  - Clear button to reset
-- [ ] Empty state for no search results
+    - `hx-get="/articles"`
+    - `hx-target="#article-container"`
+    - `hx-trigger="submit, keyup changed delay:500ms from:#search-input"`
+    - `hx-push-url="true"` for URL updates
+  - Status preservation during search
+- [x] Empty state for no search results
+- [x] User-specific cache directories for privacy:
+  - Cache structure: `cache/articles/{userId}/{articleId}.html`
+  - Ripgrep searches only user's directory
+  - Updated ContentCache class with userId parameter
+  - Updated all cache operations (get, set, delete, exists)
+  - Updated worker to use new cache structure
+  - Updated cleanup function to scan user subdirectories
+- [x] Comprehensive search coverage:
+  - Database: title, description, all summary fields
+  - Cached content: full article HTML via ripgrep
+  - Privacy-safe: users can only search their own articles
+- [x] Code quality improvements:
+  - Extracted `buildArticleConditions()` helper (DRY)
+  - Moved content search to `content.service.ts`
+  - Added styling for search form
+- [x] Docker: Install ripgrep in Dockerfile
 
 #### 5.3 TTS Implementation
 - [ ] Add TTS controls to ReaderView:
@@ -684,7 +703,7 @@ During Phase 3, we implemented several architectural patterns beyond the origina
   - Mobile navigation
   - Tablet layout
   - Desktop layout
-- [ ] Dark mode support (Pico CSS includes this)
+- [x] Dark mode support (Pico CSS includes this)
 
 **Deliverable**: Full-featured reading experience with archive, search, and TTS.
 

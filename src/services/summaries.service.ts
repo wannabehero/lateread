@@ -10,6 +10,7 @@ import { getArticleContent } from "./content.service";
  * Returns cached summary if exists, otherwise generates new one
  */
 export async function getOrGenerateSummary(
+  userId: string,
   articleId: string,
   articleUrl: string,
 ): Promise<SummaryResult> {
@@ -29,7 +30,7 @@ export async function getOrGenerateSummary(
   }
 
   // Generate new summary
-  const content = await getArticleContent(articleId, articleUrl);
+  const content = await getArticleContent(userId, articleId, articleUrl);
 
   // Extract plain text from HTML for better summarization
   const textContent = content.replace(/<[^>]*>/g, " ").replace(/\s+/g, " ");

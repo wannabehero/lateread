@@ -1,5 +1,16 @@
-import { and, desc, eq, getTableColumns, sql } from "drizzle-orm";
-import { articles, articleTags, db, tags } from "../lib/db";
+import type { SQL } from "drizzle-orm";
+import {
+  and,
+  desc,
+  eq,
+  getTableColumns,
+  inArray,
+  like,
+  or,
+  sql,
+} from "drizzle-orm";
+import { articleSummaries, articles, articleTags, db, tags } from "../lib/db";
+import { searchCachedArticleIds } from "./content.service";
 
 export interface ArticleWithTags {
   id: string;
@@ -23,17 +34,18 @@ export interface ArticleWithTags {
 export interface GetArticlesFilters {
   archived?: boolean;
   tag?: string;
+  query?: string;
 }
 
 /**
- * Get articles with tags for a user using JSON aggregation
+ * Build WHERE conditions for article queries
+ * Handles: userId, status, archived, tag filtering, and search (database + cached content)
  */
-export async function getArticlesWithTags(
+async function buildArticleConditions(
   userId: string,
   filters: GetArticlesFilters = {},
-): Promise<ArticleWithTags[]> {
-  // Build WHERE conditions
-  const conditions = [
+): Promise<SQL[]> {
+  const conditions: SQL[] = [
     eq(articles.userId, userId),
     eq(articles.status, "completed"),
   ];
@@ -50,7 +62,53 @@ export async function getArticlesWithTags(
     conditions.push(eq(tags.userId, userId), eq(tags.name, tagName));
   }
 
-  // Single unified query with COALESCE + CASE WHEN for all scenarios
+  // If search query provided, search database, summaries, and cached content
+  if (filters.query?.trim()) {
+    const searchPattern = `%${filters.query.trim()}%`;
+    const searchConditions: SQL[] = [];
+
+    // Search database (title, description, and summaries)
+    const dbSearchCondition = or(
+      like(articles.title, searchPattern),
+      like(articles.description, searchPattern),
+      like(articleSummaries.oneSentence, searchPattern),
+      like(articleSummaries.oneParagraph, searchPattern),
+      like(articleSummaries.long, searchPattern),
+    );
+    if (dbSearchCondition) {
+      searchConditions.push(dbSearchCondition);
+    }
+
+    // Search cached content using ripgrep (user-specific directory)
+    const contentMatchIds = await searchCachedArticleIds(
+      userId,
+      filters.query.trim(),
+    );
+    if (contentMatchIds.length > 0) {
+      searchConditions.push(inArray(articles.id, contentMatchIds));
+    }
+
+    // Combine: match database OR summaries OR cached content
+    if (searchConditions.length > 0) {
+      const combinedSearch = or(...searchConditions);
+      if (combinedSearch) {
+        conditions.push(combinedSearch);
+      }
+    }
+  }
+
+  return conditions;
+}
+
+/**
+ * Get articles with tags for a user using JSON aggregation
+ */
+export async function getArticlesWithTags(
+  userId: string,
+  filters: GetArticlesFilters = {},
+): Promise<ArticleWithTags[]> {
+  const conditions = await buildArticleConditions(userId, filters);
+
   const results = await db
     .select({
       ...getTableColumns(articles),
@@ -63,6 +121,7 @@ export async function getArticlesWithTags(
     .from(articles)
     .leftJoin(articleTags, eq(articles.id, articleTags.articleId))
     .leftJoin(tags, eq(articleTags.tagId, tags.id))
+    .leftJoin(articleSummaries, eq(articles.id, articleSummaries.articleId))
     .where(and(...conditions))
     .groupBy(articles.id)
     .orderBy(desc(articles.createdAt))
@@ -83,25 +142,14 @@ export async function countArticles(
   userId: string,
   filters: GetArticlesFilters = {},
 ): Promise<number> {
-  const conditions = [
-    eq(articles.userId, userId),
-    eq(articles.status, "completed"),
-  ];
-
-  if (filters.archived !== undefined) {
-    conditions.push(eq(articles.archived, filters.archived));
-  }
-
-  if (filters.tag) {
-    const tagName = filters.tag.toLowerCase();
-    conditions.push(eq(tags.userId, userId), eq(tags.name, tagName));
-  }
+  const conditions = await buildArticleConditions(userId, filters);
 
   const [result] = await db
     .select({ count: sql<number>`count(*)` })
     .from(articles)
     .leftJoin(articleTags, eq(articles.id, articleTags.articleId))
     .leftJoin(tags, eq(articleTags.tagId, tags.id))
+    .leftJoin(articleSummaries, eq(articles.id, articleSummaries.articleId))
     .where(and(...conditions));
 
   return result?.count ?? 0;

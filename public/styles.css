@@ -124,6 +124,28 @@
   margin-top: 1rem;
 }
 
+/* Search Form */
+.search-form {
+  margin-bottom: 1.5rem;
+}
+
+.search-input-group {
+  display: flex;
+  gap: 0.5rem;
+  align-items: center;
+}
+
+.search-input-group input[type="search"] {
+  flex: 1;
+  margin-bottom: 0;
+}
+
+.search-input-group .search-clear {
+  flex-shrink: 0;
+  margin-bottom: 0;
+  padding: 0.5rem 1rem;
+}
+
 /* Empty State */
 .empty-state {
   text-align: center;

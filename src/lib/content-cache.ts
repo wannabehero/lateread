@@ -9,22 +9,23 @@ export class ContentCache {
     this.cacheDir = cacheDir;
   }
 
-  private getFilePath(articleId: string): string {
-    return join(this.cacheDir, `${articleId}.html`);
+  private getFilePath(userId: string, articleId: string): string {
+    return join(this.cacheDir, userId, `${articleId}.html`);
   }
 
-  private async ensureCacheDir(): Promise<void> {
+  private async ensureCacheDir(userId: string): Promise<void> {
     try {
-      await mkdir(this.cacheDir, { recursive: true });
+      const userCacheDir = join(this.cacheDir, userId);
+      await mkdir(userCacheDir, { recursive: true });
     } catch (error) {
       // Directory already exists or permission error
       console.warn(`Failed to create cache directory: ${error}`);
     }
   }
 
-  async get(articleId: string): Promise<string | null> {
+  async get(userId: string, articleId: string): Promise<string | null> {
     try {
-      const filePath = this.getFilePath(articleId);
+      const filePath = this.getFilePath(userId, articleId);
       const file = Bun.file(filePath);
 
       if (!(await file.exists())) {
@@ -38,11 +39,11 @@ export class ContentCache {
     }
   }
 
-  async set(articleId: string, content: string): Promise<void> {
-    await this.ensureCacheDir();
+  async set(userId: string, articleId: string, content: string): Promise<void> {
+    await this.ensureCacheDir(userId);
 
     try {
-      const filePath = this.getFilePath(articleId);
+      const filePath = this.getFilePath(userId, articleId);
       await Bun.write(filePath, content);
     } catch (error) {
       console.error(`Failed to write cache for article ${articleId}:`, error);
@@ -50,9 +51,9 @@ export class ContentCache {
     }
   }
 
-  async delete(articleId: string): Promise<void> {
+  async delete(userId: string, articleId: string): Promise<void> {
     try {
-      const filePath = this.getFilePath(articleId);
+      const filePath = this.getFilePath(userId, articleId);
       await unlink(filePath);
     } catch (error) {
       // Ignore if file doesn't exist
@@ -65,9 +66,9 @@ export class ContentCache {
     }
   }
 
-  async exists(articleId: string): Promise<boolean> {
+  async exists(userId: string, articleId: string): Promise<boolean> {
     try {
-      const filePath = this.getFilePath(articleId);
+      const filePath = this.getFilePath(userId, articleId);
       const file = Bun.file(filePath);
       return await file.exists();
     } catch {
@@ -86,26 +87,44 @@ export async function cleanupOldCache(): Promise<void> {
   let deletedCount = 0;
 
   try {
-    const files = await readdir(cacheDir);
+    // Scan user subdirectories
+    const userDirs = await readdir(cacheDir);
 
-    for (const file of files) {
-      if (!file.endsWith(".html")) {
+    for (const userDir of userDirs) {
+      const userDirPath = join(cacheDir, userDir);
+
+      // Skip if not a directory
+      try {
+        const dirStat = await stat(userDirPath);
+        if (!dirStat.isDirectory()) {
+          continue;
+        }
+      } catch {
         continue;
       }
 
-      scannedCount++;
-      const filePath = join(cacheDir, file);
+      // Scan files in user directory
+      const files = await readdir(userDirPath);
 
-      try {
-        const stats = await stat(filePath);
-        const fileAge = now - stats.mtimeMs;
-
-        if (fileAge > maxAgeMs) {
-          await unlink(filePath);
-          deletedCount++;
+      for (const file of files) {
+        if (!file.endsWith(".html")) {
+          continue;
         }
-      } catch (error) {
-        console.warn(`Failed to process file ${file}:`, error);
+
+        scannedCount++;
+        const filePath = join(userDirPath, file);
+
+        try {
+          const stats = await stat(filePath);
+          const fileAge = now - stats.mtimeMs;
+
+          if (fileAge > maxAgeMs) {
+            await unlink(filePath);
+            deletedCount++;
+          }
+        } catch (error) {
+          console.warn(`Failed to process file ${file}:`, error);
+        }
       }
     }
 

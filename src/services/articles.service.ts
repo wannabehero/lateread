@@ -1,5 +1,5 @@
-import { eq, and, desc, sql, getTableColumns } from "drizzle-orm";
-import { db, articles, tags, articleTags } from "../lib/db";
+import { and, desc, eq, getTableColumns, sql } from "drizzle-orm";
+import { articles, articleTags, db, tags } from "../lib/db";
 
 export interface ArticleWithTags {
   id: string;
@@ -84,7 +84,7 @@ export async function getArticleById(
   articleId: string,
   userId: string,
 ): Promise<ArticleWithTags> {
-  const results = await db
+  const [result] = await db
     .select({
       ...getTableColumns(articles),
       tags: sql<string>`COALESCE(json_group_array(
@@ -100,14 +100,13 @@ export async function getArticleById(
     .groupBy(articles.id)
     .limit(1);
 
-  if (results.length === 0) {
+  if (!result) {
     throw new Error("Article not found");
   }
 
-  const row = results[0]!;
   return {
-    ...row,
-    tags: JSON.parse(row.tags).filter(
+    ...result,
+    tags: JSON.parse(result.tags).filter(
       (tag: { id: string; name: string } | null) => tag !== null,
     ),
   } as ArticleWithTags;
@@ -121,13 +120,13 @@ export async function markArticleAsRead(
   userId: string,
 ): Promise<void> {
   // Verify article exists and belongs to user
-  const articlesList = await db
+  const [article] = await db
     .select()
     .from(articles)
     .where(and(eq(articles.id, articleId), eq(articles.userId, userId)))
     .limit(1);
 
-  if (articlesList.length === 0) {
+  if (!article) {
     throw new Error("Article not found");
   }
 
@@ -147,17 +146,16 @@ export async function toggleArticleArchive(
   userId: string,
 ): Promise<boolean> {
   // Verify article exists and belongs to user
-  const articlesList = await db
+  const [article] = await db
     .select()
     .from(articles)
     .where(and(eq(articles.id, articleId), eq(articles.userId, userId)))
     .limit(1);
 
-  if (articlesList.length === 0) {
+  if (!article) {
     throw new Error("Article not found");
   }
 
-  const article = articlesList[0]!;
   const newArchivedStatus = !article.archived;
 
   // Toggle archived status

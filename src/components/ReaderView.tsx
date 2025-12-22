@@ -32,7 +32,9 @@ export const ReaderView: FC<ReaderViewProps> = ({ article, content }) => {
         <h1>{displayTitle}</h1>
 
         <div class="reader-meta">
-          {article.siteName && <span class="site-name">{article.siteName}</span>}
+          {article.siteName && (
+            <span class="site-name">{article.siteName}</span>
+          )}
           <a href={article.url} target="_blank" rel="noopener noreferrer">
             View Original
           </a>
@@ -62,7 +64,10 @@ export const ReaderView: FC<ReaderViewProps> = ({ article, content }) => {
         <div id="summaries"></div>
       </section>
 
-      <article class="reader-content" dangerouslySetInnerHTML={{ __html: content }} />
+      <article
+        class="reader-content"
+        dangerouslySetInnerHTML={{ __html: content }}
+      />
 
       <footer
         class="reader-footer"

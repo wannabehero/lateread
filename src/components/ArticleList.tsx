@@ -25,13 +25,17 @@ interface ArticleListProps {
   tag?: string;
 }
 
-export const ArticleList: FC<ArticleListProps> = ({ articles, status, tag }) => {
+export const ArticleList: FC<ArticleListProps> = ({
+  articles,
+  status,
+  tag,
+}) => {
   if (articles.length === 0) {
     const message = tag
       ? `No articles tagged with "${tag}"`
       : status === "archived"
-      ? "No archived articles yet"
-      : "No articles yet. Forward a link to the bot to get started!";
+        ? "No archived articles yet"
+        : "No articles yet. Forward a link to the bot to get started!";
 
     return <EmptyState message={message} />;
   }

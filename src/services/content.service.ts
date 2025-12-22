@@ -7,7 +7,7 @@ import { extractCleanContent } from "../lib/readability";
  */
 export async function getArticleContent(
   articleId: string,
-  articleUrl: string
+  articleUrl: string,
 ): Promise<string> {
   // Try to load from cache
   let content = await contentCache.get(articleId);

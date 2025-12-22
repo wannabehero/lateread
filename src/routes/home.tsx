@@ -1,10 +1,9 @@
 import { Hono } from "hono";
-import type { AppContext } from "../types/context";
-import { Layout } from "../components/Layout";
 import { ArticleList } from "../components/ArticleList";
+import { Layout } from "../components/Layout";
 import { getSession } from "../lib/session";
 import { getArticlesWithTags } from "../services/articles.service";
-import { config } from "../lib/config";
+import type { AppContext } from "../types/context";
 
 const home = new Hono<AppContext>();
 

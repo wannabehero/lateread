@@ -1,6 +1,6 @@
 import type { Context, Next } from "hono";
-import type { AppContext } from "../types/context";
 import { getSession } from "../lib/session";
+import type { AppContext } from "../types/context";
 
 type AuthStrategy = "redirect" | "json-401";
 

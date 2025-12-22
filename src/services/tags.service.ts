@@ -1,4 +1,4 @@
-import { eq, and } from "drizzle-orm";
+import { and, eq } from "drizzle-orm";
 import { db, tags } from "../lib/db";
 
 export interface Tag {
@@ -28,18 +28,18 @@ export async function getOrCreateTag(
   const normalizedName = name.toLowerCase();
 
   // Check if tag exists
-  const existingTags = await db
+  const [exisingTag] = await db
     .select()
     .from(tags)
     .where(and(eq(tags.userId, userId), eq(tags.name, normalizedName)))
     .limit(1);
 
-  if (existingTags.length > 0) {
-    return existingTags[0]!.id;
+  if (exisingTag) {
+    return exisingTag.id;
   }
 
   // Create new tag
-  const newTag = await db
+  const [newTag] = await db
     .insert(tags)
     .values({
       userId,
@@ -48,7 +48,11 @@ export async function getOrCreateTag(
     })
     .returning();
 
-  return newTag[0]!.id;
+  if (!newTag) {
+    throw new Error("Failed to create tag");
+  }
+
+  return newTag?.id;
 }
 
 /**

@@ -1,17 +1,17 @@
 // IMPORTANT: Config must be imported FIRST before any other modules
-import { config } from "./lib/config";
 
 import { Hono } from "hono";
 import { serveStatic } from "hono/bun";
 import { logger } from "hono/logger";
-import type { AppContext } from "./types/context";
 import { registerHandlers } from "./bot/handlers";
 import { bot, setupBot, startBot, stopBot } from "./bot/index";
+import { config } from "./lib/config";
 import { runMigrations } from "./lib/db";
 import apiRoutes from "./routes/api";
 import articlesRoutes from "./routes/articles";
 import authRoutes from "./routes/auth";
 import homeRoutes from "./routes/home";
+import type { AppContext } from "./types/context";
 
 console.log("Starting lateread...");
 console.log(`Environment: ${config.NODE_ENV}`);

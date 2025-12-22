@@ -1141,4 +1141,120 @@ Total: ~17-26 days (3-5 weeks)
 
 ---
 
-Good luck with the implementation! 🚀
+## Future Improvements: Error Handling Refactor
+
+**Goal**: Standardize error handling across all routes for consistency and maintainability.
+
+### Current State
+Routes currently handle errors inconsistently:
+- Mix of try-catch blocks with manual error checking
+- Inconsistent error response formats (some JSON, some HTML)
+- Error messages parsed from thrown Error strings
+- Duplicate error handling logic across routes
+
+### Proposed Improvements
+
+#### 1. Custom Error Classes
+Create typed error classes for common scenarios:
+```typescript
+// src/lib/errors.ts
+export class NotFoundError extends Error {
+  statusCode = 404;
+  constructor(message: string) {
+    super(message);
+    this.name = "NotFoundError";
+  }
+}
+
+export class UnauthorizedError extends Error {
+  statusCode = 401;
+  // ...
+}
+
+export class ValidationError extends Error {
+  statusCode = 400;
+  // ...
+}
+```
+
+#### 2. Error Handling Middleware
+Centralize error response logic:
+```typescript
+// src/middleware/errorHandler.ts
+export function errorHandler() {
+  return async (c: Context, next: Next) => {
+    try {
+      await next();
+    } catch (error) {
+      if (error instanceof NotFoundError) {
+        return c.html(<ErrorPage message={error.message} />, 404);
+      }
+      if (error instanceof ValidationError) {
+        return c.json({ error: error.message }, 400);
+      }
+      // ... handle other error types
+
+      console.error("Unhandled error:", error);
+      return c.html(<ErrorPage message="Internal server error" />, 500);
+    }
+  };
+}
+```
+
+#### 3. Service Layer Updates
+Services throw typed errors:
+```typescript
+// Before:
+if (!article) throw new Error("Article not found");
+
+// After:
+if (!article) throw new NotFoundError("Article not found");
+```
+
+#### 4. Route Simplification
+Routes become cleaner:
+```typescript
+// Before:
+try {
+  const article = await getArticleById(id, userId);
+  // ...
+} catch (error) {
+  const msg = error instanceof Error ? error.message : "Unknown";
+  if (msg === "Article not found") return c.html(..., 404);
+  if (msg === "Access denied") return c.html(..., 403);
+  return c.html(..., 500);
+}
+
+// After:
+const article = await getArticleById(id, userId);
+// Error middleware handles all errors automatically
+```
+
+#### 5. Consistent Error Components
+Create reusable error display components:
+- `ErrorPage`: For page routes (with Layout)
+- `ErrorMessage`: For API routes (JSON)
+- `ErrorPartial`: For HTMX partial updates
+
+### Benefits
+- **DRY**: No duplicate error handling logic
+- **Type-safe**: TypeScript catches error handling mistakes
+- **Consistent**: Same error format across all routes
+- **Maintainable**: Change error handling in one place
+- **Testable**: Easy to mock and test error scenarios
+
+### Implementation Tasks
+- [ ] Create custom error classes (`src/lib/errors.ts`)
+- [ ] Create error handling middleware
+- [ ] Create error display components
+- [ ] Update all services to throw typed errors
+- [ ] Update all routes to use error middleware
+- [ ] Remove try-catch blocks from routes
+- [ ] Update tests for new error handling
+- [ ] Document error handling patterns in CLAUDE.md
+
+**Note**: This is a future improvement to be implemented after Phase 8 or when error handling becomes a pain point.
+
+---
+
+Good luck with the implementation!

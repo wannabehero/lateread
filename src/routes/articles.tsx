@@ -48,16 +48,14 @@ articlesRouter.get("/articles", requireAuth("redirect"), async (c) => {
   const userId = c.get("userId");
 
   // Parse query params
-  const status = c.req.query("status") || "unread";
+  const status = c.req.query("status") || "all";
   const tag = c.req.query("tag");
 
   const archived = status === "archived";
-  const unread = status === "unread";
 
   try {
     const articlesWithTags = await getArticlesWithTags(userId, {
       archived,
-      unread,
       tag,
     });
 
@@ -69,7 +67,7 @@ articlesRouter.get("/articles", requireAuth("redirect"), async (c) => {
       ? `Articles tagged "${tag}"`
       : status === "archived"
         ? "Archived Articles"
-        : "Unread Articles";
+        : "Articles";
 
     return renderWithLayout(c, title, content, `/articles?status=${status}`);
   } catch (error) {

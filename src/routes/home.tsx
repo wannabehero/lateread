@@ -13,21 +13,20 @@ const home = new Hono<AppContext>();
 home.get("/", async (c) => {
   const session = getSession(c);
 
-  // If authenticated, show article list (unread articles)
+  // If authenticated, show article list (all non-archived articles)
   if (session?.userId) {
     try {
       const articlesWithTags = await getArticlesWithTags(session.userId, {
         archived: false,
-        unread: true,
       });
 
       return c.html(
         <Layout
-          title="Unread Articles - lateread"
+          title="Articles - lateread"
           isAuthenticated={true}
           currentPath="/"
         >
-          <ArticleList articles={articlesWithTags} status="unread" />
+          <ArticleList articles={articlesWithTags} status="all" />
         </Layout>,
       );
     } catch (error) {

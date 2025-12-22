@@ -50,10 +50,10 @@ export const Layout: FC<LayoutProps> = ({
               <ul>
                 <li>
                   <a
-                    href="/articles?status=unread"
+                    href="/articles"
                     class={currentPath.startsWith("/articles") ? "active" : ""}
                   >
-                    Unread
+                    Articles
                   </a>
                 </li>
                 <li>

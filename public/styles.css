@@ -223,6 +223,7 @@
 
 .reader-content pre {
   overflow-x: auto;
+  white-space: pre-wrap;
 }
 
 .reader-content h1,

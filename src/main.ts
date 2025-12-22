@@ -1,11 +1,11 @@
-// IMPORTANT: Config must be imported FIRST before any other modules
+// biome-ignore assist/source/organizeImports: Config must be imported FIRST before any other modules
+import { config } from "./lib/config";
 
 import { Hono } from "hono";
 import { serveStatic } from "hono/bun";
 import { logger } from "hono/logger";
 import { registerHandlers } from "./bot/handlers";
 import { bot, setupBot, startBot, stopBot } from "./bot/index";
-import { config } from "./lib/config";
 import { runMigrations } from "./lib/db";
 import apiRoutes from "./routes/api";
 import articlesRoutes from "./routes/articles";

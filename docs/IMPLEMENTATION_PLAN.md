@@ -392,130 +392,150 @@ bun add @anthropic-ai/sdk          # For Claude (recommended)
 
 ---
 
-## Phase 3: Article Reading Flow
+## Phase 3: Article Reading Flow ✅ COMPLETE
 
 **Goal**: User can view list of articles and read them in clean interface.
 
+### Architectural Improvements Implemented
+
+During Phase 3, we implemented several architectural patterns beyond the original plan:
+
+#### Services Layer
+- [x] Created `src/services/articles.service.ts` - All article database operations
+- [x] Created `src/services/tags.service.ts` - Tag operations
+- [x] Created `src/services/content.service.ts` - Content cache management
+- [x] Routes are now thin controllers, all DB logic in services
+- [x] Used `getTableColumns()` from Drizzle to avoid column repetition
+- [x] Implemented array destructuring pattern for `.limit(1)` queries
+
+#### Auth Middleware
+- [x] Created `src/middleware/auth.ts` with `requireAuth(strategy)` function
+- [x] Strategy parameter: "redirect" for pages, "json-401" for API
+- [x] Eliminates manual session checks in every route
+- [x] Sets `userId` in typed context for route handlers
+
+#### Typed Context
+- [x] Created `src/types/context.ts` with `AppContext` and `AppVariables`
+- [x] All Hono instances use `Hono<AppContext>`
+- [x] Full type safety for `c.get("userId")` - no casts needed
+- [x] Extensible for future context variables
+
+#### Archive-First Organization
+- [x] Simplified from read/unread to archive/non-archive model
+- [x] `/` and `/articles` show all non-archived articles
+- [x] `readAt` tracked for future statistics but not used for filtering
+- [x] Archive is the primary organization tool
+
+#### Query Optimizations
+- [x] SQLite JSON aggregation with `json_group_array()` and `COALESCE()`
+- [x] Composite index usage: tags filtered by `(userId, name)` for efficiency
+- [x] Single query for articles with tags (eliminated N+1 queries)
+- [x] 50 articles: reduced from 51 queries to 1 query (98% reduction)
+
 ### Tasks
 
-#### 3.1 Article Routes (`src/routes/articles.tsx`)
-- [ ] Create Hono router instance
-- [ ] Implement HTMX detection helper:
-  - Check `hx-request` header (lowercase)
-  - Return boolean
-- [ ] Implement render helper:
-  - If HTMX request: return partial content
-  - If not: wrap in Layout component
-- [ ] `GET /` (when authenticated):
-  - Check session for user ID
-  - If not authenticated: render login page
-  - If authenticated: redirect to `/articles?status=unread`
-- [ ] `GET /articles`:
-  - Parse query params: status (unread|archived), tag
-  - Query articles from database:
-    - Filter by userId from session
-    - Filter by archived status
-    - Filter by tag if provided (join article_tags)
-    - Order by createdAt DESC
-    - Limit 50
-  - Load tags for each article (join)
-  - Render article list
-  - Check if HTMX request
-  - Return full page or partial
-- [ ] `GET /articles/:id`:
-  - Query article by ID
-  - Verify article belongs to current user (403 if not)
-  - Try to load cached HTML using ContentCache
-  - If cache miss: process on-demand:
-    - Fetch URL using readability wrapper
-    - Cache HTML
-    - Use cached result
-  - Load article tags
-  - Render reader view
-  - Check if HTMX request
-  - Return full page or partial
+#### 3.1 Home Route (`src/routes/home.tsx`)
+- [x] Separated from auth routes into dedicated file
+- [x] `GET /` shows article list when authenticated
+- [x] Shows login page when not authenticated
+- [x] No redirect - renders in place
 
-#### 3.2 ArticleCard Component (`src/components/ArticleCard.tsx`)
-- [ ] Accept article prop with tags
-- [ ] Render structure:
-  - Thumbnail image (if imageUrl exists)
-  - Title (link to article)
-  - Description
-  - Site name
-  - Tags (using TagBadge component)
-  - "Read" button (hx-boost navigation)
-  - "Mark as Read" button (hx-post to /articles/:id/read)
-- [ ] HTMX attributes:
-  - Read button: `hx-boost="true"`
-  - Mark as Read: `hx-post`, `hx-swap="outerHTML"`, `hx-target="closest .article-card"`
-- [ ] Styling using Pico CSS classes
+#### 3.2 Article Routes (`src/routes/articles.tsx`)
+- [x] Create Hono router instance with typed context
+- [x] Implement HTMX detection helper (checks `hx-request` header)
+- [x] Implement render helper (full layout or partial)
+- [x] `GET /articles`:
+  - [x] Parse query params: status (all|archived), tag
+  - [x] Use services layer for all DB operations
+  - [x] Filter by userId, archived status, tag
+  - [x] Order by createdAt DESC, limit 50
+  - [x] Tags loaded via JSON aggregation (single query)
+  - [x] Return full page or partial based on HTMX
+- [x] `GET /articles/:id`:
+  - [x] Use service to get article by ID
+  - [x] Use content service for cache management
+  - [x] On-demand fetching if cache miss
+  - [x] Error handling with fallback to original URL
+  - [x] Return full page or partial
 
-#### 3.3 ArticleList Component (`src/components/ArticleList.tsx`)
-- [ ] Accept articles array prop
-- [ ] Render grid of ArticleCard components
-- [ ] Empty state when no articles:
-  - "No articles yet. Forward a link to the bot to get started!"
-- [ ] Responsive grid layout
+#### 3.3 ArticleCard Component (`src/components/ArticleCard.tsx`)
+- [x] Accept article prop with tags and archived status
+- [x] Accept status prop for view context
+- [x] Render structure with image, title, description, tags, actions
+- [x] Context-aware tag URLs (preserve archive status in links)
+- [x] "Read" button with hx-boost
+- [x] Archive/Unarchive button (conditional text based on status)
+- [x] Styling using Pico CSS classes
 
-#### 3.4 TagBadge Component (`src/components/TagBadge.tsx`)
-- [ ] Accept tag prop
-- [ ] Accept optional href prop
-- [ ] Render badge with tag name
-- [ ] If href provided: make clickable with hx-boost
-- [ ] Link to `/articles?tag={name}`
-- [ ] Styling: small badge/pill design
+#### 3.4 ArticleList Component (`src/components/ArticleList.tsx`)
+- [x] Accept articles array, status, and tag props
+- [x] Render grid with ID for OOB swaps
+- [x] Pass status to ArticleCard for context
+- [x] Empty state with context-aware messages
+- [x] Responsive grid layout
 
-#### 3.5 ReaderView Component (`src/components/ReaderView.tsx`)
-- [ ] Accept article and content props
-- [ ] Render structure:
-  - Article header:
-    - Title
-    - Site name, publish date (if available)
-    - Original link ("View Original")
-    - Tags
-  - Summary section (initially hidden, will implement in Phase 4):
-    - "Summarize" button placeholder
-    - Empty div#summaries
-  - Content area:
-    - Render clean HTML (dangerouslySetInnerHTML equivalent)
-  - Footer:
-    - TTS controls placeholder (will implement in Phase 5)
-    - Archive button (will implement in Phase 5)
-  - Auto-mark-as-read trigger:
-    - Hidden div at bottom
-    - HTMX intersect trigger
-    - `hx-post="/articles/:id/read"`
-    - `hx-trigger="intersect once"`
-    - `hx-swap="none"`
-- [ ] Styling: clean, readable typography
+#### 3.5 EmptyState Component (`src/components/EmptyState.tsx`)
+- [x] Reusable component for empty states
+- [x] Accept message prop
+- [x] Used by ArticleList and API OOB swaps
 
-#### 3.6 API Routes - Mark as Read (`src/routes/api.tsx`)
-- [ ] Create Hono router instance
-- [ ] `POST /articles/:id/read`:
-  - Query article by ID
-  - Verify belongs to current user
-  - Update readAt = NOW()
-  - Return empty response (204 No Content)
+#### 3.6 TagBadge Component (`src/components/TagBadge.tsx`)
+- [x] Accept name and href props
+- [x] Render badge with tag name
+- [x] Regular link (no hx-boost) for full page navigation
+- [x] Styling: small badge/pill design
 
-#### 3.7 Static File Serving (`src/main.ts` - extend)
-- [ ] Add static file middleware for `/public` directory
-- [ ] Serve HTMX, Pico CSS, custom CSS
-- [ ] Add custom CSS file (`public/styles.css`):
-  - Reader view typography
-  - Article card styling
-  - Tag badge styling
-  - Responsive adjustments
+#### 3.7 ReaderView Component (`src/components/ReaderView.tsx`)
+- [x] Accept article and content props
+- [x] Article header with title, site name, original link, tags
+- [x] Summary section placeholder (Phase 4)
+- [x] Content area with clean HTML rendering
+- [x] Auto-mark-as-read using conditional HTMX attributes on footer
+- [x] Archive button in footer
+- [x] Clean, readable typography
 
-#### 3.8 Update Main Entry (`src/main.ts` - extend)
-- [ ] Register article routes
-- [ ] Register API routes
-- [ ] Add static file serving
+#### 3.8 API Routes (`src/routes/api.tsx`)
+- [x] Create Hono router with typed context
+- [x] `POST /api/articles/:id/read`:
+  - [x] Use service to mark as read
+  - [x] Return 204 No Content
+- [x] `POST /api/articles/:id/archive`:
+  - [x] Toggle archive status via service
+  - [x] Count remaining articles in current view
+  - [x] Return empty div to remove card
+  - [x] OOB swap with EmptyState if last article
+- [x] `POST /api/articles/:id/summarize` (placeholder for Phase 4)
 
-**Deliverable**: User can browse articles and read them with clean formatting.
+#### 3.9 Static File Serving
+- [x] Serve HTMX, Pico CSS from `/public`
+- [x] Custom CSS (`public/styles.css`) with:
+  - [x] Reader view typography
+  - [x] Article card styling
+  - [x] Tag badge styling
+  - [x] Responsive grid layout
+
+#### 3.10 Main Entry Updates
+- [x] Register home routes
+- [x] Register auth routes
+- [x] Register article routes
+- [x] Register API routes
+- [x] Static file serving configured
+
+**Deliverable**: User can browse articles, filter by tags/archive, read with clean formatting, and organize via archive.
+
+**Key Features**:
+- Archive-first organization (primary filter)
+- Context-aware tag filtering (preserves archive status)
+- OOB swaps for dynamic empty states
+- Auto-mark-as-read on scroll
+- Type-safe context throughout
+- Services layer for all DB operations
 
 **Testing**:
-- Manual: Browse articles, click to read, check auto-mark-as-read
-- Integration test: `articles.test.tsx` - route rendering, HTMX detection
+- Manual: Browse articles, click tags, archive/unarchive, read articles
+- All routes tested with real data
+- HTMX interactions verified
+- Empty states tested for all views
 
 ---
 

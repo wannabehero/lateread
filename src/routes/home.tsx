@@ -18,6 +18,7 @@ home.get("/", async (c) => {
     try {
       const articlesWithTags = await getArticlesWithTags(session.userId, {
         archived: false,
+        unread: true,
       });
 
       return c.html(

@@ -52,10 +52,12 @@ articlesRouter.get("/articles", requireAuth("redirect"), async (c) => {
   const tag = c.req.query("tag");
 
   const archived = status === "archived";
+  const unread = status === "unread";
 
   try {
     const articlesWithTags = await getArticlesWithTags(userId, {
       archived,
+      unread,
       tag,
     });
 

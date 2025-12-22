@@ -22,6 +22,7 @@ export interface ArticleWithTags {
 
 export interface GetArticlesFilters {
   archived?: boolean;
+  unread?: boolean;
   tag?: string;
 }
 
@@ -40,6 +41,10 @@ export async function getArticlesWithTags(
 
   if (filters.archived !== undefined) {
     conditions.push(eq(articles.archived, filters.archived));
+  }
+
+  if (filters.unread) {
+    conditions.push(sql`${articles.readAt} IS NULL`);
   }
 
   // If filtering by tag, add tag conditions for efficient index usage

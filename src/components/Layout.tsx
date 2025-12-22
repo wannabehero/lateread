@@ -51,7 +51,6 @@ export const Layout: FC<LayoutProps> = ({
                 <li>
                   <a
                     href="/articles?status=unread"
-                    hx-boost="true"
                     class={currentPath.startsWith("/articles") ? "active" : ""}
                   >
                     Unread
@@ -60,7 +59,6 @@ export const Layout: FC<LayoutProps> = ({
                 <li>
                   <a
                     href="/articles?status=archived"
-                    hx-boost="true"
                     class={
                       currentPath.includes("status=archived") ? "active" : ""
                     }

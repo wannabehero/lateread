@@ -26,106 +26,148 @@ export interface GetArticlesFilters {
 }
 
 /**
- * Get articles with tags for a user
+ * Get articles with tags for a user using JSON aggregation
  */
 export async function getArticlesWithTags(
   userId: string,
   filters: GetArticlesFilters = {}
 ): Promise<ArticleWithTags[]> {
-  // Build query conditions
-  const conditions = [eq(articles.userId, userId)];
+  // Build WHERE conditions
+  const conditions = [
+    eq(articles.userId, userId),
+    eq(articles.status, "completed"),
+  ];
 
   if (filters.archived !== undefined) {
     conditions.push(eq(articles.archived, filters.archived));
   }
 
-  // Only show completed articles
-  conditions.push(eq(articles.status, "completed"));
-
-  // Query articles
-  const articlesList = await db
-    .select()
-    .from(articles)
-    .where(and(...conditions))
-    .orderBy(desc(articles.createdAt))
-    .limit(50);
-
-  // Filter by tag if specified
-  let filteredArticles = articlesList;
+  // If filtering by tag, add join condition
   if (filters.tag) {
     const tagName = filters.tag.toLowerCase();
 
-    // Get article IDs that have this tag
-    const articleIdsWithTag = await db
-      .select({ articleId: articleTags.articleId })
-      .from(articleTags)
-      .innerJoin(tags, eq(articleTags.tagId, tags.id))
-      .where(and(eq(tags.userId, userId), eq(sql`lower(${tags.name})`, tagName)));
+    const results = await db
+      .select({
+        id: articles.id,
+        userId: articles.userId,
+        url: articles.url,
+        title: articles.title,
+        description: articles.description,
+        imageUrl: articles.imageUrl,
+        siteName: articles.siteName,
+        status: articles.status,
+        archived: articles.archived,
+        processingAttempts: articles.processingAttempts,
+        lastError: articles.lastError,
+        createdAt: articles.createdAt,
+        processedAt: articles.processedAt,
+        readAt: articles.readAt,
+        updatedAt: articles.updatedAt,
+        tags: sql<string>`json_group_array(json_object('id', ${tags.id}, 'name', ${tags.name}))`,
+      })
+      .from(articles)
+      .leftJoin(articleTags, eq(articles.id, articleTags.articleId))
+      .leftJoin(tags, eq(articleTags.tagId, tags.id))
+      .where(
+        and(
+          ...conditions,
+          eq(sql`lower(${tags.name})`, tagName)
+        )
+      )
+      .groupBy(articles.id)
+      .orderBy(desc(articles.createdAt))
+      .limit(50);
 
-    const articleIdSet = new Set(articleIdsWithTag.map((at) => at.articleId));
-    filteredArticles = articlesList.filter((a) => articleIdSet.has(a.id));
+    return results.map((row) => ({
+      ...row,
+      tags: JSON.parse(row.tags).filter((tag: { id: string; name: string }) => tag.id !== null),
+    }));
   }
 
-  // Load tags for each article
-  const articlesWithTags = await Promise.all(
-    filteredArticles.map(async (article) => {
-      const articleTagsList = await db
-        .select({
-          id: tags.id,
-          name: tags.name,
-        })
-        .from(articleTags)
-        .innerJoin(tags, eq(articleTags.tagId, tags.id))
-        .where(eq(articleTags.articleId, article.id));
-
-      return {
-        ...article,
-        tags: articleTagsList,
-      };
+  // No tag filter - get all articles with their tags
+  const results = await db
+    .select({
+      id: articles.id,
+      userId: articles.userId,
+      url: articles.url,
+      title: articles.title,
+      description: articles.description,
+      imageUrl: articles.imageUrl,
+      siteName: articles.siteName,
+      status: articles.status,
+      archived: articles.archived,
+      processingAttempts: articles.processingAttempts,
+      lastError: articles.lastError,
+      createdAt: articles.createdAt,
+      processedAt: articles.processedAt,
+      readAt: articles.readAt,
+      updatedAt: articles.updatedAt,
+      tags: sql<string>`COALESCE(json_group_array(
+        CASE WHEN ${tags.id} IS NOT NULL
+        THEN json_object('id', ${tags.id}, 'name', ${tags.name})
+        END
+      ), '[]')`,
     })
-  );
+    .from(articles)
+    .leftJoin(articleTags, eq(articles.id, articleTags.articleId))
+    .leftJoin(tags, eq(articleTags.tagId, tags.id))
+    .where(and(...conditions))
+    .groupBy(articles.id)
+    .orderBy(desc(articles.createdAt))
+    .limit(50);
 
-  return articlesWithTags;
+  return results.map((row) => ({
+    ...row,
+    tags: JSON.parse(row.tags).filter((tag: { id: string; name: string } | null) => tag !== null),
+  }));
 }
 
 /**
  * Get a single article by ID with tags
- * Throws error if not found or user doesn't have access
+ * Throws error if not found
  */
 export async function getArticleById(
   articleId: string,
   userId: string
 ): Promise<ArticleWithTags> {
-  const articlesList = await db
-    .select()
+  const results = await db
+    .select({
+      id: articles.id,
+      userId: articles.userId,
+      url: articles.url,
+      title: articles.title,
+      description: articles.description,
+      imageUrl: articles.imageUrl,
+      siteName: articles.siteName,
+      status: articles.status,
+      archived: articles.archived,
+      processingAttempts: articles.processingAttempts,
+      lastError: articles.lastError,
+      createdAt: articles.createdAt,
+      processedAt: articles.processedAt,
+      readAt: articles.readAt,
+      updatedAt: articles.updatedAt,
+      tags: sql<string>`COALESCE(json_group_array(
+        CASE WHEN ${tags.id} IS NOT NULL
+        THEN json_object('id', ${tags.id}, 'name', ${tags.name})
+        END
+      ), '[]')`,
+    })
     .from(articles)
-    .where(eq(articles.id, articleId))
+    .leftJoin(articleTags, eq(articles.id, articleTags.articleId))
+    .leftJoin(tags, eq(articleTags.tagId, tags.id))
+    .where(and(eq(articles.id, articleId), eq(articles.userId, userId)))
+    .groupBy(articles.id)
     .limit(1);
 
-  if (articlesList.length === 0) {
+  if (results.length === 0) {
     throw new Error("Article not found");
   }
 
-  const article = articlesList[0];
-
-  // Verify ownership
-  if (article.userId !== userId) {
-    throw new Error("Access denied");
-  }
-
-  // Load tags
-  const articleTagsList = await db
-    .select({
-      id: tags.id,
-      name: tags.name,
-    })
-    .from(articleTags)
-    .innerJoin(tags, eq(articleTags.tagId, tags.id))
-    .where(eq(articleTags.articleId, article.id));
-
+  const row = results[0];
   return {
-    ...article,
-    tags: articleTagsList,
+    ...row,
+    tags: JSON.parse(row.tags).filter((tag: { id: string; name: string } | null) => tag !== null),
   };
 }
 
@@ -183,19 +225,4 @@ export async function toggleArticleArchive(
     .where(eq(articles.id, articleId));
 
   return newArchivedStatus;
-}
-
-/**
- * Update article metadata
- */
-export async function updateArticleMetadata(
-  articleId: string,
-  metadata: {
-    title?: string;
-    description?: string;
-    imageUrl?: string;
-    siteName?: string;
-  }
-): Promise<void> {
-  await db.update(articles).set(metadata).where(eq(articles.id, articleId));
 }

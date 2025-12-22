@@ -3,14 +3,9 @@ import type { Context } from "hono";
 import { Layout } from "../components/Layout";
 import { ArticleList } from "../components/ArticleList";
 import { ReaderView } from "../components/ReaderView";
-import { contentCache } from "../lib/content-cache";
-import { extractCleanContent } from "../lib/readability";
 import { requireAuth } from "../middleware/auth";
-import {
-  getArticlesWithTags,
-  getArticleById,
-  updateArticleMetadata,
-} from "../services/articles.service";
+import { getArticlesWithTags, getArticleById } from "../services/articles.service";
+import { getArticleContent } from "../services/content.service";
 
 const articlesRouter = new Hono();
 
@@ -92,35 +87,8 @@ articlesRouter.get("/articles/:id", requireAuth("redirect"), async (c) => {
     // Get article with tags
     const article = await getArticleById(articleId, userId);
 
-    // Try to load cached content
-    let content = await contentCache.get(articleId);
-
-    // If cache miss, fetch on-demand
-    if (!content) {
-      console.log(`Cache miss for article ${articleId}, fetching on-demand...`);
-
-      try {
-        const extracted = await extractCleanContent(article.url);
-        content =
-          extracted.content || "<p>Failed to extract article content</p>";
-
-        // Cache for future reads
-        await contentCache.set(articleId, content);
-
-        // Update metadata if it's missing
-        if (!article.title && extracted.title) {
-          await updateArticleMetadata(articleId, {
-            title: extracted.title,
-            description: extracted.description || article.description || undefined,
-            imageUrl: extracted.imageUrl || article.imageUrl || undefined,
-            siteName: extracted.siteName || article.siteName || undefined,
-          });
-        }
-      } catch (error) {
-        console.error(`Failed to fetch article ${articleId}:`, error);
-        content = `<div class="error"><p>Failed to load article content. <a href="${article.url}" target="_blank">View original</a></p></div>`;
-      }
-    }
+    // Get content from cache or fetch if missing
+    const content = await getArticleContent(articleId, article.url);
 
     const readerContent = <ReaderView article={article} content={content} />;
 
@@ -139,15 +107,6 @@ articlesRouter.get("/articles/:id", requireAuth("redirect"), async (c) => {
           <p>Article not found</p>
         </div>,
         404
-      );
-    }
-
-    if (errorMessage === "Access denied") {
-      return c.html(
-        <div class="error">
-          <p>Access denied</p>
-        </div>,
-        403
       );
     }
 

@@ -70,7 +70,7 @@ export class ContentCache {
       const filePath = this.getFilePath(articleId);
       const file = Bun.file(filePath);
       return await file.exists();
-    } catch (error) {
+    } catch {
       return false;
     }
   }

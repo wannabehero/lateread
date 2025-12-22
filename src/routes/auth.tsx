@@ -1,4 +1,5 @@
 import { Hono } from "hono";
+import type { AppContext } from "../types/context";
 import { AuthError } from "../components/auth/AuthError";
 import { AuthPolling } from "../components/auth/AuthPolling";
 import {
@@ -9,7 +10,7 @@ import {
 import { config } from "../lib/config";
 import { clearSession, getSession, setSession } from "../lib/session";
 
-const auth = new Hono();
+const auth = new Hono<AppContext>();
 
 /**
  * POST /auth/telegram - Create auth token and return HTMX fragment

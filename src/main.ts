@@ -4,6 +4,7 @@ import { config } from "./lib/config";
 import { Hono } from "hono";
 import { serveStatic } from "hono/bun";
 import { logger } from "hono/logger";
+import type { AppContext } from "./types/context";
 import { registerHandlers } from "./bot/handlers";
 import { bot, setupBot, startBot, stopBot } from "./bot/index";
 import { runMigrations } from "./lib/db";
@@ -19,8 +20,8 @@ console.log(`Port: ${config.PORT}`);
 // Run database migrations
 runMigrations();
 
-// Create Hono app
-const app = new Hono();
+// Create Hono app with typed context
+const app = new Hono<AppContext>();
 
 // Request logger
 app.use("*", logger());

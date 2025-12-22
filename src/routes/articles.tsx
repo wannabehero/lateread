@@ -1,18 +1,22 @@
 import { Hono } from "hono";
 import type { Context } from "hono";
+import type { AppContext } from "../types/context";
 import { Layout } from "../components/Layout";
 import { ArticleList } from "../components/ArticleList";
 import { ReaderView } from "../components/ReaderView";
 import { requireAuth } from "../middleware/auth";
-import { getArticlesWithTags, getArticleById } from "../services/articles.service";
+import {
+  getArticlesWithTags,
+  getArticleById,
+} from "../services/articles.service";
 import { getArticleContent } from "../services/content.service";
 
-const articlesRouter = new Hono();
+const articlesRouter = new Hono<AppContext>();
 
 /**
  * Helper: Check if request is from HTMX
  */
-function isHtmxRequest(c: Context): boolean {
+function isHtmxRequest(c: Context<AppContext>): boolean {
   return c.req.header("hx-request") === "true";
 }
 
@@ -20,11 +24,12 @@ function isHtmxRequest(c: Context): boolean {
  * Helper: Render with Layout or return partial
  */
 function renderWithLayout(
-  c: Context,
+  c: Context<AppContext>,
   title: string,
-  content: JSX.Element,
-  currentPath?: string
-): Response {
+  // biome-ignore lint/suspicious/noExplicitAny: can be any JSX content
+  content: any,
+  currentPath?: string,
+): Response | Promise<Response> {
   if (isHtmxRequest(c)) {
     return c.html(content);
   }
@@ -32,7 +37,7 @@ function renderWithLayout(
   return c.html(
     <Layout title={title} isAuthenticated={true} currentPath={currentPath}>
       {content}
-    </Layout>
+    </Layout>,
   );
 }
 
@@ -40,7 +45,7 @@ function renderWithLayout(
  * GET /articles - List articles
  */
 articlesRouter.get("/articles", requireAuth("redirect"), async (c) => {
-  const userId = c.get("userId") as string;
+  const userId = c.get("userId");
 
   // Parse query params
   const status = c.req.query("status") || "unread";
@@ -61,8 +66,8 @@ articlesRouter.get("/articles", requireAuth("redirect"), async (c) => {
     const title = tag
       ? `Articles tagged "${tag}"`
       : status === "archived"
-      ? "Archived Articles"
-      : "Unread Articles";
+        ? "Archived Articles"
+        : "Unread Articles";
 
     return renderWithLayout(c, title, content, `/articles?status=${status}`);
   } catch (error) {
@@ -71,7 +76,7 @@ articlesRouter.get("/articles", requireAuth("redirect"), async (c) => {
       <div class="error">
         <p>Failed to load articles. Please try again.</p>
       </div>,
-      500
+      500,
     );
   }
 });
@@ -80,7 +85,7 @@ articlesRouter.get("/articles", requireAuth("redirect"), async (c) => {
  * GET /articles/:id - Read article
  */
 articlesRouter.get("/articles/:id", requireAuth("redirect"), async (c) => {
-  const userId = c.get("userId") as string;
+  const userId = c.get("userId");
   const articleId = c.req.param("id");
 
   try {
@@ -96,17 +101,18 @@ articlesRouter.get("/articles/:id", requireAuth("redirect"), async (c) => {
       c,
       article.title || "Article",
       readerContent,
-      "/articles"
+      "/articles",
     );
   } catch (error) {
-    const errorMessage = error instanceof Error ? error.message : "Unknown error";
+    const errorMessage =
+      error instanceof Error ? error.message : "Unknown error";
 
     if (errorMessage === "Article not found") {
       return c.html(
         <div class="error">
           <p>Article not found</p>
         </div>,
-        404
+        404,
       );
     }
 
@@ -132,7 +138,7 @@ articlesRouter.get("/articles/:id", requireAuth("redirect"), async (c) => {
           </p>
         )}
       </div>,
-      500
+      500,
     );
   }
 });

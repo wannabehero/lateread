@@ -1,11 +1,12 @@
 import { Hono } from "hono";
+import type { AppContext } from "../types/context";
 import { Layout } from "../components/Layout";
 import { ArticleList } from "../components/ArticleList";
 import { getSession } from "../lib/session";
 import { getArticlesWithTags } from "../services/articles.service";
 import { config } from "../lib/config";
 
-const home = new Hono();
+const home = new Hono<AppContext>();
 
 /**
  * GET / - Home/Login page or article list if authenticated
@@ -27,7 +28,7 @@ home.get("/", async (c) => {
           currentPath="/"
         >
           <ArticleList articles={articlesWithTags} status="unread" />
-        </Layout>
+        </Layout>,
       );
     } catch (error) {
       console.error("Error loading articles:", error);
@@ -37,7 +38,7 @@ home.get("/", async (c) => {
             <p>Failed to load articles. Please try again.</p>
           </div>
         </Layout>,
-        500
+        500,
       );
     }
   }

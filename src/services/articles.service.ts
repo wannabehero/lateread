@@ -30,7 +30,7 @@ export interface GetArticlesFilters {
  */
 export async function getArticlesWithTags(
   userId: string,
-  filters: GetArticlesFilters = {}
+  filters: GetArticlesFilters = {},
 ): Promise<ArticleWithTags[]> {
   // Build WHERE conditions
   const conditions = [
@@ -47,10 +47,7 @@ export async function getArticlesWithTags(
   // Index: (userId, name) - both columns needed for optimal performance
   if (filters.tag) {
     const tagName = filters.tag.toLowerCase();
-    conditions.push(
-      eq(tags.userId, userId),
-      eq(tags.name, tagName)
-    );
+    conditions.push(eq(tags.userId, userId), eq(tags.name, tagName));
   }
 
   // Single unified query with COALESCE + CASE WHEN for all scenarios
@@ -73,7 +70,9 @@ export async function getArticlesWithTags(
 
   return results.map((row) => ({
     ...row,
-    tags: JSON.parse(row.tags).filter((tag: { id: string; name: string } | null) => tag !== null),
+    tags: JSON.parse(row.tags).filter(
+      (tag: { id: string; name: string } | null) => tag !== null,
+    ),
   }));
 }
 
@@ -83,7 +82,7 @@ export async function getArticlesWithTags(
  */
 export async function getArticleById(
   articleId: string,
-  userId: string
+  userId: string,
 ): Promise<ArticleWithTags> {
   const results = await db
     .select({
@@ -105,11 +104,13 @@ export async function getArticleById(
     throw new Error("Article not found");
   }
 
-  const row = results[0];
+  const row = results[0]!;
   return {
     ...row,
-    tags: JSON.parse(row.tags).filter((tag: { id: string; name: string } | null) => tag !== null),
-  };
+    tags: JSON.parse(row.tags).filter(
+      (tag: { id: string; name: string } | null) => tag !== null,
+    ),
+  } as ArticleWithTags;
 }
 
 /**
@@ -117,7 +118,7 @@ export async function getArticleById(
  */
 export async function markArticleAsRead(
   articleId: string,
-  userId: string
+  userId: string,
 ): Promise<void> {
   // Verify article exists and belongs to user
   const articlesList = await db
@@ -143,7 +144,7 @@ export async function markArticleAsRead(
  */
 export async function toggleArticleArchive(
   articleId: string,
-  userId: string
+  userId: string,
 ): Promise<boolean> {
   // Verify article exists and belongs to user
   const articlesList = await db
@@ -156,7 +157,7 @@ export async function toggleArticleArchive(
     throw new Error("Article not found");
   }
 
-  const article = articlesList[0];
+  const article = articlesList[0]!;
   const newArchivedStatus = !article.archived;
 
   // Toggle archived status

@@ -1,19 +1,20 @@
 import { Hono } from "hono";
+import type { AppContext } from "../types/context";
 import { ArticleCard } from "../components/ArticleCard";
 import { requireAuth } from "../middleware/auth";
 import {
+  getArticleById,
   markArticleAsRead,
   toggleArticleArchive,
-  getArticleById,
 } from "../services/articles.service";
 
-const api = new Hono();
+const api = new Hono<AppContext>();
 
 /**
  * POST /api/articles/:id/read - Mark article as read
  */
 api.post("/api/articles/:id/read", requireAuth("json-401"), async (c) => {
-  const userId = c.get("userId") as string;
+  const userId = c.get("userId");
   const articleId = c.req.param("id");
 
   try {
@@ -22,7 +23,8 @@ api.post("/api/articles/:id/read", requireAuth("json-401"), async (c) => {
     // Default: return 204 No Content
     return c.body(null, 204);
   } catch (error) {
-    const errorMessage = error instanceof Error ? error.message : "Unknown error";
+    const errorMessage =
+      error instanceof Error ? error.message : "Unknown error";
 
     if (errorMessage === "Article not found") {
       return c.json({ error: "Article not found" }, 404);
@@ -37,7 +39,7 @@ api.post("/api/articles/:id/read", requireAuth("json-401"), async (c) => {
  * POST /api/articles/:id/archive - Toggle article archive status
  */
 api.post("/api/articles/:id/archive", requireAuth("json-401"), async (c) => {
-  const userId = c.get("userId") as string;
+  const userId = c.get("userId");
   const articleId = c.req.param("id");
 
   try {
@@ -48,7 +50,8 @@ api.post("/api/articles/:id/archive", requireAuth("json-401"), async (c) => {
 
     return c.html(<ArticleCard article={updatedArticle} />);
   } catch (error) {
-    const errorMessage = error instanceof Error ? error.message : "Unknown error";
+    const errorMessage =
+      error instanceof Error ? error.message : "Unknown error";
 
     if (errorMessage === "Article not found") {
       return c.json({ error: "Article not found" }, 404);
@@ -64,7 +67,7 @@ api.post("/api/articles/:id/archive", requireAuth("json-401"), async (c) => {
  * (Placeholder for Phase 4)
  */
 api.post("/api/articles/:id/summarize", requireAuth("json-401"), async (c) => {
-  const userId = c.get("userId") as string;
+  const userId = c.get("userId");
   const articleId = c.req.param("id");
 
   try {
@@ -77,10 +80,11 @@ api.post("/api/articles/:id/summarize", requireAuth("json-401"), async (c) => {
         <p>
           <em>Summary generation coming soon in Phase 4!</em>
         </p>
-      </div>
+      </div>,
     );
   } catch (error) {
-    const errorMessage = error instanceof Error ? error.message : "Unknown error";
+    const errorMessage =
+      error instanceof Error ? error.message : "Unknown error";
 
     if (errorMessage === "Article not found") {
       return c.json({ error: "Article not found" }, 404);

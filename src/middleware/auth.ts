@@ -1,4 +1,5 @@
 import type { Context, Next } from "hono";
+import type { AppContext } from "../types/context";
 import { getSession } from "../lib/session";
 
 type AuthStrategy = "redirect" | "json-401";
@@ -12,10 +13,10 @@ type AuthStrategy = "redirect" | "json-401";
  * - Page routes: app.get("/articles", requireAuth("redirect"), handler)
  * - API routes: app.post("/api/articles/:id", requireAuth("json-401"), handler)
  *
- * Sets c.get("userId") for use in route handlers
+ * Sets c.get("userId") for use in route handlers (typed via AppContext)
  */
 export function requireAuth(strategy: AuthStrategy = "redirect") {
-  return async (c: Context, next: Next) => {
+  return async (c: Context<AppContext>, next: Next) => {
     const session = getSession(c);
 
     if (!session?.userId) {

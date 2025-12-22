@@ -1,5 +1,6 @@
 import type { FC } from "hono/jsx";
 import { TagBadge } from "./TagBadge";
+import { TtsControls } from "./TtsControls";
 
 interface Tag {
   id: string;
@@ -68,6 +69,8 @@ export const ReaderView: FC<ReaderViewProps> = ({ article, content }) => {
         </button>
         <div id="summaries"></div>
       </section>
+
+      <TtsControls />
 
       <article
         class="reader-content"

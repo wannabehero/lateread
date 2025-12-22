@@ -666,21 +666,28 @@ During Phase 3, we implemented several architectural patterns beyond the origina
   - Added styling for search form
 - [x] Docker: Install ripgrep in Dockerfile
 
-#### 5.3 TTS Implementation
-- [ ] Add TTS controls to ReaderView:
-  - "Listen" button (🔊 icon)
+#### 5.3 TTS Implementation ✅ COMPLETE
+- [x] Created TtsControls component (`src/components/TtsControls.tsx`):
+  - "Listen" button to start playback
   - Play/Pause/Stop controls
-  - Speed control (1x, 1.5x, 2x)
-- [ ] Create inline vanilla JS in ReaderView:
+  - Speed control (0.75x, 1x, 1.25x, 1.5x, 2x)
+  - Voice selector (system voices)
+- [x] Extracted JavaScript to external file (`public/scripts/tts-controls.js`):
   - Extract text from `.reader-content` div
-  - Create SpeechSynthesisUtterance
-  - Use Web Speech API
+  - Create SpeechSynthesisUtterance with Web Speech API
   - Handle play, pause, stop events
-  - Update button states
-- [ ] Styling for controls:
-  - Fixed position or inline
-  - Clear visual states
-  - Mobile-friendly
+  - Dynamic voice loading (async with voiceschanged event)
+  - Settings changes during playback (restarts smoothly)
+  - Proper callback cleanup to prevent state corruption
+- [x] CSS styling for controls (`public/styles.css`):
+  - Inline position above article content
+  - Clear button states (Play/Pause toggle)
+  - Mobile-friendly (responsive, stacks on small screens)
+  - Consistent with app theme and dark mode
+- [x] Integrated into ReaderView:
+  - Added `<TtsControls />` component
+  - Positioned between summary section and article content
+  - Works with any article content
 
 #### 5.4 PWA Manifest
 - [ ] Create `public/manifest.json`:

@@ -42,9 +42,9 @@ export const ArticleList: FC<ArticleListProps> = ({
   }
 
   return (
-    <div class="article-grid">
+    <div class="article-grid" id="article-container">
       {articles.map((article) => (
-        <ArticleCard article={article} />
+        <ArticleCard article={article} status={status} />
       ))}
     </div>
   );

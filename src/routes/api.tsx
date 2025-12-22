@@ -1,12 +1,13 @@
 import { Hono } from "hono";
-import { ArticleCard } from "../components/ArticleCard";
 import { requireAuth } from "../middleware/auth";
 import {
+  countArticles,
   getArticleById,
   markArticleAsRead,
   toggleArticleArchive,
 } from "../services/articles.service";
 import type { AppContext } from "../types/context";
+import { EmptyState } from "../components/EmptyState";
 
 const api = new Hono<AppContext>();
 
@@ -43,11 +44,26 @@ api.post("/api/articles/:id/archive", requireAuth("json-401"), async (c) => {
   const articleId = c.req.param("id");
 
   try {
-    await toggleArticleArchive(articleId, userId);
+    const newStatus = await toggleArticleArchive(articleId, userId);
+
+    const remainingCount = await countArticles(userId, {
+      archived: !newStatus,
+    });
 
     // Return empty content to remove card from current view
     // User can navigate to other view (archive/unarchive) to see the article
-    return c.html(<div />);
+    return c.html(
+      <>
+        <div />
+        {remainingCount === 0 ? (
+          <div id="article-container" hx-swap-oob="true">
+            <EmptyState message="No articles yet..." />
+          </div>
+        ) : (
+          {}
+        )}
+      </>,
+    );
   } catch (error) {
     const errorMessage =
       error instanceof Error ? error.message : "Unknown error";

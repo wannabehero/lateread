@@ -21,12 +21,23 @@ interface Article {
 
 interface ArticleCardProps {
   article: Article;
+  status?: string;
 }
 
-export const ArticleCard: FC<ArticleCardProps> = ({ article }) => {
+export const ArticleCard: FC<ArticleCardProps> = ({ article, status }) => {
   const displayTitle = article.title || article.url;
   const isRead = article.readAt !== null;
   const isArchived = article.archived;
+
+  // Build tag URL preserving current view context
+  const buildTagUrl = (tagName: string) => {
+    const params = new URLSearchParams();
+    if (status === "archived") {
+      params.set("status", "archived");
+    }
+    params.set("tag", tagName);
+    return `/articles?${params.toString()}`;
+  };
 
   return (
     <article class={`article-card ${isRead ? "read" : ""}`}>
@@ -56,10 +67,7 @@ export const ArticleCard: FC<ArticleCardProps> = ({ article }) => {
         {article.tags.length > 0 && (
           <div class="article-tags">
             {article.tags.map((tag) => (
-              <TagBadge
-                name={tag.name}
-                href={`/articles?tag=${encodeURIComponent(tag.name)}`}
-              />
+              <TagBadge name={tag.name} href={buildTagUrl(tag.name)} />
             ))}
           </div>
         )}

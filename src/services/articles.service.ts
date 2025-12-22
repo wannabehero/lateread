@@ -77,6 +77,37 @@ export async function getArticlesWithTags(
 }
 
 /**
+ * Count articles for a user with filters
+ */
+export async function countArticles(
+  userId: string,
+  filters: GetArticlesFilters = {},
+): Promise<number> {
+  const conditions = [
+    eq(articles.userId, userId),
+    eq(articles.status, "completed"),
+  ];
+
+  if (filters.archived !== undefined) {
+    conditions.push(eq(articles.archived, filters.archived));
+  }
+
+  if (filters.tag) {
+    const tagName = filters.tag.toLowerCase();
+    conditions.push(eq(tags.userId, userId), eq(tags.name, tagName));
+  }
+
+  const [result] = await db
+    .select({ count: sql<number>`count(*)` })
+    .from(articles)
+    .leftJoin(articleTags, eq(articles.id, articleTags.articleId))
+    .leftJoin(tags, eq(articleTags.tagId, tags.id))
+    .where(and(...conditions));
+
+  return result?.count ?? 0;
+}
+
+/**
  * Get a single article by ID with tags
  * Throws error if not found
  */

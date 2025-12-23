@@ -76,12 +76,16 @@ articlesRouter.get("/articles", requireAuth("redirect"), async (c) => {
 **Existing services:**
 - `articles.service.ts`: Article CRUD, queries with tags, mark as read, archive
 - `tags.service.ts`: Tag operations, get or create tags
+- `content.service.ts`: Content cache management, search cached articles
+- `summaries.service.ts`: Summary operations
+- `retry.service.ts`: Retry logic for stuck articles, query and mark failed articles
 - *(Add more as needed)*
 
 **Guidelines:**
-- Never write database queries directly in route handlers
+- Never write database queries directly in route handlers or workers
 - Services throw errors with descriptive messages
 - Routes catch and translate service errors to HTTP responses
+- Workers use services for all database operations
 - Services are stateless functions (no classes unless necessary)
 
 ### 5. Authentication Middleware
@@ -125,6 +129,25 @@ app.post("/api/articles/:id", requireAuth("json-401"), async (c) => {
 - Full processing pipeline: fetch → parse → extract → tag (LLM) → cache → database update
 - Workers post `{success: true/false, articleId, error?}` back to parent
 - Non-blocking spawning from bot handlers (fire and forget with error handling)
+- **Workers MUST use services for all database operations** (same as routes)
+
+**Worker service pattern:**
+```typescript
+// src/workers/retry.ts
+import { getStuckArticles, markArticleAsError } from "../services/retry.service";
+
+export async function retryFailedArticles(): Promise<void> {
+  const stuckArticles = await getStuckArticles(); // Service handles DB query
+  // ... process articles
+  await markArticleAsError(articleId, "Error message"); // Service handles DB update
+}
+```
+
+**Benefits:**
+- Consistent with route pattern (thin controllers/workers)
+- Database logic centralized and testable
+- Easy to mock services in worker tests
+- Code reuse across workers and routes
 
 ### 8. Database Schema Critical Details
 - **Tags stored lowercase**: Always normalize with `tag.toLowerCase()` before insert/search
@@ -292,6 +315,7 @@ bun install              # Install all dependencies
 - ❌ Using Node.js APIs (`node:fs`) instead of Bun APIs (`Bun.file()`)
 - ❌ Forgetting to normalize tag names to lowercase
 - ❌ Blocking bot message handlers with heavy processing (use workers)
+- ❌ Writing database queries directly in routes or workers (use services)
 - ❌ Using JavaScript redirects instead of HX-Redirect header
 - ❌ Installing all LLM SDKs (only install chosen provider)
 - ❌ Using `<a role="button">` instead of proper semantic HTML

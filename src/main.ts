@@ -6,10 +6,12 @@ import { serveStatic } from "hono/bun";
 import { logger } from "hono/logger";
 import { registerHandlers } from "./bot/handlers";
 import { bot, setupBot, startBot, stopBot } from "./bot/index";
+import { startCrons } from "./cron";
 import { runMigrations } from "./lib/db";
 import apiRoutes from "./routes/api";
 import articlesRoutes from "./routes/articles";
 import authRoutes from "./routes/auth";
+import healthRoutes from "./routes/health";
 import homeRoutes from "./routes/home";
 import type { AppContext } from "./types/context";
 
@@ -34,6 +36,7 @@ app.route("/", homeRoutes);
 app.route("/", authRoutes);
 app.route("/", articlesRoutes);
 app.route("/", apiRoutes);
+app.route("/", healthRoutes);
 
 // Setup and start Telegram bot
 setupBot();
@@ -54,6 +57,9 @@ const server = Bun.serve({
 
 console.log(`Server running at http://localhost:${config.PORT}`);
 console.log(`Telegram bot: @${config.BOT_USERNAME}`);
+
+// Start cron jobs
+startCrons();
 
 // Graceful shutdown
 process.on("SIGINT", async () => {

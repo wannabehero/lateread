@@ -736,7 +736,7 @@ During Phase 3, we implemented several architectural patterns beyond the origina
 ### Tasks
 
 #### 6.1 Retry Worker (`src/workers/retry.ts`)
-- [ ] Implement `retryFailedArticles()`:
+- [x] Implement `retryFailedArticles()`:
   - Query stuck articles:
     - status IN ('pending', 'processing', 'failed')
     - updatedAt < NOW() - RETRY_DELAY_MINUTES
@@ -750,30 +750,30 @@ During Phase 3, we implemented several architectural patterns beyond the origina
     - processingAttempts >= MAX_RETRY_ATTEMPTS
   - Update to status = 'error', lastError = "Max retries exceeded"
   - Log results (count retried, count marked error)
-- [ ] Export function
+- [x] Export function
 
 #### 6.2 Cron Registry (`src/cron.ts`)
-- [ ] Import croner
-- [ ] Import all cron job functions:
+- [x] Import croner
+- [x] Import all cron job functions:
   - `retryFailedArticles` from workers/retry
   - `cleanupOldCache` from lib/content-cache
   - `cleanupExpiredTokens` from lib/auth
-- [ ] Implement `startCrons()`:
+- [x] Implement `startCrons()`:
   - Schedule retry job: every 5 minutes
   - Schedule cache cleanup: daily at 3am
   - Schedule token cleanup: hourly
   - Log each job registration
-- [ ] Export function
+- [x] Export function
 
 #### 6.3 Update Main Entry (`src/main.ts` - extend)
-- [ ] Import and call `startCrons()` after server starts
-- [ ] Log "Cron jobs started"
+- [x] Import and call `startCrons()` after server starts
+- [x] Log "Cron jobs started"
 
 #### 6.4 Health Check Endpoint
-- [ ] Add `GET /health` route:
+- [x] Add `GET /health` route:
   - Return JSON: {status: 'ok', timestamp: Date.now()}
   - Use for monitoring
-- [ ] Add `GET /health/db` route:
+- [x] Add `GET /health/db` route:
   - Query database (simple SELECT 1)
   - Return {status: 'ok', database: 'connected'}
   - Return error if database unreachable

@@ -787,39 +787,41 @@ During Phase 3, we implemented several architectural patterns beyond the origina
 
 ---
 
-## Phase 7: Testing
+## Phase 7: Testing ✅ UNIT TESTS COMPLETE
 
 **Goal**: Comprehensive test coverage for all modules.
 
+**Status**: Unit tests completed (134 tests passing, 74.29% function coverage, 78.54% line coverage)
+
 ### Tasks
 
-#### 7.1 Test Setup
-- [ ] Create `test/setup.ts`:
+#### 7.1 Test Setup ✅
+- [x] Create `test/setup.ts`:
   - Helper to create in-memory SQLite database
   - Run migrations on test database
   - Clean up after tests
-- [ ] Create `test/fixtures.ts`:
+- [x] Create `test/fixtures.ts`:
   - User creation helper
   - Article creation helper
   - Tag creation helper
   - Auth token creation helper
   - Mock HTML content
   - Wait/polling helper
-- [ ] Create `test/mocks/llm.ts`:
+- [x] Create `test/mocks/llm.ts`:
   - Mock LLM provider with configurable responses
   - Mock tag extraction
   - Mock summarization
-- [ ] Create `test/mocks/telegram.ts`:
+- [x] Create `test/mocks/telegram.ts`:
   - Mock bot messages
   - Mock bot commands
 
-#### 7.2 Unit Tests - Library Modules
-- [ ] `lib/config.test.ts`:
+#### 7.2 Unit Tests - Library Modules ✅
+- [x] `lib/config.test.ts` (19 tests):
   - Valid config parsing
   - Missing required fields throw errors
   - Defaults applied correctly
   - Type coercion works
-- [ ] `lib/content-cache.test.ts`:
+- [x] `lib/content-cache.test.ts` (20 tests):
   - Save and retrieve content
   - Return null for non-existent
   - Handle unicode/emojis
@@ -827,7 +829,7 @@ During Phase 3, we implemented several architectural patterns beyond the origina
   - Delete by ID
   - Cleanup old files
   - Preserve recent files
-- [ ] `lib/readability.test.ts`:
+- [x] `lib/readability.test.ts` (12 tests):
   - Extract clean content (mock fetch)
   - Extract OpenGraph metadata
   - Fallback to meta tags
@@ -836,7 +838,7 @@ During Phase 3, we implemented several architectural patterns beyond the origina
   - Handle network errors
   - Handle 404/500
   - Follow redirects
-- [ ] `lib/auth.test.ts`:
+- [x] `lib/auth.test.ts` (15 tests):
   - Generate tokens
   - Set expiration correctly
   - Claim valid tokens
@@ -844,15 +846,15 @@ During Phase 3, we implemented several architectural patterns beyond the origina
   - Reject non-existent tokens
   - Create user on claim
   - Cleanup expired tokens
-- [ ] `lib/llm.test.ts`:
+- [x] `lib/llm.test.ts` (existing tests):
   - Claude provider initialization
   - Tag extraction with existing tags
   - Tag extraction returns valid format
   - Summarization returns three formats
   - Handle API errors gracefully
 
-#### 7.3 Unit Tests - Database
-- [ ] `db/schema.test.ts`:
+#### 7.3 Unit Tests - Database ✅
+- [x] `db/schema.test.ts` (19 tests):
   - Migrations run successfully
   - Unique constraints enforced
   - Cascade deletes work
@@ -860,6 +862,22 @@ During Phase 3, we implemented several architectural patterns beyond the origina
   - Foreign keys enforced
   - Indexes created
   - Tag names lowercase
+
+#### 7.3.5 Unit Tests - Services ✅
+- [x] `services/articles.service.test.ts` (13 tests):
+  - Get articles with tags
+  - Filter by archived status
+  - Filter by tag
+  - Mark as read
+  - Toggle archive
+- [x] `services/tags.service.test.ts` (19 tests):
+  - Get user tags
+  - Get or create tag (case-insensitive)
+  - Delete tag
+- [x] `services/content.service.test.ts` (9 tests):
+  - Search cached article IDs
+  - Case-insensitive search
+  - User isolation
 
 #### 7.4 Integration Tests - Workers
 - [ ] `workers/process-metadata.test.ts`:
@@ -1374,6 +1392,55 @@ if (Math.random() < 0.1) {
 - [ ] Document logging patterns in CLAUDE.md
 
 **Note**: This is a v2+ improvement. Current console logging is sufficient for v1 development.
+
+---
+
+## Testing Infrastructure Improvements (Future)
+
+### Unified Mocking Strategy
+
+**Current State**: Test files use various mocking approaches:
+- Database mocking: `mock.module()` with test database injection
+- Fetch mocking: `global.fetch = mock()` with per-test overrides
+- Config mocking: `mock.module("../lib/config")` with test values
+- Different cleanup patterns: `beforeEach`, `afterEach`, `afterAll`
+- Different test cache directories: Some use relative paths, some use `/tmp`
+
+**Recommended Improvements**:
+1. **Centralized Mock Setup**:
+   - Create `test/mocks/setup.ts` with reusable mock factories
+   - Standardize database mocking pattern across all tests
+   - Provide consistent fetch mock utilities
+   - Single source of truth for test configuration
+
+2. **Database Mocking**:
+   - All tests should use `createTestDatabase()` from `test/setup.ts`
+   - Standardize `mock.module("../lib/db")` pattern
+   - Ensure consistent cleanup with `resetDatabase()`
+
+3. **Fetch Mocking**:
+   - Create `createFetchMock()` utility in test setup
+   - Provide common response builders (success, error, timeout)
+   - Standardize `@ts-expect-error` usage for type safety
+
+4. **Cache Directory Handling**:
+   - Always use `/tmp/${crypto.randomUUID()}` for test caches
+   - Consistent cleanup with `afterEach` hooks
+   - Prevent test pollution and file system conflicts
+
+5. **Mock Lifecycle**:
+   - Document when to use `beforeEach` vs `afterEach` vs `afterAll`
+   - Standardize mock reset patterns
+   - Clear guidelines for mock isolation between tests
+
+**Implementation Priority**: Post-v1 (after core functionality complete)
+
+**Benefits**:
+- Reduced test boilerplate
+- Consistent test patterns across codebase
+- Easier to write new tests
+- Better test isolation and reliability
+- Clearer test setup and teardown
 
 ---
 

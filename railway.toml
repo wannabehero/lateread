@@ -1,0 +1,11 @@
+[build]
+builder = "DOCKERFILE"
+
+[deploy]
+# NOTE: Currently migrate on start
+# preDeployCommand = "bun run db:migrate"
+healthcheckPath = "/health"
+restartPolicyType = "ALWAYS"
+drainingSeconds = 5
+
+# RAILWAY_RUN_UID=0

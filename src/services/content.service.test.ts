@@ -1,0 +1,222 @@
+import { afterEach, describe, expect, it, mock } from "bun:test";
+import { randomUUID } from "node:crypto";
+import { mkdir, rm } from "node:fs/promises";
+import { join } from "node:path";
+import { searchCachedArticleIds } from "./content.service";
+
+const TEST_CACHE_DIR = `/tmp/${crypto.randomUUID()}`;
+const TEST_USER_ID = "test-user-123";
+
+// Mock config to use test cache directory
+mock.module("../lib/config", () => ({
+  config: {
+    CACHE_DIR: TEST_CACHE_DIR,
+  },
+}));
+
+describe("content.service", () => {
+  afterEach(async () => {
+    // Clean up after all tests
+    try {
+      await rm(TEST_CACHE_DIR, { recursive: true, force: true });
+    } catch {
+      // Ignore if doesn't exist
+    }
+  });
+
+  describe("searchCachedArticleIds", () => {
+    it("should find articles matching search query", async () => {
+      const article1Id = randomUUID();
+      const article2Id = randomUUID();
+      const article3Id = randomUUID();
+
+      // Create cache directory
+      const userCacheDir = join(TEST_CACHE_DIR, TEST_USER_ID);
+      await mkdir(userCacheDir, { recursive: true });
+
+      // Create test articles
+      await Bun.write(
+        join(userCacheDir, `${article1Id}.html`),
+        "<html><body><p>JavaScript programming tutorial</p></body></html>",
+      );
+
+      await Bun.write(
+        join(userCacheDir, `${article2Id}.html`),
+        "<html><body><p>Python programming guide</p></body></html>",
+      );
+
+      await Bun.write(
+        join(userCacheDir, `${article3Id}.html`),
+        "<html><body><p>JavaScript frameworks comparison</p></body></html>",
+      );
+
+      const results = await searchCachedArticleIds(TEST_USER_ID, "JavaScript");
+
+      expect(results).toHaveLength(2);
+      expect(results).toContain(article1Id);
+      expect(results).toContain(article3Id);
+      expect(results).not.toContain(article2Id);
+    });
+
+    it("should be case-insensitive", async () => {
+      const articleId = randomUUID();
+
+      const userCacheDir = join(TEST_CACHE_DIR, TEST_USER_ID);
+      await mkdir(userCacheDir, { recursive: true });
+
+      await Bun.write(
+        join(userCacheDir, `${articleId}.html`),
+        "<html><body><p>TypeScript programming</p></body></html>",
+      );
+
+      const results1 = await searchCachedArticleIds(TEST_USER_ID, "typescript");
+      const results2 = await searchCachedArticleIds(TEST_USER_ID, "TYPESCRIPT");
+      const results3 = await searchCachedArticleIds(TEST_USER_ID, "TypeScript");
+
+      expect(results1).toHaveLength(1);
+      expect(results2).toHaveLength(1);
+      expect(results3).toHaveLength(1);
+      expect(results1[0]).toBe(articleId);
+      expect(results2[0]).toBe(articleId);
+      expect(results3[0]).toBe(articleId);
+    });
+
+    it("should return empty array if no matches found", async () => {
+      const articleId = randomUUID();
+
+      const userCacheDir = join(TEST_CACHE_DIR, TEST_USER_ID);
+      await mkdir(userCacheDir, { recursive: true });
+
+      await Bun.write(
+        join(userCacheDir, `${articleId}.html`),
+        "<html><body><p>JavaScript programming</p></body></html>",
+      );
+
+      const results = await searchCachedArticleIds(TEST_USER_ID, "Python");
+
+      expect(results).toHaveLength(0);
+    });
+
+    it("should return empty array if cache directory does not exist", async () => {
+      const results = await searchCachedArticleIds(
+        "non-existent-user",
+        "search-query",
+      );
+
+      expect(results).toHaveLength(0);
+    });
+
+    it("should return empty array if cache directory is empty", async () => {
+      const userCacheDir = join(TEST_CACHE_DIR, TEST_USER_ID);
+      await mkdir(userCacheDir, { recursive: true });
+
+      const results = await searchCachedArticleIds(TEST_USER_ID, "JavaScript");
+
+      expect(results).toHaveLength(0);
+    });
+
+    it("should only search within user's own cache directory", async () => {
+      const user1Id = "user-1";
+      const user2Id = "user-2";
+      const article1Id = randomUUID();
+      const article2Id = randomUUID();
+
+      // Create cache for user 1
+      const user1CacheDir = join(TEST_CACHE_DIR, user1Id);
+      await mkdir(user1CacheDir, { recursive: true });
+      await Bun.write(
+        join(user1CacheDir, `${article1Id}.html`),
+        "<html><body><p>JavaScript for user 1</p></body></html>",
+      );
+
+      // Create cache for user 2
+      const user2CacheDir = join(TEST_CACHE_DIR, user2Id);
+      await mkdir(user2CacheDir, { recursive: true });
+      await Bun.write(
+        join(user2CacheDir, `${article2Id}.html`),
+        "<html><body><p>JavaScript for user 2</p></body></html>",
+      );
+
+      const user1Results = await searchCachedArticleIds(user1Id, "JavaScript");
+      const user2Results = await searchCachedArticleIds(user2Id, "JavaScript");
+
+      expect(user1Results).toHaveLength(1);
+      expect(user1Results[0]).toBe(article1Id);
+
+      expect(user2Results).toHaveLength(1);
+      expect(user2Results[0]).toBe(article2Id);
+    });
+
+    it("should extract article IDs from file paths correctly", async () => {
+      const articleId = "550e8400-e29b-41d4-a716-446655440000"; // Valid UUID
+
+      const userCacheDir = join(TEST_CACHE_DIR, TEST_USER_ID);
+      await mkdir(userCacheDir, { recursive: true });
+
+      await Bun.write(
+        join(userCacheDir, `${articleId}.html`),
+        "<html><body><p>Test content</p></body></html>",
+      );
+
+      const results = await searchCachedArticleIds(TEST_USER_ID, "Test");
+
+      expect(results).toHaveLength(1);
+      expect(results[0]).toBe(articleId);
+    });
+
+    it("should handle search queries with special characters", async () => {
+      const articleId = randomUUID();
+
+      const userCacheDir = join(TEST_CACHE_DIR, TEST_USER_ID);
+      await mkdir(userCacheDir, { recursive: true });
+
+      await Bun.write(
+        join(userCacheDir, `${articleId}.html`),
+        "<html><body><p>C++ programming language</p></body></html>",
+      );
+
+      const results = await searchCachedArticleIds(TEST_USER_ID, "C++");
+
+      expect(results).toHaveLength(1);
+      expect(results[0]).toBe(articleId);
+    });
+
+    it("should return multiple results when multiple articles match", async () => {
+      const article1Id = randomUUID();
+      const article2Id = randomUUID();
+      const article3Id = randomUUID();
+      const article4Id = randomUUID();
+
+      const userCacheDir = join(TEST_CACHE_DIR, TEST_USER_ID);
+      await mkdir(userCacheDir, { recursive: true });
+
+      await Bun.write(
+        join(userCacheDir, `${article1Id}.html`),
+        "<html><body><p>Machine learning tutorial</p></body></html>",
+      );
+
+      await Bun.write(
+        join(userCacheDir, `${article2Id}.html`),
+        "<html><body><p>Deep learning fundamentals</p></body></html>",
+      );
+
+      await Bun.write(
+        join(userCacheDir, `${article3Id}.html`),
+        "<html><body><p>Reinforcement learning guide</p></body></html>",
+      );
+
+      await Bun.write(
+        join(userCacheDir, `${article4Id}.html`),
+        "<html><body><p>Web development basics</p></body></html>",
+      );
+
+      const results = await searchCachedArticleIds(TEST_USER_ID, "learning");
+
+      expect(results).toHaveLength(3);
+      expect(results).toContain(article1Id);
+      expect(results).toContain(article2Id);
+      expect(results).toContain(article3Id);
+      expect(results).not.toContain(article4Id);
+    });
+  });
+});

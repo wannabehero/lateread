@@ -1,44 +1,21 @@
-import { and, eq, lt, ne, or, sql } from "drizzle-orm";
-import { articles } from "../db/schema";
 import { config } from "../lib/config";
-import { db } from "../lib/db";
 import { spawnArticleWorker } from "../lib/worker";
+import {
+  getExhaustedArticles,
+  getStuckArticles,
+  markArticleAsError,
+} from "../services/retry.service";
 
 /**
  * Retry failed articles that are stuck in pending, processing, or failed states
  * Called by cron every 5 minutes
  */
 export async function retryFailedArticles(): Promise<void> {
-  const delayMs = config.RETRY_DELAY_MINUTES * 60 * 1000;
-  const cutoffTime = new Date(Date.now() - delayMs);
-
   console.log("[Retry Worker] Starting retry job...");
 
   try {
-    // 1. Query stuck articles that need retry
-    const stuckArticles = await db
-      .select({
-        id: articles.id,
-        url: articles.url,
-        status: articles.status,
-        processingAttempts: articles.processingAttempts,
-        updatedAt: articles.updatedAt,
-      })
-      .from(articles)
-      .where(
-        and(
-          // Status is pending, processing, or failed
-          or(
-            eq(articles.status, "pending"),
-            eq(articles.status, "processing"),
-            eq(articles.status, "failed"),
-          ),
-          // Updated more than RETRY_DELAY_MINUTES ago
-          lt(articles.updatedAt, cutoffTime),
-          // Not yet exhausted retry attempts
-          lt(articles.processingAttempts, config.MAX_RETRY_ATTEMPTS),
-        ),
-      );
+    // 1. Get stuck articles that need retry
+    const stuckArticles = await getStuckArticles();
 
     console.log(
       `[Retry Worker] Found ${stuckArticles.length} articles to retry`,
@@ -58,23 +35,8 @@ export async function retryFailedArticles(): Promise<void> {
       });
     }
 
-    // 3. Query articles that have exhausted retry attempts
-    const exhaustedArticles = await db
-      .select({
-        id: articles.id,
-        url: articles.url,
-        processingAttempts: articles.processingAttempts,
-      })
-      .from(articles)
-      .where(
-        and(
-          // Not yet marked as error
-          ne(articles.status, "error"),
-          ne(articles.status, "completed"),
-          // Exhausted retry attempts
-          sql`${articles.processingAttempts} >= ${config.MAX_RETRY_ATTEMPTS}`,
-        ),
-      );
+    // 3. Get articles that have exhausted retry attempts
+    const exhaustedArticles = await getExhaustedArticles();
 
     console.log(
       `[Retry Worker] Found ${exhaustedArticles.length} articles that exhausted retries`,
@@ -82,14 +44,7 @@ export async function retryFailedArticles(): Promise<void> {
 
     // 4. Mark exhausted articles as error
     for (const article of exhaustedArticles) {
-      await db
-        .update(articles)
-        .set({
-          status: "error",
-          lastError: "Max retry attempts exceeded",
-          updatedAt: new Date(),
-        })
-        .where(eq(articles.id, article.id));
+      await markArticleAsError(article.id, "Max retry attempts exceeded");
 
       console.log(
         `[Retry Worker] Marked article ${article.id} as error (${article.processingAttempts} attempts)`,

@@ -5,6 +5,7 @@ import { Layout } from "../components/Layout";
 import { ReaderView } from "../components/ReaderView";
 import { requireAuth } from "../middleware/auth";
 import {
+  countArticlesByStatus,
   getArticleById,
   getArticlesWithTags,
 } from "../services/articles.service";
@@ -61,12 +62,18 @@ articlesRouter.get("/articles", requireAuth("redirect"), async (c) => {
       query,
     });
 
+    const processingCount = await countArticlesByStatus(userId, [
+      "pending",
+      "processing",
+    ]);
+
     const content = (
       <ArticleList
         articles={articlesWithTags}
         status={status}
         tag={tag}
         query={query}
+        processingCount={processingCount}
       />
     );
 

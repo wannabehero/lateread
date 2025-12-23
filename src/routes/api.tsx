@@ -1,9 +1,11 @@
 import { Hono } from "hono";
 import { EmptyState } from "../components/EmptyState";
+import { ProcessingBanner } from "../components/ProcessingBanner";
 import { SummaryView } from "../components/SummaryView";
 import { requireAuth } from "../middleware/auth";
 import {
   countArticles,
+  countArticlesByStatus,
   getArticleById,
   markArticleAsRead,
   toggleArticleArchive,
@@ -115,6 +117,21 @@ api.post("/api/articles/:id/summarize", requireAuth("json-401"), async (c) => {
       </div>,
       500,
     );
+  }
+});
+
+/**
+ * GET /api/articles/processing-count - Get count of processing articles
+ */
+api.get("/api/articles/processing-count", requireAuth("json-401"), async (c) => {
+  const userId = c.get("userId");
+
+  try {
+    const count = await countArticlesByStatus(userId, ["pending", "processing"]);
+    return c.html(<ProcessingBanner count={count} />);
+  } catch (error) {
+    console.error("Error getting processing count:", error);
+    return c.html(<ProcessingBanner count={0} />);
   }
 });
 

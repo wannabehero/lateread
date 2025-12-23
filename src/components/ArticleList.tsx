@@ -1,6 +1,7 @@
 import type { FC } from "hono/jsx";
 import { ArticleCard } from "./ArticleCard";
 import { EmptyState } from "./EmptyState";
+import { ProcessingBanner } from "./ProcessingBanner";
 import { SearchForm } from "./SearchForm";
 
 interface Tag {
@@ -26,6 +27,7 @@ interface ArticleListProps {
   status?: string;
   tag?: string;
   query?: string;
+  processingCount?: number;
 }
 
 export const ArticleList: FC<ArticleListProps> = ({
@@ -33,6 +35,7 @@ export const ArticleList: FC<ArticleListProps> = ({
   status,
   tag,
   query,
+  processingCount = 0,
 }) => {
   const emptyMessage = query
     ? `No articles found for "${query}"`
@@ -44,6 +47,7 @@ export const ArticleList: FC<ArticleListProps> = ({
 
   return (
     <div id="article-container">
+      <ProcessingBanner count={processingCount} />
       <SearchForm query={query} status={status} />
       {articles.length === 0 ? (
         <EmptyState message={emptyMessage} />

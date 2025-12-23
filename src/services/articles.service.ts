@@ -245,3 +245,18 @@ export async function toggleArticleArchive(
 
   return newArchivedStatus;
 }
+
+/**
+ * Count articles by status for a user
+ */
+export async function countArticlesByStatus(
+  userId: string,
+  statuses: Array<"pending" | "processing" | "completed" | "failed" | "error">,
+): Promise<number> {
+  const [result] = await db
+    .select({ count: sql<number>`count(*)` })
+    .from(articles)
+    .where(and(eq(articles.userId, userId), inArray(articles.status, statuses)));
+
+  return result?.count ?? 0;
+}

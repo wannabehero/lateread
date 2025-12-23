@@ -7,6 +7,7 @@ import {
 
 export interface TagExtractionResult {
   tags: string[];
+  language: string;
   confidence: number;
 }
 
@@ -89,22 +90,24 @@ ${truncatedContent}`;
       const firstBlock = message.content[0];
       if (!firstBlock || firstBlock.type !== "text") {
         console.error("Unexpected response format from LLM");
-        return { tags: [], confidence: 0 };
+        return { tags: [], language: "en", confidence: 0 };
       }
 
       const result = extractJsonFromResponse<TagExtractionResult>(
         firstBlock.text,
-        { tags: [], confidence: 0 },
+        { tags: [], language: "en", confidence: 0 },
       );
 
       return {
         ...result,
         // Normalize tags to lowercase
         tags: result.tags.map((tag: string) => tag.toLowerCase()),
+        // Normalize language to lowercase
+        language: result.language.toLowerCase(),
       };
     } catch (error) {
       console.error("Claude tag extraction failed:", error);
-      return { tags: [], confidence: 0 };
+      return { tags: [], language: "en", confidence: 0 };
     }
   }
 

@@ -16,6 +16,27 @@
   const speedSelect = document.getElementById("tts-speed");
   const voiceSelect = document.getElementById("tts-voice");
 
+  function createVoiceOption(voice, index) {
+    const option = document.createElement("option");
+    option.value = index;
+    option.textContent = `${voice.name} (${voice.lang})`;
+    if (voice.default) {
+      option.textContent += " - Default";
+    }
+    return option;
+  }
+
+  function addVoiceGroup(label, voiceList) {
+    if (voiceList.length === 0) return;
+
+    const group = document.createElement("optgroup");
+    group.label = label;
+    voiceList.forEach(({ voice, index }) => {
+      group.appendChild(createVoiceOption(voice, index));
+    });
+    voiceSelect.appendChild(group);
+  }
+
   function loadVoices() {
     voices = speechSynthesis.getVoices();
 
@@ -30,15 +51,31 @@
     defaultOption.textContent = "Default Voice";
     voiceSelect.appendChild(defaultOption);
 
+    const ttsControls = document.querySelector(".tts-controls");
+    const articleLanguage = ttsControls?.dataset.language || "";
+
+    const matchingVoices = [];
+    const otherVoices = [];
+
     voices.forEach((voice, index) => {
-      const option = document.createElement("option");
-      option.value = index;
-      option.textContent = `${voice.name} (${voice.lang})`;
-      if (voice.default) {
-        option.textContent += " - Default";
+      const voiceData = { voice, index };
+
+      if (
+        articleLanguage &&
+        voice.lang.toLowerCase().startsWith(articleLanguage.toLowerCase())
+      ) {
+        matchingVoices.push(voiceData);
+      } else {
+        otherVoices.push(voiceData);
       }
-      voiceSelect.appendChild(option);
     });
+
+    if (articleLanguage) {
+      addVoiceGroup(`${articleLanguage.toUpperCase()} Voices`, matchingVoices);
+      addVoiceGroup("Other Voices", otherVoices);
+    } else {
+      addVoiceGroup("All Voices", otherVoices);
+    }
   }
 
   loadVoices();

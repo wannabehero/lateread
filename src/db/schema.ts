@@ -59,6 +59,7 @@ export const articles = sqliteTable(
     description: text("description"),
     imageUrl: text("image_url"),
     siteName: text("site_name"),
+    language: text("language"),
     status: text("status", { enum: articleStatus })
       .notNull()
       .default("pending"),

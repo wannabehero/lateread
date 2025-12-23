@@ -608,7 +608,7 @@ During Phase 3, we implemented several architectural patterns beyond the origina
 
 ---
 
-## Phase 5: Additional Features (Archive, Search, TTS)
+## Phase 5: Additional Features (Archive, Search, TTS) ✅ COMPLETE
 
 **Goal**: Add archive, tag filtering, search, and TTS functionality.
 
@@ -708,15 +708,18 @@ During Phase 3, we implemented several architectural patterns beyond the origina
   - Added viewport-fit=cover for notched devices
   - Added apple-touch-icon links
 
-#### 5.5 Additional UI Polish
-- [ ] Empty states for all list views
-- [ ] Loading states (HTMX indicators)
-- [ ] Error states (HTMX error handling)
-- [ ] Responsive design checks:
+#### 5.5 Additional UI Polish ✅ COMPLETE
+- [x] Empty states for all list views
+- [x] Loading states (HTMX indicators)
+- [x] Error states (HTMX error handling)
+- [x] Responsive design checks:
   - Mobile navigation
   - Tablet layout
   - Desktop layout
+  - Reduced mobile padding (0.25rem)
 - [x] Dark mode support (Pico CSS includes this)
+- [x] Toast notifications for user feedback
+- [x] Hide Archive button when already archived
 
 **Deliverable**: Full-featured reading experience with archive, search, and TTS.
 

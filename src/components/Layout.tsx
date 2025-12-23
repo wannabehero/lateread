@@ -67,6 +67,8 @@ export const Layout: FC<LayoutProps> = ({
 
         {/* HTMX */}
         <script src="/public/htmx.min.js" defer></script>
+        <script src="/public/scripts/htmx-error-handler.js" defer></script>
+        <script src="/public/scripts/toast.js" defer></script>
       </head>
       <body>
         <header class="container">

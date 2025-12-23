@@ -16,6 +16,7 @@ interface Article {
   siteName: string | null;
   createdAt: Date;
   readAt: Date | null;
+  archived: boolean;
   tags: Tag[];
 }
 
@@ -85,15 +86,23 @@ export const ReaderView: FC<ReaderViewProps> = ({ article, content }) => {
           "hx-swap": "none",
         })}
       >
-        <div class="reader-actions">
-          <button
-            type="button"
-            hx-post={`/api/articles/${article.id}/archive`}
-            hx-swap="none"
-          >
-            Archive
-          </button>
-        </div>
+        {!article.archived && (
+          <div class="reader-actions">
+            <button
+              type="button"
+              hx-post={`/api/articles/${article.id}/archive`}
+              hx-swap="delete"
+              hx-target="closest .reader-actions"
+              hx-disabled-elt="this"
+            >
+              <span class="button-text">Archive</span>
+              <span class="button-loading">
+                <span class="spinner"></span>
+                Archiving...
+              </span>
+            </button>
+          </div>
+        )}
       </footer>
     </div>
   );

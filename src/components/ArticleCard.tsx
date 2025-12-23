@@ -79,8 +79,15 @@ export const ArticleCard: FC<ArticleCardProps> = ({ article, status }) => {
             hx-post={`/api/articles/${article.id}/archive`}
             hx-swap="outerHTML"
             hx-target="closest .article-card"
+            hx-disabled-elt="this"
           >
-            {isArchived ? "Unarchive" : "Archive"}
+            <span class="button-text">
+              {isArchived ? "Unarchive" : "Archive"}
+            </span>
+            <span class="button-loading">
+              <span class="spinner"></span>
+              {isArchived ? "Unarchiving..." : "Archiving..."}
+            </span>
           </button>
         </div>
       </div>

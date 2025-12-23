@@ -27,11 +27,9 @@ export async function retryFailedArticles(): Promise<void> {
         `[Retry Worker] Retrying article ${article.id} (attempt ${article.processingAttempts + 1}/${config.MAX_RETRY_ATTEMPTS})`,
       );
 
-      // Spawn worker without telegram context (no reactions)
+      // Spawn worker without callbacks (fire and forget)
       spawnArticleWorker({
         articleId: article.id,
-        telegramChatId: null,
-        telegramMessageId: null,
       });
     }
 

@@ -26,7 +26,7 @@ export async function getStuckArticles(): Promise<StuckArticle[]> {
   const delayMs = config.RETRY_DELAY_MINUTES * 60 * 1000;
   const cutoffTime = new Date(Date.now() - delayMs);
 
-  return await db
+  const results = await db
     .select({
       id: articles.id,
       url: articles.url,
@@ -49,6 +49,9 @@ export async function getStuckArticles(): Promise<StuckArticle[]> {
         lt(articles.processingAttempts, config.MAX_RETRY_ATTEMPTS),
       ),
     );
+
+  // Type assertion safe because WHERE clause filters to these statuses
+  return results as StuckArticle[];
 }
 
 /**

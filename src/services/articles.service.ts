@@ -9,28 +9,13 @@ import {
   or,
   sql,
 } from "drizzle-orm";
-import { articleSummaries, articles, articleTags, db, tags } from "../lib/db";
+import type { Article, Tag } from "../db/types";
+import { articles, articleSummaries, articleTags, db, tags } from "../lib/db";
 import { searchCachedArticleIds } from "./content.service";
 
-export interface ArticleWithTags {
-  id: string;
-  userId: string;
-  url: string;
-  title: string | null;
-  description: string | null;
-  imageUrl: string | null;
-  siteName: string | null;
-  language: string | null;
-  status: "pending" | "processing" | "completed" | "failed" | "error";
-  archived: boolean;
-  processingAttempts: number;
-  lastError: string | null;
-  createdAt: Date;
-  processedAt: Date | null;
-  readAt: Date | null;
-  updatedAt: Date;
-  tags: Array<{ id: string; name: string }>;
-}
+type ArticleWithTags = Article & {
+  tags: Tag[];
+};
 
 export interface GetArticlesFilters {
   archived?: boolean;
@@ -257,7 +242,9 @@ export async function countArticlesByStatus(
   const [result] = await db
     .select({ count: sql<number>`count(*)` })
     .from(articles)
-    .where(and(eq(articles.userId, userId), inArray(articles.status, statuses)));
+    .where(
+      and(eq(articles.userId, userId), inArray(articles.status, statuses)),
+    );
 
   return result?.count ?? 0;
 }

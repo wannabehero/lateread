@@ -1,28 +1,9 @@
 import type { FC } from "hono/jsx";
+import type { Article, Tag } from "../db/types";
 import { TagBadge } from "./TagBadge";
-import { TtsControls } from "./TtsControls";
-
-interface Tag {
-  id: string;
-  name: string;
-}
-
-interface Article {
-  id: string;
-  title: string | null;
-  description: string | null;
-  url: string;
-  imageUrl: string | null;
-  siteName: string | null;
-  language: string | null;
-  createdAt: Date;
-  readAt: Date | null;
-  archived: boolean;
-  tags: Tag[];
-}
 
 interface ReaderViewProps {
-  article: Article;
+  article: Article & { tags: Tag[] };
   content: string;
 }
 
@@ -56,25 +37,28 @@ export const ReaderView: FC<ReaderViewProps> = ({ article, content }) => {
       </header>
 
       <section class="reader-summary">
-        <button
-          type="button"
-          hx-post={`/api/articles/${article.id}/summarize`}
-          hx-target="#summaries"
-          hx-swap="innerHTML"
-          hx-disabled-elt="this"
-        >
-          <span class="button-text">Summarize Article</span>
-          <span class="button-loading">
-            <span class="spinner"></span>
-            Generating summary...
-          </span>
-        </button>
-        <div id="summaries"></div>
+        <details>
+          <summary
+            hx-post={`/api/articles/${article.id}/summarize`}
+            hx-target="#summaries"
+            hx-swap="innerHTML"
+            hx-trigger="click once"
+          >
+            Summary
+          </summary>
+          <div id="summaries" class="summary-content">
+            <div class="summary-placeholder">
+              <span class="spinner"></span>
+              Generating...
+            </div>
+          </div>
+        </details>
       </section>
 
-      <TtsControls language={article.language} />
+      {/* TODO: Better TTS via <audio> */}
+      {/*<TtsControls language={article.language} />*/}
 
-      <article
+      <div
         class="reader-content"
         dangerouslySetInnerHTML={{ __html: content }}
       />
@@ -95,11 +79,17 @@ export const ReaderView: FC<ReaderViewProps> = ({ article, content }) => {
               hx-swap="delete"
               hx-target="closest .reader-actions"
               hx-disabled-elt="this"
+              title="Archive"
             >
-              <span class="button-text">Archive</span>
+              <span class="button-text">
+                <img
+                  src="/public/icons/archive.svg"
+                  alt="Archive"
+                  class="button-icon"
+                />
+              </span>
               <span class="button-loading">
                 <span class="spinner"></span>
-                Archiving...
               </span>
             </button>
           </div>

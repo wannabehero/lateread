@@ -51,20 +51,16 @@ articlesRouter.get("/articles", requireAuth("redirect"), async (c) => {
   // Parse query params
   const status = c.req.query("status") || "all";
   const tag = c.req.query("tag");
-  const query = c.req.query("q");
 
   const archived = status === "archived";
 
   try {
-    const articlesWithTags = await getArticlesWithTags(userId, {
-      archived,
-      tag,
-      query,
-    });
-
-    const processingCount = await countArticlesByStatus(userId, [
-      "pending",
-      "processing",
+    const [articlesWithTags, processingCount] = await Promise.all([
+      getArticlesWithTags(userId, {
+        archived,
+        tag,
+      }),
+      countArticlesByStatus(userId, ["pending", "processing"]),
     ]);
 
     const content = (
@@ -72,18 +68,15 @@ articlesRouter.get("/articles", requireAuth("redirect"), async (c) => {
         articles={articlesWithTags}
         status={status}
         tag={tag}
-        query={query}
         processingCount={processingCount}
       />
     );
 
-    const title = query
-      ? `Search: "${query}"`
-      : tag
-        ? `Articles tagged "${tag}"`
-        : status === "archived"
-          ? "Archived Articles"
-          : "Articles";
+    const title = tag
+      ? `Articles tagged "${tag}"`
+      : status === "archived"
+        ? "Archived Articles"
+        : "Articles";
 
     return renderWithLayout(c, title, content, `/articles?status=${status}`);
   } catch (error) {

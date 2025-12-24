@@ -18,29 +18,14 @@ export const SearchForm: FC<SearchFormProps> = ({ query, status }) => {
       class="search-form"
     >
       <input type="hidden" name="status" value={currentStatus} />
-      <div class="search-input-group">
-        <input
-          type="search"
-          id="search-input"
-          name="q"
-          placeholder="Search articles..."
-          value={query || ""}
-          autocomplete="off"
-        />
-        {query && (
-          <button
-            type="button"
-            hx-get={`/articles?status=${currentStatus}`}
-            hx-target="#article-container"
-            hx-swap="outerHTML"
-            hx-push-url="true"
-            class="search-clear"
-            aria-label="Clear search"
-          >
-            Clear
-          </button>
-        )}
-      </div>
+      <input
+        type="search"
+        id="search-input"
+        name="q"
+        placeholder="Search articles..."
+        value={query || ""}
+        autocomplete="off"
+      />
     </form>
   );
 };

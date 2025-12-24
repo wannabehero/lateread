@@ -8,8 +8,6 @@ interface SummaryViewProps {
 export const SummaryView: FC<SummaryViewProps> = ({ summary }) => {
   return (
     <div class="summary-container">
-      <h3>Summary</h3>
-
       <div class="summary-section">
         <h4>One Sentence</h4>
         <p>{summary.oneSentence}</p>
@@ -22,7 +20,7 @@ export const SummaryView: FC<SummaryViewProps> = ({ summary }) => {
 
       <details class="summary-section">
         <summary>
-          <strong>Detailed Summary</strong>
+          <strong>Detailed</strong>
         </summary>
         <p style="white-space: pre-wrap; margin-top: 1rem;">{summary.long}</p>
       </details>

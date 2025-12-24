@@ -4,8 +4,6 @@
   "description": "Privacy-focused read-later app",
   "start_url": "/",
   "display": "standalone",
-  "background_color": "#ffffff",
-  "theme_color": "#1095c1",
   "orientation": "portrait-primary",
   "icons": [
     {

@@ -54,8 +54,14 @@ api.post("/api/articles/:id/archive", requireAuth("json-401"), async (c) => {
       archived: !newStatus,
     });
 
+    c.header(
+      "x-toast-message",
+      newStatus ? "Article archived" : "Article unarchived",
+    );
+
     // Return empty content to remove card from current view
     // User can navigate to other view (archive/unarchive) to see the article
+    // TODO: might as well delete the article div via id or something
     return c.html(
       <>
         <div />
@@ -123,16 +129,23 @@ api.post("/api/articles/:id/summarize", requireAuth("json-401"), async (c) => {
 /**
  * GET /api/articles/processing-count - Get count of processing articles
  */
-api.get("/api/articles/processing-count", requireAuth("json-401"), async (c) => {
-  const userId = c.get("userId");
+api.get(
+  "/api/articles/processing-count",
+  requireAuth("json-401"),
+  async (c) => {
+    const userId = c.get("userId");
 
-  try {
-    const count = await countArticlesByStatus(userId, ["pending", "processing"]);
-    return c.html(<ProcessingBanner count={count} />);
-  } catch (error) {
-    console.error("Error getting processing count:", error);
-    return c.html(<ProcessingBanner count={0} />);
-  }
-});
+    try {
+      const count = await countArticlesByStatus(userId, [
+        "pending",
+        "processing",
+      ]);
+      return c.html(<ProcessingBanner count={count} />);
+    } catch (error) {
+      console.error("Error getting processing count:", error);
+      return c.html(<ProcessingBanner count={0} />);
+    }
+  },
+);
 
 export default api;

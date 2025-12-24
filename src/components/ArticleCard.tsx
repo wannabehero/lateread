@@ -1,26 +1,9 @@
 import type { FC } from "hono/jsx";
+import type { Article, Tag } from "../db/types";
 import { TagBadge } from "./TagBadge";
 
-interface Tag {
-  id: string;
-  name: string;
-}
-
-interface Article {
-  id: string;
-  title: string | null;
-  description: string | null;
-  url: string;
-  imageUrl: string | null;
-  siteName: string | null;
-  createdAt: Date;
-  readAt: Date | null;
-  archived: boolean;
-  tags: Tag[];
-}
-
 interface ArticleCardProps {
-  article: Article;
+  article: Article & { tags: Tag[] };
   status?: string;
 }
 
@@ -62,31 +45,25 @@ export const ArticleCard: FC<ArticleCardProps> = ({ article, status }) => {
           </p>
         )}
 
-        {article.tags.length > 0 && (
-          <div class="article-tags">
-            {article.tags.map((tag) => (
-              <TagBadge name={tag.name} href={buildTagUrl(tag.name)} />
-            ))}
-          </div>
-        )}
-
         <div class="article-actions">
-          <a href={`/articles/${article.id}`} class="button">
-            Read
-          </a>
           <button
             type="button"
             hx-post={`/api/articles/${article.id}/archive`}
             hx-swap="outerHTML"
             hx-target="closest .article-card"
             hx-disabled-elt="this"
+            class="archive-button"
+            title={isArchived ? "Unarchive" : "Archive"}
           >
             <span class="button-text">
-              {isArchived ? "Unarchive" : "Archive"}
+              <img
+                src={`/public/icons/${isArchived ? "archive-restore" : "archive"}.svg`}
+                alt={isArchived ? "Unarchive" : "Archive"}
+                class="button-icon"
+              />
             </span>
             <span class="button-loading">
               <span class="spinner"></span>
-              {isArchived ? "Unarchiving..." : "Archiving..."}
             </span>
           </button>
         </div>

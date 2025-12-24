@@ -25,12 +25,11 @@ export const Layout: FC<LayoutProps> = ({
         <title>{title}</title>
         <meta
           name="description"
-          content="lateread - Privacy-focused read-later app"
+          content="lateread - privacy-focused read-later app"
         />
 
         {/* PWA Manifest */}
         <link rel="manifest" href="/public/manifest.json" />
-        <meta name="theme-color" content="#1095c1" />
         <meta name="apple-mobile-web-app-capable" content="yes" />
         <meta
           name="apple-mobile-web-app-status-bar-style"
@@ -69,65 +68,63 @@ export const Layout: FC<LayoutProps> = ({
         <script src="/public/htmx.min.js" defer></script>
         <script src="/public/scripts/htmx-error-handler.js" defer></script>
         <script src="/public/scripts/toast.js" defer></script>
+        <script src="/public/scripts/nav-menu.js" defer></script>
       </head>
       <body>
-        <header class="container">
-          <nav>
-            <ul>
-              <li>
-                <strong>
-                  <a href="/" hx-boost="true">
-                    lateread
-                  </a>
-                </strong>
-              </li>
-            </ul>
+        <header class="fixed-nav">
+          <div class="nav-content">
+            <div class="nav-brand">
+              <a href="/" hx-boost="true">
+                <img
+                  src="/public/icon-192.png"
+                  alt="lateread logo"
+                  class="nav-logo"
+                />
+                <strong>lateread</strong>
+              </a>
+            </div>
             {isAuthenticated && (
-              <ul>
-                <li>
-                  <a
-                    href="/articles"
-                    class={currentPath.startsWith("/articles") ? "active" : ""}
-                  >
-                    Articles
-                  </a>
-                </li>
-                <li>
-                  <a
-                    href="/articles?status=archived"
-                    class={
-                      currentPath.includes("status=archived") ? "active" : ""
-                    }
-                  >
-                    Archive
-                  </a>
-                </li>
-                <li>
-                  <form action="/auth/logout" method="post">
-                    <button type="submit" class="outline secondary">
-                      Logout
-                    </button>
-                  </form>
-                </li>
-              </ul>
+              <div class="nav-actions">
+                <a href="/search" class="nav-icon-link" title="Search">
+                  <img
+                    src="/public/icons/search.svg"
+                    alt="Search"
+                    class="nav-icon"
+                  />
+                </a>
+                <a
+                  href="/articles?status=archived"
+                  class="nav-icon-link"
+                  title="Archive"
+                >
+                  <img
+                    src="/public/icons/archive.svg"
+                    alt="Archive"
+                    class="nav-icon"
+                  />
+                </a>
+                <div class="nav-menu">
+                  <button type="button" class="nav-icon-button">
+                    <img
+                      src="/public/icons/menu.svg"
+                      alt="Menu"
+                      class="nav-icon"
+                    />
+                  </button>
+                  <div class="nav-dropdown">
+                    <form action="/auth/logout" method="post">
+                      <button type="submit" class="dropdown-item">
+                        Log out
+                      </button>
+                    </form>
+                  </div>
+                </div>
+              </div>
             )}
-          </nav>
+          </div>
         </header>
 
-        <main class="container">{children}</main>
-
-        <footer class="container">
-          <small>
-            lateread |{" "}
-            <a
-              href="https://github.com/wannabehero/lateread"
-              target="_blank"
-              rel="noopener"
-            >
-              GitHub
-            </a>
-          </small>
-        </footer>
+        <main class="container main-content">{children}</main>
       </body>
     </html>
   );

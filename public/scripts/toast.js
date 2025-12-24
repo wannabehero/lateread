@@ -27,27 +27,16 @@ function showToast(message, type = "info") {
     setTimeout(() => {
       toast.remove();
     }, 300);
-  }, 5000);
+  }, 3000);
 }
 
 // Listen for successful HTMX requests and show appropriate toasts
-document.body.addEventListener("htmx:afterOnLoad", (event) => {
+document.body.addEventListener("htmx:afterRequest", (event) => {
   const xhr = event.detail.xhr;
 
   // Check for success header from the server
-  const successMessage = xhr.getResponseHeader("X-Toast-Message");
+  const successMessage = xhr.getResponseHeader("x-toast-message");
   if (successMessage) {
     showToast(successMessage, "success");
-  }
-
-  // Auto-detect successful actions based on status codes
-  if (xhr.status === 200 || xhr.status === 204) {
-    const url = event.detail.pathInfo.requestPath;
-
-    if (url.includes("/archive")) {
-      showToast("Article archived successfully", "success");
-    } else if (url.includes("/read")) {
-      // Don't show toast for auto-mark-as-read
-    }
   }
 });

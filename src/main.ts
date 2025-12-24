@@ -4,8 +4,7 @@ import { config } from "./lib/config";
 import { Hono } from "hono";
 import { serveStatic } from "hono/bun";
 import { logger } from "hono/logger";
-import { registerHandlers } from "./bot/handlers";
-import { bot, setupBot, startBot, stopBot } from "./bot/index";
+import { startBot, stopBot } from "./bot/index";
 import { startCrons } from "./cron";
 import { runMigrations } from "./lib/db";
 import apiRoutes from "./routes/api";
@@ -13,6 +12,7 @@ import articlesRoutes from "./routes/articles";
 import authRoutes from "./routes/auth";
 import healthRoutes from "./routes/health";
 import homeRoutes from "./routes/home";
+import searchRoutes from "./routes/search";
 import type { AppContext } from "./types/context";
 
 console.log("Starting lateread...");
@@ -35,14 +35,11 @@ app.use("/public/*", serveStatic({ root: "./" }));
 app.route("/", homeRoutes);
 app.route("/", authRoutes);
 app.route("/", articlesRoutes);
+app.route("/", searchRoutes);
 app.route("/", apiRoutes);
 app.route("/", healthRoutes);
 
 // Setup and start Telegram bot
-setupBot();
-registerHandlers(bot);
-
-// Start bot polling in background
 startBot().catch((error) => {
   console.error("Failed to start bot:", error);
   process.exit(1);

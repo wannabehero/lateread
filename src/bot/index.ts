@@ -1,5 +1,6 @@
 import { Bot } from "grammy";
 import { config } from "../lib/config";
+import { registerHandlers } from "./handlers";
 
 // Create bot instance
 export const bot = new Bot(config.TELEGRAM_BOT_TOKEN);
@@ -8,22 +9,17 @@ export const bot = new Bot(config.TELEGRAM_BOT_TOKEN);
 export const botUsername = config.BOT_USERNAME;
 
 /**
- * Initialize bot with middleware and handlers
- * Handlers will be registered separately
+ * Start bot polling
  */
-export function setupBot() {
+export async function startBot() {
   // Error handler
   bot.catch((err) => {
     console.error("Bot error:", err);
   });
 
+  registerHandlers(bot);
   console.log(`Bot initialized: @${botUsername}`);
-}
 
-/**
- * Start bot polling
- */
-export async function startBot() {
   try {
     await bot.start();
     console.log("Bot polling started");

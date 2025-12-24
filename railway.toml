@@ -7,5 +7,9 @@ builder = "DOCKERFILE"
 healthcheckPath = "/health"
 restartPolicyType = "ALWAYS"
 drainingSeconds = 5
+runtime = "V2"
+numReplicas = 1
 
-# RAILWAY_RUN_UID=0
+[deploy.limitOverride.containers]
+cpu = 1
+memoryBytes = 2000000000

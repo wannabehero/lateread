@@ -55,9 +55,6 @@ export const ReaderView: FC<ReaderViewProps> = ({ article, content }) => {
         </details>
       </section>
 
-      {/* TODO: Better TTS via <audio> */}
-      {/*<TtsControls language={article.language} />*/}
-
       <div
         class="reader-content"
         dangerouslySetInnerHTML={{ __html: content }}

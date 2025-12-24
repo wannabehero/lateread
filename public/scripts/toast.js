@@ -1,4 +1,3 @@
-// Simple toast notification system
 function showToast(message, type = "info") {
   // Create toast container if it doesn't exist
   let container = document.getElementById("toast-container");

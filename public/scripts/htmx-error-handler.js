@@ -1,4 +1,3 @@
-// HTMX Error Handling
 document.body.addEventListener("htmx:responseError", (event) => {
   const statusCode = event.detail.xhr.status;
   const target = event.detail.target;

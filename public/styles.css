@@ -284,17 +284,21 @@ body {
   display: inline-block;
   padding: 0.25rem 0.5rem;
   font-size: 0.75rem;
-  border-radius: 1rem;
-  background-color: var(--pico-secondary-background);
-  color: var(--pico-contrast);
+  border-radius: 0.25rem;
+  background-color: color-mix(in srgb, var(--pico-primary) 10%, transparent);
+  border: 1px solid color-mix(in srgb, var(--pico-primary) 25%, transparent);
+  color: var(--pico-primary);
   text-decoration: none;
-  transition: background-color 0.2s ease;
+  transition:
+    background-color 0.2s ease,
+    border-color 0.2s ease;
   white-space: nowrap;
 }
 
 .tag-badge:hover {
-  background-color: var(--pico-secondary-hover);
-  color: var(--pico-contrast);
+  background-color: color-mix(in srgb, var(--pico-primary) 15%, transparent);
+  border-color: color-mix(in srgb, var(--pico-primary) 35%, transparent);
+  color: var(--pico-primary);
 }
 
 /* Article List Grid */
@@ -303,6 +307,7 @@ body {
   grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
   gap: 1.5rem;
   margin-top: 1rem;
+  padding-bottom: 0.5rem;
 }
 
 /* Processing Banner */

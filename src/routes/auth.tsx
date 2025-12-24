@@ -21,22 +21,21 @@ auth.post("/auth/telegram", async (c) => {
 
     // Return HTMX fragment with polling
     return c.html(
-      <div id="auth-content">
-        <h3>Complete authentication in Telegram</h3>
-
-        <a href={result.telegramUrl} target="_blank" class="contrast">
-          Open Telegram to Login
-        </a>
-
-        <p class="help-text">
+      <div
+        id="auth-content"
+        hx-on--after-settle={`if(event.detail.elt===this)open('${result.telegramUrl}','_blank')`}
+      >
+        <p>
+          <a href={result.telegramUrl} target="_blank">
+            Proceed to Telegram to Login
+          </a>
+          <br />
           <small>
             Opens @{config.BOT_USERNAME} and completes authentication
             automatically
           </small>
-        </p>
-
-        <p class="help-text">
-          <small>Token expires in {TOKEN_EXPIRATION_MINUTES} minutes</small>
+          <br />
+          <small>Link expires in {TOKEN_EXPIRATION_MINUTES} minutes</small>
         </p>
 
         {/* Polling element - checks auth status every 2 seconds */}

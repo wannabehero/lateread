@@ -8,7 +8,7 @@ interface AuthPollingProps {
 
 export const AuthPolling: FC<AuthPollingProps> = ({
   token,
-  message = "Waiting for Telegram authentication...",
+  message = "Waiting for authentication...",
   immediate = false,
 }) => {
   // Initial polling: check immediately and every 2s

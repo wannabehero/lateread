@@ -45,7 +45,7 @@ home.get("/", async (c) => {
   // Show login page
   return c.html(
     <Layout title="Login - lateread">
-      <article class="auth-container">
+      <div class="auth-container">
         <header>
           <h1>Welcome to lateread</h1>
           <p>Save articles via Telegram, read them anywhere.</p>
@@ -61,13 +61,8 @@ home.get("/", async (c) => {
           >
             Login with Telegram
           </button>
-          <p class="help-text">
-            <small>
-              You'll be redirected to Telegram to complete authentication
-            </small>
-          </p>
         </div>
-      </article>
+      </div>
     </Layout>,
   );
 });

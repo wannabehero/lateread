@@ -173,8 +173,8 @@ api.get("/api/articles/:id/tts", requireAuth("json-401"), async (c) => {
       return c.json({ error: "No content available for TTS" }, 400);
     }
 
-    // Generate TTS audio stream
-    const audioStream = await generateTTSStream(plainText);
+    // Generate TTS audio stream with language-appropriate voice
+    const audioStream = await generateTTSStream(plainText, article.language);
 
     // Set appropriate headers for audio streaming
     c.header("Content-Type", "audio/mpeg");

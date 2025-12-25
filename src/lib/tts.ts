@@ -11,13 +11,43 @@ export const elevenlabsClient = new ElevenLabsClient({
 /**
  * Default TTS configuration
  * Using Flash v2.5 - fastest model with ~75ms latency
- * Voice: Rachel (21m00Tcm4TlvDq8ikWAM) - default female voice
  */
 export const TTS_CONFIG = {
-  voiceId: "21m00Tcm4TlvDq8ikWAM", // Rachel
   modelId: "eleven_flash_v2_5", // Fastest model
   outputFormat: "mp3_44100_128" as const,
 } as const;
+
+/**
+ * Language to voice ID mapping
+ * Maps ISO 639-1 language codes to native ElevenLabs voices for better accent and pronunciation
+ *
+ * Find and test voices here: https://elevenlabs.io/voice-library
+ * Filter by language, test voices, and copy voice IDs to customize this mapping
+ */
+const VOICE_MAP: Record<string, string> = {
+  en: "21m00Tcm4TlvDq8ikWAM", // Rachel - English (US)
+  es: "VR6AewLTigWG4xSOukaG", // Arnold - Spanish
+  fr: "ThT5KcBeYPX3keUQqHPh", // Dorothy - French
+  de: "ErXwobaYiN019PkySvjV", // Antoni - German
+  it: "XB0fDUnXU5powFXDhCwa", // Charlotte - Italian
+  pt: "pNInz6obpgDQGcFmaJgB", // Adam - Portuguese
+  ru: "yoZ06aMxZJJ28mfd3POQ", // Freya - Russian
+  ja: "TxGEqnHWrfWFTfGW9XjX", // Josh - Japanese
+  zh: "onwK4e9ZLuTAKqWW03F9", // Serena - Chinese
+  ko: "pqHfZKP75CvOlQylNhV4", // Bill - Korean
+  ar: "ODq5zmih8GrVes37Dizd", // Patrick - Arabic
+  hi: "pFZP5JQG7iQjIQuC4Bku", // Lily - Hindi
+  _default: "21m00Tcm4TlvDq8ikWAM", // Rachel - fallback for unsupported languages
+};
+
+/**
+ * Get the best voice ID for the given language code
+ * Returns a native voice for the language if available, otherwise defaults to Rachel (English)
+ */
+export function getVoiceForLanguage(languageCode: string | null): string {
+  if (!languageCode) return VOICE_MAP._default;
+  return VOICE_MAP[languageCode.toLowerCase()] || VOICE_MAP._default;
+}
 
 /**
  * Strip HTML tags and get plain text for TTS
@@ -49,11 +79,15 @@ export function htmlToPlainText(html: string): string {
 /**
  * Generate TTS audio stream for the given text
  * Returns a ReadableStream of audio chunks
+ * Automatically selects the best voice based on the article's language
  */
 export async function generateTTSStream(
   text: string,
+  languageCode?: string | null,
 ): Promise<ReadableStream<Uint8Array>> {
-  return elevenlabsClient.textToSpeech.stream(TTS_CONFIG.voiceId, {
+  const voiceId = getVoiceForLanguage(languageCode);
+
+  return elevenlabsClient.textToSpeech.stream(voiceId, {
     text: text.slice(0, 40_000), // 40k chars is the limit for streaming
     modelId: TTS_CONFIG.modelId,
     outputFormat: TTS_CONFIG.outputFormat,

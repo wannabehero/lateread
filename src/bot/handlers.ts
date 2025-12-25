@@ -30,8 +30,8 @@ export function registerHandlers(bot: Bot) {
         "This bot helps you save articles and long messages to read later.\n\n" +
         "To get started:\n" +
         "1. Log in at the web app: https://lateread.app/\n" +
-        "2. Send me any URL or long message to save it automatically\n\n" +
-        { link_preview_options: { is_disabled: true } },
+        "2. Send me any URL or long message to save it automatically\n\n",
+      { link_preview_options: { is_disabled: true } },
     );
   });
 

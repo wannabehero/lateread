@@ -19,6 +19,10 @@ const configSchema = z.object({
 
   // ElevenLabs TTS
   ELEVENLABS_API_KEY: z.string().min(1, "ELEVENLABS_API_KEY is required"),
+  HIDE_AUDIO_PLAYER: z
+    .string()
+    .optional()
+    .transform((val) => val === "true"),
 
   // Authentication & Session
   SESSION_SECRET: z

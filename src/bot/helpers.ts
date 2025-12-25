@@ -77,12 +77,12 @@ export async function extractMessageMetadata(
   }
   // Check if forwarded from anywhere
   else if ("forward_date" in message && message.forward_date) {
-    url = `lateread://telegram-message`;
+    url = "https://lateread.app";
     siteName = "Forwarded to Telegram";
   }
   // Regular message
   else {
-    url = `lateread://telegram-message`;
+    url = "https://lateread.app";
     siteName = "Telegram Message";
   }
 

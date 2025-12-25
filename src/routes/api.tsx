@@ -13,6 +13,7 @@ import {
   toggleArticleArchive,
 } from "../services/articles.service";
 import { getArticleContent } from "../services/content.service";
+import { updateReaderPreferences } from "../services/preferences.service";
 import { getOrGenerateSummary } from "../services/summaries.service";
 import type { AppContext } from "../types/context";
 
@@ -202,6 +203,37 @@ api.get("/api/articles/:id/tts", requireAuth("json-401"), async (c) => {
 
     console.error("Error generating TTS:", error);
     return c.json({ error: "Failed to generate audio" }, 500);
+  }
+});
+
+/**
+ * POST /api/preferences/reader - Update reader font preferences
+ */
+api.post("/api/preferences/reader", requireAuth("json-401"), async (c) => {
+  const userId = c.get("userId");
+
+  try {
+    const formData = await c.req.formData();
+    const fontFamilyValue = formData.get("fontFamily") as string;
+    const fontSize = Number(formData.get("fontSize"));
+
+    if (!["sans", "serif", "new-york"].includes(fontFamilyValue)) {
+      return c.json({ error: "Invalid font family" }, 400);
+    }
+
+    if (fontSize < 14 || fontSize > 24) {
+      return c.json({ error: "Font size must be between 14 and 24" }, 400);
+    }
+
+    // Type is now narrowed after validation
+    const fontFamily = fontFamilyValue as "sans" | "serif" | "new-york";
+
+    await updateReaderPreferences(userId, { fontFamily, fontSize });
+
+    return c.json({ success: true });
+  } catch (error) {
+    console.error("Error updating reader preferences:", error);
+    return c.json({ error: "Failed to update preferences" }, 500);
   }
 });
 

@@ -62,7 +62,7 @@ export const Layout: FC<LayoutProps> = ({
         <link rel="stylesheet" href="/public/pico.min.css" />
 
         {/* Custom styles */}
-        <link rel="stylesheet" href="/public/styles.css" />
+        <link rel="stylesheet" href="/public/styles/app.css" />
 
         {/* HTMX */}
         <script src="/public/htmx.min.js" defer></script>

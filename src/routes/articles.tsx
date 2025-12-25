@@ -10,6 +10,7 @@ import {
   getArticlesWithTags,
 } from "../services/articles.service";
 import { getArticleContent } from "../services/content.service";
+import { getReaderPreferences } from "../services/preferences.service";
 import type { AppContext } from "../types/context";
 
 const articlesRouter = new Hono<AppContext>();
@@ -99,12 +100,21 @@ articlesRouter.get("/articles/:id", requireAuth("redirect"), async (c) => {
 
   try {
     // Get article with tags
-    const article = await getArticleById(articleId, userId);
+    const [article, preferences] = await Promise.all([
+      getArticleById(articleId, userId),
+      getReaderPreferences(userId),
+    ]);
 
     // Get content from cache or fetch if missing
     const content = await getArticleContent(userId, articleId, article.url);
 
-    const readerContent = <ReaderView article={article} content={content} />;
+    const readerContent = (
+      <ReaderView
+        article={article}
+        content={content}
+        preferences={preferences}
+      />
+    );
 
     return renderWithLayout(
       c,

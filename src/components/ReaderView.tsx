@@ -1,13 +1,19 @@
 import type { FC } from "hono/jsx";
-import type { Article, Tag } from "../db/types";
+import type { Article, ReaderPreferences, Tag } from "../db/types";
+import { ReaderControls } from "./ReaderControls";
 import { TagBadge } from "./TagBadge";
 
 interface ReaderViewProps {
   article: Article & { tags: Tag[] };
   content: string;
+  preferences: ReaderPreferences;
 }
 
-export const ReaderView: FC<ReaderViewProps> = ({ article, content }) => {
+export const ReaderView: FC<ReaderViewProps> = ({
+  article,
+  content,
+  preferences,
+}) => {
   const displayTitle = article.title || article.url;
 
   return (
@@ -79,6 +85,8 @@ export const ReaderView: FC<ReaderViewProps> = ({ article, content }) => {
           "hx-swap": "none",
         })}
       >
+        <ReaderControls preferences={preferences} />
+
         {!article.archived && (
           <div class="reader-actions">
             <button

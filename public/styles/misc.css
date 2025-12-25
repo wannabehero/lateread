@@ -236,6 +236,7 @@ body {
   line-height: 1.4;
   margin-bottom: 0.5rem;
   display: -webkit-box;
+  line-clamp: 3;
   -webkit-line-clamp: 3;
   -webkit-box-orient: vertical;
   overflow: hidden;
@@ -354,201 +355,6 @@ body {
   text-align: center;
 }
 
-/* Reader View */
-.reader-view {
-  max-width: 800px;
-  margin: 0 auto;
-}
-
-.reader-header {
-  margin-bottom: 2rem;
-  padding-bottom: 1rem;
-  border-bottom: 1px solid var(--pico-muted-border-color);
-}
-
-.reader-header h1 {
-  margin-bottom: 0.5rem;
-  line-height: 1.2;
-}
-
-.reader-meta {
-  display: flex;
-  gap: 1rem;
-  align-items: center;
-  color: var(--pico-muted-color);
-  font-size: 0.9rem;
-  margin-bottom: 0.5rem;
-}
-
-.reader-meta .site-name {
-  font-weight: 600;
-}
-
-.reader-meta a {
-  color: var(--pico-primary);
-}
-
-.reader-tags {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 0.25rem;
-  margin-top: 0.5rem;
-}
-
-.reader-summary {
-  margin-bottom: 2rem;
-  padding: 1rem;
-  background: var(--pico-card-background-color);
-  border-radius: var(--pico-border-radius);
-  border: 1px solid var(--pico-muted-border-color);
-}
-
-.reader-summary details {
-  margin: 0;
-}
-
-.reader-summary summary {
-  cursor: pointer;
-  font-weight: 600;
-  font-size: 1rem;
-  color: var(--pico-contrast);
-  list-style: none;
-  user-select: none;
-  padding: 0;
-  margin: 0;
-}
-
-.reader-summary summary::-webkit-details-marker {
-  display: none;
-}
-
-.reader-summary summary::before {
-  content: "▶";
-  display: inline-block;
-  margin-right: 0.5rem;
-  transition: transform 0.2s ease;
-}
-
-.reader-summary details[open] summary::before {
-  transform: rotate(90deg);
-}
-
-.summary-content {
-  margin-top: 1rem;
-}
-
-.summary-placeholder {
-  padding: 1rem 0;
-  font-style: italic;
-  color: var(--pico-muted-color);
-  display: flex;
-  align-items: center;
-  gap: 0.5rem;
-}
-
-.reader-audio {
-  margin-bottom: 2rem;
-}
-
-.reader-audio audio {
-  width: 100%;
-  max-width: 800px;
-  margin: 0 auto;
-  display: block;
-}
-
-.summary-container {
-  padding: 0;
-}
-
-.summary-container h3 {
-  margin-top: 0;
-  margin-bottom: 1rem;
-  font-size: 1.25rem;
-}
-
-.summary-section {
-  margin-bottom: 1.5rem;
-}
-
-.summary-section h4 {
-  margin-top: 0;
-  margin-bottom: 0.5rem;
-  font-size: 1rem;
-  color: var(--pico-primary);
-}
-
-.summary-section p {
-  margin: 0;
-  line-height: 1.6;
-}
-
-.summary-section details {
-  margin-top: 1rem;
-}
-
-.summary-section summary {
-  cursor: pointer;
-  font-weight: 600;
-  color: var(--pico-primary);
-}
-
-.summary-error {
-  padding: 1rem;
-  color: var(--pico-del-color);
-  text-align: center;
-}
-.reader-content {
-  max-width: 65ch;
-  margin: 0 auto 2rem;
-  line-height: 1.7;
-  font-size: 1.1rem;
-}
-
-.reader-content img {
-  max-width: 100%;
-  height: auto;
-  border-radius: var(--pico-border-radius);
-  margin: 1.5rem 0;
-}
-
-.reader-content pre {
-  overflow-x: auto;
-  white-space: pre-wrap;
-}
-
-.reader-content h1,
-.reader-content h2,
-.reader-content h3,
-.reader-content h4 {
-  margin-top: 1.5rem;
-  margin-bottom: 0.75rem;
-}
-
-.reader-content p {
-  margin-bottom: 1rem;
-}
-
-.reader-content a {
-  color: var(--pico-primary);
-  text-decoration: underline;
-}
-
-.reader-footer {
-  margin-top: 2rem;
-  padding-top: 1rem;
-  border-top: 1px solid var(--pico-muted-border-color);
-}
-
-.reader-actions {
-  display: flex;
-  gap: 0.5rem;
-}
-
-.reader-actions button {
-  margin: 0;
-}
-
 /* Auth Container */
 .auth-container {
   max-width: 500px;
@@ -619,10 +425,6 @@ button.htmx-request {
   .article-grid {
     grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
   }
-
-  .reader-content {
-    font-size: 1.05rem;
-  }
 }
 
 /* Mobile Responsive Adjustments */
@@ -634,25 +436,6 @@ button.htmx-request {
 
   .article-card {
     margin-bottom: 0;
-  }
-
-  .reader-content {
-    font-size: 1rem;
-    max-width: 100%;
-  }
-
-  .reader-view {
-    padding: 0 0.5rem;
-  }
-
-  .reader-header h1 {
-    font-size: 1.5rem;
-  }
-
-  .reader-meta {
-    flex-direction: column;
-    align-items: flex-start;
-    gap: 0.25rem;
   }
 
   .article-actions {
@@ -688,15 +471,6 @@ button.htmx-request {
   .tag-badge {
     font-size: 0.7rem;
     padding: 0.2rem 0.4rem;
-  }
-
-  .reader-header h1 {
-    font-size: 1.3rem;
-  }
-
-  .reader-content {
-    font-size: 0.95rem;
-    line-height: 1.6;
   }
 }
 
@@ -744,11 +518,16 @@ button.htmx-request {
   transform: translateY(0);
 }
 
+/*
+All toasts use the same styling now
+
 .toast-success,
 .toast-error,
 .toast-info {
-  /* All toasts use the same styling now */
+
 }
+
+*/
 
 @media (max-width: 768px) {
   #toast-container {

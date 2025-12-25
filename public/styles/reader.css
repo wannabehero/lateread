@@ -1,0 +1,347 @@
+/* Reader view specific styles */
+
+/* CSS Custom Properties for Font Customization */
+:root {
+  /* Default values */
+  --reader-font-family:
+    -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue",
+    Arial, sans-serif;
+  --reader-font-size: 1.125rem;
+  --reader-font-weight: 400;
+
+  /* Font family presets as CSS variables */
+  --reader-font-sans:
+    -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue",
+    Arial, sans-serif;
+  --reader-font-serif: Georgia, Cambria, "Times New Roman", Times, serif;
+  --reader-font-sfpro: -apple-system, BlinkMacSystemFont, sans-serif;
+  --reader-font-newyork: "New York", Charter, Georgia, serif;
+
+  /* Global font smoothing */
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+/* Reader View */
+.reader-view {
+  max-width: 800px;
+  margin: 0 auto;
+}
+
+.reader-header {
+  margin-bottom: 2rem;
+  padding-bottom: 1rem;
+  border-bottom: 1px solid var(--pico-muted-border-color);
+}
+
+.reader-header h1 {
+  margin-bottom: 0.5rem;
+  line-height: 1.2;
+}
+
+.reader-meta {
+  display: flex;
+  gap: 1rem;
+  align-items: center;
+  color: var(--pico-muted-color);
+  font-size: 0.9rem;
+  margin-bottom: 0.5rem;
+}
+
+.reader-meta .site-name {
+  font-weight: 600;
+}
+
+.reader-meta a {
+  color: var(--pico-primary);
+}
+
+.reader-tags {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.25rem;
+  margin-top: 0.5rem;
+}
+
+.reader-summary {
+  margin-bottom: 2rem;
+  padding: 1rem;
+  background: var(--pico-card-background-color);
+  border-radius: var(--pico-border-radius);
+  border: 1px solid var(--pico-muted-border-color);
+}
+
+.reader-summary details {
+  margin: 0;
+}
+
+.reader-summary summary {
+  cursor: pointer;
+  font-weight: 600;
+  font-size: 1rem;
+  color: var(--pico-contrast);
+  list-style: none;
+  user-select: none;
+  padding: 0;
+  margin: 0;
+}
+
+.reader-summary summary::-webkit-details-marker {
+  display: none;
+}
+
+.reader-summary summary::before {
+  content: "▶";
+  display: inline-block;
+  margin-right: 0.5rem;
+  transition: transform 0.2s ease;
+}
+
+.reader-summary details[open] summary::before {
+  transform: rotate(90deg);
+}
+
+.summary-content {
+  margin-top: 1rem;
+}
+
+.summary-placeholder {
+  padding: 1rem 0;
+  font-style: italic;
+  color: var(--pico-muted-color);
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.reader-audio {
+  margin-bottom: 2rem;
+}
+
+.reader-audio audio {
+  width: 100%;
+  max-width: 800px;
+  margin: 0 auto;
+  display: block;
+}
+
+.summary-container {
+  padding: 0;
+}
+
+.summary-container h3 {
+  margin-top: 0;
+  margin-bottom: 1rem;
+  font-size: 1.25rem;
+}
+
+.summary-section {
+  margin-bottom: 1.5rem;
+}
+
+.summary-section h4 {
+  margin-top: 0;
+  margin-bottom: 0.5rem;
+  font-size: 1rem;
+  color: var(--pico-primary);
+}
+
+.summary-section p {
+  margin: 0;
+  line-height: 1.6;
+}
+
+.summary-section details {
+  margin-top: 1rem;
+}
+
+.summary-section summary {
+  cursor: pointer;
+  font-weight: 600;
+  color: var(--pico-primary);
+}
+
+.summary-error {
+  padding: 1rem;
+  color: var(--pico-del-color);
+  text-align: center;
+}
+
+.reader-content {
+  margin: 0;
+  font-family: var(--reader-font-family);
+  font-size: var(--reader-font-size);
+  font-weight: var(--reader-font-weight);
+  line-height: 1.7;
+  text-align: justify;
+}
+
+.reader-content * {
+  font-weight: inherit;
+}
+
+.reader-content img {
+  max-width: 100%;
+  height: auto;
+  border-radius: var(--pico-border-radius);
+  margin: 1.5rem 0;
+}
+
+.reader-content pre {
+  overflow-x: auto;
+  white-space: pre-wrap;
+}
+
+.reader-content h1,
+.reader-content h2,
+.reader-content h3,
+.reader-content h4 {
+  margin-top: 1.5rem;
+  margin-bottom: 0.75rem;
+}
+
+.reader-content p {
+  margin-bottom: 1rem;
+}
+
+.reader-content a {
+  color: var(--pico-primary);
+  text-decoration: underline;
+}
+
+.reader-footer {
+  margin-top: 2rem;
+  padding-top: 1rem;
+  border-top: 1px solid var(--pico-muted-border-color);
+}
+
+.reader-actions {
+  display: flex;
+  gap: 0.5rem;
+}
+
+.reader-actions button {
+  margin: 0;
+}
+
+/* Reader Font Controls */
+.reader-controls {
+  margin-top: 1.5rem;
+  padding: 1rem;
+  background: var(--pico-card-background-color);
+  border-radius: var(--pico-border-radius);
+  border: 1px solid var(--pico-muted-border-color);
+}
+
+.reader-controls-section {
+  margin-bottom: 1rem;
+}
+
+.reader-controls-section:last-child {
+  margin-bottom: 0;
+}
+
+.reader-controls-label {
+  font-size: 0.85rem;
+  font-weight: 600;
+  color: var(--pico-muted-color);
+  margin-bottom: 0.5rem;
+  display: block;
+}
+
+.reader-controls-group {
+  display: flex;
+  gap: 0.5rem;
+  flex-wrap: wrap;
+}
+
+.reader-control-btn {
+  padding: 0.5rem 0.75rem;
+  font-size: 0.9rem;
+  margin: 0;
+  min-width: 44px;
+  background: transparent;
+  border: 1px solid var(--pico-muted-border-color);
+  color: var(--pico-contrast);
+  transition: all 0.2s ease;
+}
+
+.reader-control-btn:hover {
+  background: color-mix(in srgb, var(--pico-primary) 10%, transparent);
+  border-color: var(--pico-primary);
+}
+
+.reader-control-btn.active {
+  background: var(--pico-primary);
+  border-color: var(--pico-primary);
+  color: white;
+}
+
+.reader-control-btn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.reader-font-size-display {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 50px;
+  padding: 0.5rem;
+  font-weight: 600;
+  color: var(--pico-contrast);
+}
+
+/* Hide Apple fonts on non-Apple platforms (controlled by JS) */
+.reader-control-btn[data-apple-only].hidden {
+  display: none;
+}
+
+/* Responsive adjustments */
+@media (max-width: 1024px) and (min-width: 769px) {
+  :root {
+    --reader-font-size: 1.0625rem;
+  }
+}
+
+@media (max-width: 768px) {
+  :root {
+    --reader-font-size: 1rem;
+  }
+
+  .reader-view {
+    padding: 0 0.5rem;
+  }
+
+  .reader-header h1 {
+    font-size: 1.5rem;
+  }
+
+  .reader-meta {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 0.25rem;
+  }
+
+  .reader-content {
+    max-width: 100%;
+  }
+
+  .reader-controls-group {
+    flex-direction: column;
+  }
+
+  .reader-control-btn {
+    width: 100%;
+  }
+}
+
+@media (max-width: 480px) {
+  .reader-header h1 {
+    font-size: 1.3rem;
+  }
+
+  .reader-content {
+    line-height: 1.6;
+  }
+}

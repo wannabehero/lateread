@@ -9,6 +9,7 @@ export const users = sqliteTable("users", {
   createdAt: integer("created_at", { mode: "timestamp" })
     .notNull()
     .default(sql`(unixepoch())`),
+  preferences: text("preferences").notNull().default("{}"),
 });
 
 // Telegram users table - links Telegram accounts to users

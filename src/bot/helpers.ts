@@ -12,19 +12,25 @@ export interface MessageMetadata {
 /**
  * Extract metadata and content from a Telegram message
  * Handles channels, forwarded messages, and regular messages
+ * Supports both text messages and media with captions
  */
 export async function extractMessageMetadata(
   ctx: Context,
 ): Promise<MessageMetadata | null> {
-  if (!ctx.message || !("text" in ctx.message) || !ctx.message.text) {
+  if (!ctx.message || !ctx.chat) {
     return null;
   }
 
-  if (!ctx.chat) {
+  // Get text or caption from message
+  const messageText =
+    ("text" in ctx.message && ctx.message.text) ||
+    ("caption" in ctx.message && ctx.message.caption) ||
+    null;
+
+  if (!messageText) {
     return null;
   }
 
-  const messageText = ctx.message.text;
   const message = ctx.message;
   const chat = ctx.chat;
 

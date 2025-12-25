@@ -74,22 +74,36 @@ export function registerHandlers(bot: Bot) {
     );
   });
 
-  // Handle messages with URLs
-  bot.on("message:text", async (ctx) => {
+  bot.command("ping", async (ctx) => {
+    await ctx.reply("Pong!");
+  });
+
+  // Handle messages with URLs (text or captions from media)
+  bot.on([":text", ":caption"], async (ctx) => {
+    if (!ctx.message) {
+      return;
+    }
+
+    // Get text or caption from message
+    const messageText =
+      ("text" in ctx.message && ctx.message.text) ||
+      ("caption" in ctx.message && ctx.message.caption) ||
+      "";
+
     console.log(
-      `[Bot] Received message from user ${ctx.from?.id}: "${ctx.message.text.substring(0, 100)}..."`,
+      `[Bot] Received message from user ${ctx.from?.id}: "${messageText.substring(0, 100)}..."`,
     );
 
     // Check if message is long enough to treat as article
-    if (ctx.message.text.length >= config.LONG_MESSAGE_THRESHOLD) {
+    if (messageText.length >= config.LONG_MESSAGE_THRESHOLD) {
       console.log(
-        `[Bot] Message length ${ctx.message.text.length} >= threshold ${config.LONG_MESSAGE_THRESHOLD}, treating as article`,
+        `[Bot] Message length ${messageText.length} >= threshold ${config.LONG_MESSAGE_THRESHOLD}, treating as article`,
       );
       await handleLongMessage(ctx);
       return;
     }
 
-    const url = extractUrl(ctx.message.text);
+    const url = extractUrl(messageText);
 
     if (!url) {
       console.log("[Bot] No URL found in message, ignoring");
@@ -139,6 +153,10 @@ export function registerHandlers(bot: Bot) {
     }
 
     // Spawn worker (non-blocking)
+    if (!ctx.chat || !ctx.message) {
+      return;
+    }
+
     const chatId = ctx.chat.id;
     const messageId = ctx.message.message_id;
 

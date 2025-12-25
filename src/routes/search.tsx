@@ -1,5 +1,6 @@
 import type { Context } from "hono";
 import { Hono } from "hono";
+import { ArticleCard } from "../components/ArticleCard";
 import { Layout } from "../components/Layout";
 import { SearchPage } from "../components/SearchPage";
 import { requireAuth } from "../middleware/auth";
@@ -36,56 +37,7 @@ searchRouter.get("/search", requireAuth("redirect"), async (c) => {
             articles.length > 0 ? (
               <div class="article-grid">
                 {articles.map((article) => (
-                  <article
-                    class={`article-card ${article.readAt ? "read" : ""}`}
-                  >
-                    {article.imageUrl && (
-                      <div class="article-image">
-                        <img
-                          src={article.imageUrl}
-                          alt={article.title || "Article"}
-                          loading="lazy"
-                        />
-                      </div>
-                    )}
-                    <div class="article-content">
-                      <h3>
-                        <a href={`/articles/${article.id}`}>{article.title}</a>
-                      </h3>
-                      {article.description && (
-                        <p class="article-description">{article.description}</p>
-                      )}
-                      <div class="article-meta">
-                        {article.siteName && <span>{article.siteName}</span>}
-                        {article.siteName && article.createdAt && (
-                          <span> • </span>
-                        )}
-                        {article.createdAt && (
-                          <time>
-                            {new Date(article.createdAt).toLocaleDateString()}
-                          </time>
-                        )}
-                        {article.archived && (
-                          <>
-                            <span> • </span>
-                            <span>Archived</span>
-                          </>
-                        )}
-                      </div>
-                      {article.tags && article.tags.length > 0 && (
-                        <div class="article-tags">
-                          {article.tags.map((tag) => (
-                            <a
-                              href={`/articles?tag=${tag.name}`}
-                              class="tag-badge"
-                            >
-                              {tag.name}
-                            </a>
-                          ))}
-                        </div>
-                      )}
-                    </div>
-                  </article>
+                  <ArticleCard article={article} />
                 ))}
               </div>
             ) : (

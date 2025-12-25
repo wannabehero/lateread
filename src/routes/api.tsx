@@ -102,8 +102,13 @@ api.post("/api/articles/:id/summarize", requireAuth("json-401"), async (c) => {
     // Verify article exists and belongs to user
     const article = await getArticleById(articleId, userId);
 
-    // Get or generate summary
-    const summary = await getOrGenerateSummary(userId, articleId, article.url);
+    // Get or generate summary in article's language
+    const summary = await getOrGenerateSummary(
+      userId,
+      articleId,
+      article.url,
+      article.language,
+    );
 
     // Return summary view
     return c.html(<SummaryView summary={summary} />);

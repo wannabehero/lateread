@@ -37,4 +37,8 @@ Rules:
 - Use clear, readable language
 - Do not add information not present in the article
 - Each summary should be self-contained and make sense on its own
-- The detailed summary should maintain the article's structure and flow`;
+- The detailed summary should maintain the article's structure and flow
+- IMPORTANT: Generate the summary in the SAME LANGUAGE as the article content
+- If the article is in Russian, write summaries in Russian
+- If the article is in Spanish, write summaries in Spanish
+- Match the article's language exactly`;

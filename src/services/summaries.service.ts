@@ -13,6 +13,7 @@ export async function getOrGenerateSummary(
   userId: string,
   articleId: string,
   articleUrl: string,
+  languageCode?: string | null,
 ): Promise<SummaryResult> {
   // Check if summary already exists
   const [existingSummary] = await db
@@ -36,7 +37,7 @@ export async function getOrGenerateSummary(
   const textContent = content.replace(/<[^>]*>/g, " ").replace(/\s+/g, " ");
 
   const llmProvider = getLLMProvider();
-  const summary = await llmProvider.summarize(textContent);
+  const summary = await llmProvider.summarize(textContent, languageCode);
 
   // Cache the summary
   await db.insert(articleSummaries).values({

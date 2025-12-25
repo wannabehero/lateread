@@ -111,13 +111,19 @@ ${truncatedContent}`;
     }
   }
 
-  async summarize(content: string): Promise<SummaryResult> {
+  async summarize(
+    content: string,
+    languageCode?: string | null,
+  ): Promise<SummaryResult> {
     try {
       // Truncate content if too long (max ~100k tokens = ~400k characters)
       const truncatedContent = content.substring(0, 400000);
 
-      const userPrompt = `Analyze this article and provide three different summaries (one sentence, one paragraph, and detailed).
+      const languageHint = languageCode
+        ? `\nIMPORTANT: The article is in ${languageCode.toUpperCase()}. Generate all summaries in ${languageCode.toUpperCase()} language.\n`
+        : "";
 
+      const userPrompt = `Analyze this article and provide three different summaries (one sentence, one paragraph, and detailed).${languageHint}
 Article content:
 ${truncatedContent}`;
 

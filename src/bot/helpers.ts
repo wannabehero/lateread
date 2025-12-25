@@ -104,3 +104,19 @@ export async function extractMessageMetadata(
     htmlContent,
   };
 }
+
+/**
+ * Extract first URL from message text
+ */
+export function extractUrl(text: string): string | null {
+  // Simple URL regex - matches http:// and https://
+  const urlRegex = /(https?:\/\/[^\s]+)/gi;
+  const matches = text.match(urlRegex);
+
+  if (matches && matches.length > 0) {
+    // Return first URL only
+    return matches[0];
+  }
+
+  return null;
+}

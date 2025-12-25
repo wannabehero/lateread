@@ -5,7 +5,7 @@ import { contentCache } from "../lib/content-cache";
 import { spawnArticleWorker } from "../lib/worker";
 import { createArticle } from "../services/articles.service";
 import { getTelegramUserByTelegramId } from "../services/telegram-users.service";
-import { extractMessageMetadata } from "./helpers";
+import { extractMessageMetadata, extractUrl } from "./helpers";
 
 /**
  * Register all bot command handlers
@@ -29,12 +29,9 @@ export function registerHandlers(bot: Bot) {
       "Welcome to lateread!\n\n" +
         "This bot helps you save articles to read later.\n\n" +
         "To get started:\n" +
-        "1. Log in at the web app\n" +
-        "2. Send me any URL and I'll save it for you\n\n" +
-        "Commands:\n" +
-        "/start - Show this message\n" +
-        "/login <token> - Complete web app authentication\n" +
-        "/help - Get help",
+        "1. Log in at the web app at https://lateread.app/\n" +
+        "2. Send me any long message or an article with a URL and I'll save it for you\n\n" +
+        { link_preview_options: { is_disabled: true } },
     );
   });
 
@@ -58,14 +55,10 @@ export function registerHandlers(bot: Bot) {
   bot.command("help", async (ctx) => {
     await ctx.reply(
       "How to use lateread:\n\n" +
-        "1. Log in at the web app to connect your Telegram account\n" +
+        "1. Log in at the web app at https://lateread.app/ to connect your Telegram account\n" +
         "2. Send me any article URL (or forward a message with a URL)\n" +
         "3. I'll save it and process it automatically\n" +
         "4. Read your saved articles at the web app\n\n" +
-        "Commands:\n" +
-        "/start - Welcome message\n" +
-        "/login <token> - Complete authentication\n" +
-        "/help - Show this help\n\n" +
         "Features:\n" +
         "- Automatic article extraction\n" +
         "- AI-powered tagging\n" +
@@ -185,22 +178,6 @@ export function registerHandlers(bot: Bot) {
   });
 
   console.log("Bot handlers registered");
-}
-
-/**
- * Extract first URL from message text
- */
-function extractUrl(text: string): string | null {
-  // Simple URL regex - matches http:// and https://
-  const urlRegex = /(https?:\/\/[^\s]+)/gi;
-  const matches = text.match(urlRegex);
-
-  if (matches && matches.length > 0) {
-    // Return first URL only
-    return matches[0];
-  }
-
-  return null;
 }
 
 /**
@@ -340,8 +317,8 @@ async function handleLogin(ctx: Context, token: string) {
 
     await ctx.reply(
       "Login successful!\n\n" +
-        "You can now return to the web app and start saving articles.\n\n" +
-        "Send me any URL to save an article.",
+        "You can now return to the web app at https://lateread.app/.\n\n" +
+        "Send me any URL or a long message to save as an article.",
     );
   } catch (error) {
     console.error("Login error:", error);

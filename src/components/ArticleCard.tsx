@@ -1,5 +1,6 @@
 import type { FC } from "hono/jsx";
 import type { Article, Tag } from "../db/types";
+import { formatRelativeTime } from "../lib/date";
 import { TagBadge } from "./TagBadge";
 
 interface ArticleCardProps {
@@ -39,10 +40,24 @@ export const ArticleCard: FC<ArticleCardProps> = ({ article, status }) => {
           <p class="article-description">{article.description}</p>
         )}
 
-        {article.siteName && (
-          <p class="article-meta">
-            <small>{article.siteName}</small>
-          </p>
+        <p class="article-meta">
+          <small>
+            {article.siteName && <span>{article.siteName}</span>}
+            {article.siteName && article.createdAt && <span> • </span>}
+            {article.createdAt && (
+              <span class="article-date">
+                {formatRelativeTime(article.createdAt)}
+              </span>
+            )}
+          </small>
+        </p>
+
+        {article.tags.length > 0 && (
+          <div class="article-tags">
+            {article.tags.map((tag) => (
+              <TagBadge name={tag.name} href={buildTagUrl(tag.name)} />
+            ))}
+          </div>
         )}
 
         <div class="article-actions">

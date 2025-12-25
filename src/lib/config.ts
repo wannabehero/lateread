@@ -17,6 +17,9 @@ const configSchema = z.object({
   // LLM (Anthropic Claude)
   ANTHROPIC_API_KEY: z.string().min(1, "ANTHROPIC_API_KEY is required"),
 
+  // ElevenLabs TTS
+  ELEVENLABS_API_KEY: z.string().min(1, "ELEVENLABS_API_KEY is required"),
+
   // Authentication & Session
   SESSION_SECRET: z
     .string()

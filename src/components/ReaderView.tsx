@@ -55,6 +55,17 @@ export const ReaderView: FC<ReaderViewProps> = ({ article, content }) => {
         </details>
       </section>
 
+      <section class="reader-audio">
+        <audio
+          id="article-audio"
+          controls
+          preload="none"
+          src={`/api/articles/${article.id}/tts`}
+          data-title={displayTitle}
+          hx-on-play="setAudioMetadata(this)"
+        />
+      </section>
+
       <div
         class="reader-content"
         dangerouslySetInnerHTML={{ __html: content }}

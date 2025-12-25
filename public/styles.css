@@ -446,6 +446,17 @@ body {
   gap: 0.5rem;
 }
 
+.reader-audio {
+  margin-bottom: 2rem;
+}
+
+.reader-audio audio {
+  width: 100%;
+  max-width: 800px;
+  margin: 0 auto;
+  display: block;
+}
+
 .summary-container {
   padding: 0;
 }

@@ -1,7 +1,9 @@
 import { Hono } from "hono";
+import { stream } from "hono/streaming";
 import { EmptyState } from "../components/EmptyState";
 import { ProcessingBanner } from "../components/ProcessingBanner";
 import { SummaryView } from "../components/SummaryView";
+import { generateTTSStream, htmlToPlainText } from "../lib/tts";
 import { requireAuth } from "../middleware/auth";
 import {
   countArticles,
@@ -10,6 +12,7 @@ import {
   markArticleAsRead,
   toggleArticleArchive,
 } from "../services/articles.service";
+import { getArticleContent } from "../services/content.service";
 import { getOrGenerateSummary } from "../services/summaries.service";
 import type { AppContext } from "../types/context";
 
@@ -147,5 +150,59 @@ api.get(
     }
   },
 );
+
+/**
+ * GET /api/articles/:id/tts - Stream text-to-speech audio for article
+ */
+api.get("/api/articles/:id/tts", requireAuth("json-401"), async (c) => {
+  const userId = c.get("userId");
+  const articleId = c.req.param("id");
+
+  try {
+    // Verify article exists and belongs to user
+    const article = await getArticleById(articleId, userId);
+
+    // Get article content from cache
+    const htmlContent = await getArticleContent(userId, articleId, article.url);
+
+    // Convert HTML to plain text
+    const plainText = htmlToPlainText(htmlContent);
+
+    if (!plainText) {
+      return c.json({ error: "No content available for TTS" }, 400);
+    }
+
+    // Generate TTS audio stream
+    const audioStream = await generateTTSStream(plainText);
+
+    // Set appropriate headers for audio streaming
+    c.header("Content-Type", "audio/mpeg");
+    c.header("Cache-Control", "public, max-age=86400"); // Cache for 24 hours
+
+    // Stream the audio to the response using ReadableStream reader
+    return stream(c, async (streamWriter) => {
+      const reader = audioStream.getReader();
+      try {
+        while (true) {
+          const { done, value } = await reader.read();
+          if (done) break;
+          await streamWriter.write(value);
+        }
+      } finally {
+        reader.releaseLock();
+      }
+    });
+  } catch (error) {
+    const errorMessage =
+      error instanceof Error ? error.message : "Unknown error";
+
+    if (errorMessage === "Article not found") {
+      return c.json({ error: "Article not found" }, 404);
+    }
+
+    console.error("Error generating TTS:", error);
+    return c.json({ error: "Failed to generate audio" }, 500);
+  }
+});
 
 export default api;

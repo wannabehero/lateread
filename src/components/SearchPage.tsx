@@ -39,7 +39,7 @@ export const SearchPage: FC<SearchPageProps> = ({ query, articles }) => {
           articles.length > 0 ? (
             <div class="article-grid">
               {articles.map((article) => (
-                <article class={`article-card ${article.read ? "read" : ""}`}>
+                <article class={`article-card ${article.readAt ? "read" : ""}`}>
                   {article.imageUrl && (
                     <div class="article-image">
                       <img
@@ -58,12 +58,12 @@ export const SearchPage: FC<SearchPageProps> = ({ query, articles }) => {
                     )}
                     <div class="article-meta">
                       {article.siteName && <span>{article.siteName}</span>}
-                      {article.siteName && article.publishedAt && (
+                      {article.siteName && article.createdAt && (
                         <span> • </span>
                       )}
-                      {article.publishedAt && (
+                      {article.createdAt && (
                         <time>
-                          {new Date(article.publishedAt).toLocaleDateString()}
+                          {new Date(article.createdAt).toLocaleDateString()}
                         </time>
                       )}
                       {article.archived && (

@@ -27,10 +27,10 @@ export function registerHandlers(bot: Bot) {
     // Regular welcome message
     await ctx.reply(
       "Welcome to lateread!\n\n" +
-        "This bot helps you save articles to read later.\n\n" +
+        "This bot helps you save articles and long messages to read later.\n\n" +
         "To get started:\n" +
-        "1. Log in at the web app at https://lateread.app/\n" +
-        "2. Send me any long message or an article with a URL and I'll save it for you\n\n" +
+        "1. Log in at the web app: https://lateread.app/\n" +
+        "2. Send me any URL or long message to save it automatically\n\n" +
         { link_preview_options: { is_disabled: true } },
     );
   });
@@ -43,7 +43,7 @@ export function registerHandlers(bot: Bot) {
       await ctx.reply(
         "Please provide a login token.\n\n" +
           "Usage: /login <token>\n\n" +
-          "Get your token from the web app.",
+          "Get your token from the web app at https://lateread.app/",
       );
       return;
     }
@@ -55,15 +55,21 @@ export function registerHandlers(bot: Bot) {
   bot.command("help", async (ctx) => {
     await ctx.reply(
       "How to use lateread:\n\n" +
-        "1. Log in at the web app at https://lateread.app/ to connect your Telegram account\n" +
-        "2. Send me any article URL (or forward a message with a URL)\n" +
-        "3. I'll save it and process it automatically\n" +
-        "4. Read your saved articles at the web app\n\n" +
+        "1. Log in at the web app: https://lateread.app/ to connect your Telegram account\n" +
+        "2. Send me any article URL, or forward a message with a URL\n" +
+        "3. Send me long messages directly to save them as articles\n" +
+        "4. I'll process and save them automatically\n" +
+        "5. Read your saved articles at the web app\n\n" +
         "Features:\n" +
-        "- Automatic article extraction\n" +
-        "- AI-powered tagging\n" +
-        "- Clean reading experience\n" +
-        "- Article summaries",
+        "✨ Automatic article extraction from URLs\n" +
+        "🤖 AI-powered tagging and organization\n" +
+        "🧹 Clean, distraction-free reading experience\n" +
+        "📘 Automatic article summaries",
+      {
+        link_preview_options: {
+          is_disabled: true,
+        },
+      },
     );
   });
 
@@ -119,7 +125,8 @@ export function registerHandlers(bot: Bot) {
       console.log(`[Bot] User ${telegramId} not authenticated`);
       await ctx.reply(
         "Please log in first at the web app to start saving articles.\n\n" +
-          "Once you're logged in, send me any URL and I'll save it for you.",
+          "Once you're logged in, send me any URL or long message and I'll save it for you.\n\n" +
+          "Log in here: https://lateread.app/",
       );
       return;
     }
@@ -198,7 +205,8 @@ async function handleLongMessage(ctx: Context) {
     console.log(`[Bot] User ${telegramId} not authenticated`);
     await ctx.reply(
       "Please log in first at the web app to start saving articles.\n\n" +
-        "Once you're logged in, send me any message and I'll save it for you.",
+        "Once you're logged in, send me any URL or long message and I'll save it for you.\n\n" +
+        "Log in here: https://lateread.app/",
     );
     return;
   }
@@ -310,21 +318,31 @@ async function handleLogin(ctx: Context, token: string) {
     if (!result) {
       await ctx.reply(
         "Login failed. The authentication link may have expired or is invalid.\n\n" +
-          "Please try logging in again from the web app.",
+          "Please try logging in again from the web app at https://lateread.app/",
+        {
+          link_preview_options: {
+            is_disabled: true,
+          },
+        },
       );
       return;
     }
 
     await ctx.reply(
-      "Login successful!\n\n" +
+      "🎉 Login successful!\n\n" +
         "You can now return to the web app at https://lateread.app/.\n\n" +
-        "Send me any URL or a long message to save as an article.",
+        "Send me any URL or a long message to save as an article. I'll automatically extract the content, generate tags, and create a summary for you!",
+      {
+        link_preview_options: {
+          is_disabled: true,
+        },
+      },
     );
   } catch (error) {
     console.error("Login error:", error);
     await ctx.reply(
       "An error occurred during login. Please try again.\n\n" +
-        "If the problem persists, please contact support.",
+        "If the problem persists, please contact support at @quiker.",
     );
   }
 }

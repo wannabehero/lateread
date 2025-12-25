@@ -1,12 +1,11 @@
-import { eq } from "drizzle-orm";
 import type { Bot, Context } from "grammy";
-import { marked } from "marked";
-import { articles, telegramUsers } from "../db/schema";
 import { claimAuthToken } from "../lib/auth";
 import { config } from "../lib/config";
 import { contentCache } from "../lib/content-cache";
-import { db } from "../lib/db";
 import { spawnArticleWorker } from "../lib/worker";
+import { createArticle } from "../services/articles.service";
+import { getTelegramUserByTelegramId } from "../services/telegram-users.service";
+import { extractMessageMetadata } from "./helpers";
 
 /**
  * Register all bot command handlers
@@ -107,12 +106,7 @@ export function registerHandlers(bot: Bot) {
       return;
     }
 
-    // Query TelegramUser by telegramId
-    const [telegramUser] = await db
-      .select()
-      .from(telegramUsers)
-      .where(eq(telegramUsers.telegramId, telegramId))
-      .limit(1);
+    const telegramUser = await getTelegramUserByTelegramId(telegramId);
 
     if (!telegramUser) {
       console.log(`[Bot] User ${telegramId} not authenticated`);
@@ -129,20 +123,10 @@ export function registerHandlers(bot: Bot) {
 
     // Create article record
     console.log(`[Bot] Creating article record for URL: ${url}`);
-    const [article] = await db
-      .insert(articles)
-      .values({
-        userId: telegramUser.userId,
-        url: url,
-        status: "pending",
-        processingAttempts: 0,
-      })
-      .returning();
-
-    if (!article) {
-      console.error(`[Bot] Failed to create article record for ${url}`);
-      return;
-    }
+    const article = await createArticle({
+      userId: telegramUser.userId,
+      url: url,
+    });
 
     console.log(`[Bot] Article created with ID: ${article.id}`);
 
@@ -212,26 +196,8 @@ async function handleLongMessage(ctx: Context) {
     return;
   }
 
-  if (!ctx.message || !("text" in ctx.message) || !ctx.message.text) {
-    console.log("[Bot] No text message found, ignoring");
-    return;
-  }
-
-  const messageText = ctx.message.text;
-  const message = ctx.message;
-  const chat = ctx.chat;
-
-  if (!chat) {
-    console.log("[Bot] No chat found, ignoring");
-    return;
-  }
-
   // Check if user is authenticated
-  const [telegramUser] = await db
-    .select()
-    .from(telegramUsers)
-    .where(eq(telegramUsers.telegramId, telegramId))
-    .limit(1);
+  const telegramUser = await getTelegramUserByTelegramId(telegramId);
 
   if (!telegramUser) {
     console.log(`[Bot] User ${telegramId} not authenticated`);
@@ -246,89 +212,27 @@ async function handleLongMessage(ctx: Context) {
     `[Bot] User authenticated: ${telegramUser.userId} (telegram: ${telegramId})`,
   );
 
-  // Extract title: first line, truncated to 64 chars
-  const lines = messageText.split("\n");
-  const firstLine = lines[0] || messageText.substring(0, 64);
-  const title =
-    firstLine.length > 64 ? firstLine.substring(0, 64) + "..." : firstLine;
+  // Extract metadata from message
+  const metadata = await extractMessageMetadata(ctx);
 
-  // Extract description: next 200 chars after first line
-  const restOfText = lines.slice(1).join("\n").trim();
-  const description =
-    restOfText.length > 200
-      ? restOfText.substring(0, 200) + "..."
-      : restOfText || title.substring(0, 200);
+  if (!metadata) {
+    console.log("[Bot] Failed to extract message metadata");
+    return;
+  }
 
-  // Determine URL and author
-  let url: string;
-  let siteName: string;
-
-  // Check if message is from a channel with username
-  if (chat.type === "channel" && "username" in chat && chat.username) {
-    url = `https://t.me/${chat.username}/${message.message_id}`;
-    siteName =
-      "title" in chat ? chat.title || "Telegram Channel" : "Telegram Channel";
-  }
-  // Check if forwarded from a channel
-  else if (
-    "forward_from_chat" in message &&
-    message.forward_from_chat &&
-    typeof message.forward_from_chat === "object" &&
-    "type" in message.forward_from_chat &&
-    message.forward_from_chat.type === "channel" &&
-    "username" in message.forward_from_chat &&
-    typeof message.forward_from_chat.username === "string" &&
-    message.forward_from_chat.username
-  ) {
-    url = `https://t.me/${message.forward_from_chat.username}`;
-    siteName =
-      "title" in message.forward_from_chat &&
-      typeof message.forward_from_chat.title === "string"
-        ? message.forward_from_chat.title
-        : "Telegram Channel";
-  }
-  // Check if forwarded from anywhere
-  else if ("forward_date" in message && message.forward_date) {
-    url = `lateread://telegram-message`;
-    siteName = "Forwarded to Telegram";
-  }
-  // Regular message
-  else {
-    url = `lateread://telegram-message`;
-    siteName = "Telegram Message";
-  }
+  const { title, description, url, siteName, htmlContent } = metadata;
 
   console.log(`[Bot] Processing long message: title="${title}", url="${url}"`);
 
-  // Convert markdown to HTML
-  let htmlContent: string;
-  try {
-    htmlContent = await marked(messageText);
-  } catch (error) {
-    console.error("[Bot] Failed to convert markdown to HTML:", error);
-    // Fallback: wrap in <p> tags
-    htmlContent = `<p>${messageText.replace(/\n/g, "<br>")}</p>`;
-  }
-
   // Create article record
   console.log(`[Bot] Creating article record for long message`);
-  const [article] = await db
-    .insert(articles)
-    .values({
-      userId: telegramUser.userId,
-      url: url,
-      title: title,
-      description: description,
-      siteName: siteName,
-      status: "pending",
-      processingAttempts: 0,
-    })
-    .returning();
-
-  if (!article) {
-    console.error(`[Bot] Failed to create article record`);
-    return;
-  }
+  const article = await createArticle({
+    userId: telegramUser.userId,
+    url: url,
+    title: title,
+    description: description,
+    siteName: siteName,
+  });
 
   console.log(`[Bot] Article created with ID: ${article.id}`);
 
@@ -353,8 +257,13 @@ async function handleLongMessage(ctx: Context) {
   }
 
   // Spawn worker (non-blocking)
-  const chatId = chat.id;
-  const messageId = message.message_id;
+  if (!ctx.chat || !ctx.message) {
+    console.log("[Bot] No chat or message found for worker callbacks");
+    return;
+  }
+
+  const chatId = ctx.chat.id;
+  const messageId = ctx.message.message_id;
 
   console.log(`[Bot] Spawning worker for article ${article.id}`);
   spawnArticleWorker({

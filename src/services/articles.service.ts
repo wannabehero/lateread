@@ -10,7 +10,7 @@ import {
   sql,
 } from "drizzle-orm";
 import type { Article, Tag } from "../db/types";
-import { articles, articleSummaries, articleTags, db, tags } from "../lib/db";
+import { articleSummaries, articles, articleTags, db, tags } from "../lib/db";
 import { searchCachedArticleIds } from "./content.service";
 
 type ArticleWithTags = Article & {
@@ -247,4 +247,36 @@ export async function countArticlesByStatus(
     );
 
   return result?.count ?? 0;
+}
+
+/**
+ * Create a new article
+ */
+export async function createArticle(params: {
+  userId: string;
+  url: string;
+  title?: string;
+  description?: string;
+  siteName?: string;
+  imageUrl?: string;
+}): Promise<Article> {
+  const [article] = await db
+    .insert(articles)
+    .values({
+      userId: params.userId,
+      url: params.url,
+      title: params.title ?? null,
+      description: params.description ?? null,
+      siteName: params.siteName ?? null,
+      imageUrl: params.imageUrl ?? null,
+      status: "pending",
+      processingAttempts: 0,
+    })
+    .returning();
+
+  if (!article) {
+    throw new Error("Failed to create article");
+  }
+
+  return article;
 }

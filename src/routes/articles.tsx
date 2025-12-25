@@ -2,6 +2,7 @@ import type { Context } from "hono";
 import { Hono } from "hono";
 import { ArticleList } from "../components/ArticleList";
 import { Layout } from "../components/Layout";
+import { ReaderControls } from "../components/ReaderControls";
 import { ReaderView } from "../components/ReaderView";
 import { requireAuth } from "../middleware/auth";
 import {
@@ -31,13 +32,20 @@ function renderWithLayout(
   // biome-ignore lint/suspicious/noExplicitAny: can be any JSX content
   content: any,
   currentPath?: string,
+  // biome-ignore lint/suspicious/noExplicitAny: can be any JSX content
+  overrideControls?: any,
 ): Response | Promise<Response> {
   if (isHtmxRequest(c)) {
     return c.html(content);
   }
 
   return c.html(
-    <Layout title={title} isAuthenticated={true} currentPath={currentPath}>
+    <Layout
+      title={title}
+      isAuthenticated={true}
+      currentPath={currentPath}
+      overrideControls={overrideControls}
+    >
       {content}
     </Layout>,
   );
@@ -108,12 +116,23 @@ articlesRouter.get("/articles/:id", requireAuth("redirect"), async (c) => {
     // Get content from cache or fetch if missing
     const content = await getArticleContent(userId, articleId, article.url);
 
-    const readerContent = (
-      <ReaderView
-        article={article}
-        content={content}
-        preferences={preferences}
-      />
+    const readerContent = <ReaderView article={article} content={content} />;
+
+    const readerControls = (
+      <div class="nav-actions">
+        <div class="nav-menu reader-settings-menu">
+          <button type="button" class="nav-icon-button">
+            <img
+              src="/public/icons/settings-2.svg"
+              alt="Settings"
+              class="nav-icon"
+            />
+          </button>
+          <div class="nav-dropdown reader-settings-dropdown">
+            <ReaderControls preferences={preferences} />
+          </div>
+        </div>
+      </div>
     );
 
     return renderWithLayout(
@@ -121,6 +140,7 @@ articlesRouter.get("/articles/:id", requireAuth("redirect"), async (c) => {
       article.title || "Article",
       readerContent,
       "/articles",
+      readerControls,
     );
   } catch (error) {
     const errorMessage =

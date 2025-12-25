@@ -30,9 +30,8 @@ export const ReaderControls: FC<ReaderControlsProps> = ({ preferences }) => {
         value={fontSize.toString()}
       />
 
-      {/* Font Family */}
       <div class="reader-controls-section">
-        <span class="reader-controls-label">Font Family</span>
+        <span class="reader-controls-label">Text</span>
         <div class="reader-controls-group">
           <button
             type="button"
@@ -60,12 +59,7 @@ export const ReaderControls: FC<ReaderControlsProps> = ({ preferences }) => {
             New York
           </button>
         </div>
-      </div>
-
-      {/* Font Size */}
-      <div class="reader-controls-section">
-        <span class="reader-controls-label">Font Size</span>
-        <div class="reader-controls-group">
+        <div class="reader-controls-group reader-size-controls">
           <button
             type="button"
             class="reader-control-btn"

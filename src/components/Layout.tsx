@@ -6,6 +6,7 @@ interface LayoutProps {
   children: any;
   isAuthenticated?: boolean;
   currentPath?: string;
+  overrideControls?: any;
 }
 
 export const Layout: FC<LayoutProps> = ({
@@ -13,6 +14,7 @@ export const Layout: FC<LayoutProps> = ({
   children,
   isAuthenticated = false,
   currentPath = "/",
+  overrideControls,
 }) => {
   return (
     <html lang="en">
@@ -81,44 +83,45 @@ export const Layout: FC<LayoutProps> = ({
                 <strong>lateread</strong>
               </a>
             </div>
-            {isAuthenticated && (
-              <div class="nav-actions">
-                <a href="/search" class="nav-icon-link" title="Search">
-                  <img
-                    src="/public/icons/search.svg"
-                    alt="Search"
-                    class="nav-icon"
-                  />
-                </a>
-                <a
-                  href="/articles?status=archived"
-                  class="nav-icon-link"
-                  title="Archive"
-                >
-                  <img
-                    src="/public/icons/archive.svg"
-                    alt="Archive"
-                    class="nav-icon"
-                  />
-                </a>
-                <div class="nav-menu">
-                  <button type="button" class="nav-icon-button">
+            {isAuthenticated &&
+              (overrideControls || (
+                <div class="nav-actions">
+                  <a href="/search" class="nav-icon-link" title="Search">
                     <img
-                      src="/public/icons/menu.svg"
-                      alt="Menu"
+                      src="/public/icons/search.svg"
+                      alt="Search"
                       class="nav-icon"
                     />
-                  </button>
-                  <div class="nav-dropdown">
-                    <form action="/auth/logout" method="post">
-                      <button type="submit" class="dropdown-item">
-                        Log out
-                      </button>
-                    </form>
+                  </a>
+                  <a
+                    href="/articles?status=archived"
+                    class="nav-icon-link"
+                    title="Archive"
+                  >
+                    <img
+                      src="/public/icons/archive.svg"
+                      alt="Archive"
+                      class="nav-icon"
+                    />
+                  </a>
+                  <div class="nav-menu">
+                    <button type="button" class="nav-icon-button">
+                      <img
+                        src="/public/icons/menu.svg"
+                        alt="Menu"
+                        class="nav-icon"
+                      />
+                    </button>
+                    <div class="nav-dropdown">
+                      <form action="/auth/logout" method="post">
+                        <button type="submit" class="dropdown-item">
+                          Log out
+                        </button>
+                      </form>
+                    </div>
                   </div>
                 </div>
-              </div>
-            )}
+              ))}
           </div>
         </header>
 

@@ -19,6 +19,10 @@ const configSchema = z.object({
 
   // ElevenLabs TTS
   ELEVENLABS_API_KEY: z.string().min(1, "ELEVENLABS_API_KEY is required"),
+  HIDE_AUDIO_PLAYER: z
+    .string()
+    .optional()
+    .transform((val) => val === "true"),
 
   // Authentication & Session
   SESSION_SECRET: z
@@ -34,6 +38,7 @@ const configSchema = z.object({
   PROCESSING_TIMEOUT_SECONDS: z.coerce.number().default(60),
   MAX_RETRY_ATTEMPTS: z.coerce.number().default(3),
   RETRY_DELAY_MINUTES: z.coerce.number().default(5),
+  LONG_MESSAGE_THRESHOLD: z.coerce.number().default(1000),
 });
 
 // Parse and validate environment variables on module import

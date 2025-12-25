@@ -23,7 +23,7 @@ export async function extractCleanContent(
     const response = await fetch(url, {
       headers: {
         "User-Agent":
-          "Mozilla/5.0 (compatible; Lateread/1.0; +https://github.com/yourusername/lateread)",
+          "Mozilla/5.0 (compatible; lateread/1.0; +https://github.com/wannabehero)",
       },
       signal: controller.signal,
       redirect: "follow", // Follow up to 5 redirects (default)

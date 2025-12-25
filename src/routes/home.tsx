@@ -21,18 +21,14 @@ home.get("/", async (c) => {
       });
 
       return c.html(
-        <Layout
-          title="Articles - lateread"
-          isAuthenticated={true}
-          currentPath="/"
-        >
+        <Layout isAuthenticated={true} currentPath="/">
           <ArticleList articles={articlesWithTags} status="all" />
         </Layout>,
       );
     } catch (error) {
       console.error("Error loading articles:", error);
       return c.html(
-        <Layout title="Error - lateread" isAuthenticated={true}>
+        <Layout isAuthenticated={true}>
           <div class="error">
             <p>Failed to load articles. Please try again.</p>
           </div>
@@ -44,7 +40,7 @@ home.get("/", async (c) => {
 
   // Show login page
   return c.html(
-    <Layout title="Login - lateread">
+    <Layout>
       <div class="auth-container">
         <header>
           <h1>Welcome to lateread</h1>

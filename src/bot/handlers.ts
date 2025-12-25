@@ -1,9 +1,11 @@
-import { eq } from "drizzle-orm";
 import type { Bot, Context } from "grammy";
-import { articles, telegramUsers } from "../db/schema";
 import { claimAuthToken } from "../lib/auth";
-import { db } from "../lib/db";
+import { config } from "../lib/config";
+import { contentCache } from "../lib/content-cache";
 import { spawnArticleWorker } from "../lib/worker";
+import { createArticle } from "../services/articles.service";
+import { getTelegramUserByTelegramId } from "../services/telegram-users.service";
+import { extractMessageMetadata, extractUrl } from "./helpers";
 
 /**
  * Register all bot command handlers
@@ -25,14 +27,11 @@ export function registerHandlers(bot: Bot) {
     // Regular welcome message
     await ctx.reply(
       "Welcome to lateread!\n\n" +
-        "This bot helps you save articles to read later.\n\n" +
+        "This bot helps you save articles and long messages to read later.\n\n" +
         "To get started:\n" +
-        "1. Log in at the web app\n" +
-        "2. Send me any URL and I'll save it for you\n\n" +
-        "Commands:\n" +
-        "/start - Show this message\n" +
-        "/login <token> - Complete web app authentication\n" +
-        "/help - Get help",
+        "1. Log in at the web app: https://lateread.app/\n" +
+        "2. Send me any URL or long message to save it automatically\n\n" +
+        { link_preview_options: { is_disabled: true } },
     );
   });
 
@@ -44,7 +43,7 @@ export function registerHandlers(bot: Bot) {
       await ctx.reply(
         "Please provide a login token.\n\n" +
           "Usage: /login <token>\n\n" +
-          "Get your token from the web app.",
+          "Get your token from the web app at https://lateread.app/",
       );
       return;
     }
@@ -56,29 +55,54 @@ export function registerHandlers(bot: Bot) {
   bot.command("help", async (ctx) => {
     await ctx.reply(
       "How to use lateread:\n\n" +
-        "1. Log in at the web app to connect your Telegram account\n" +
-        "2. Send me any article URL (or forward a message with a URL)\n" +
-        "3. I'll save it and process it automatically\n" +
-        "4. Read your saved articles at the web app\n\n" +
-        "Commands:\n" +
-        "/start - Welcome message\n" +
-        "/login <token> - Complete authentication\n" +
-        "/help - Show this help\n\n" +
+        "1. Log in at the web app: https://lateread.app/ to connect your Telegram account\n" +
+        "2. Send me any article URL, or forward a message with a URL\n" +
+        "3. Send me long messages directly to save them as articles\n" +
+        "4. I'll process and save them automatically\n" +
+        "5. Read your saved articles at the web app\n\n" +
         "Features:\n" +
-        "- Automatic article extraction\n" +
-        "- AI-powered tagging\n" +
-        "- Clean reading experience\n" +
-        "- Article summaries",
+        "✨ Automatic article extraction from URLs\n" +
+        "🤖 AI-powered tagging and organization\n" +
+        "🧹 Clean, distraction-free reading experience\n" +
+        "📘 Automatic article summaries",
+      {
+        link_preview_options: {
+          is_disabled: true,
+        },
+      },
     );
   });
 
-  // Handle messages with URLs
-  bot.on("message:text", async (ctx) => {
+  bot.command("ping", async (ctx) => {
+    await ctx.reply("Pong!");
+  });
+
+  // Handle messages with URLs (text or captions from media)
+  bot.on([":text", ":caption"], async (ctx) => {
+    if (!ctx.message) {
+      return;
+    }
+
+    // Get text or caption from message
+    const messageText =
+      ("text" in ctx.message && ctx.message.text) ||
+      ("caption" in ctx.message && ctx.message.caption) ||
+      "";
+
     console.log(
-      `[Bot] Received message from user ${ctx.from?.id}: "${ctx.message.text.substring(0, 100)}..."`,
+      `[Bot] Received message from user ${ctx.from?.id}: "${messageText.substring(0, 100)}..."`,
     );
 
-    const url = extractUrl(ctx.message.text);
+    // Check if message is long enough to treat as article
+    if (messageText.length >= config.LONG_MESSAGE_THRESHOLD) {
+      console.log(
+        `[Bot] Message length ${messageText.length} >= threshold ${config.LONG_MESSAGE_THRESHOLD}, treating as article`,
+      );
+      await handleLongMessage(ctx);
+      return;
+    }
+
+    const url = extractUrl(messageText);
 
     if (!url) {
       console.log("[Bot] No URL found in message, ignoring");
@@ -95,18 +119,14 @@ export function registerHandlers(bot: Bot) {
       return;
     }
 
-    // Query TelegramUser by telegramId
-    const [telegramUser] = await db
-      .select()
-      .from(telegramUsers)
-      .where(eq(telegramUsers.telegramId, telegramId))
-      .limit(1);
+    const telegramUser = await getTelegramUserByTelegramId(telegramId);
 
     if (!telegramUser) {
       console.log(`[Bot] User ${telegramId} not authenticated`);
       await ctx.reply(
         "Please log in first at the web app to start saving articles.\n\n" +
-          "Once you're logged in, send me any URL and I'll save it for you.",
+          "Once you're logged in, send me any URL or long message and I'll save it for you.\n\n" +
+          "Log in here: https://lateread.app/",
       );
       return;
     }
@@ -117,20 +137,10 @@ export function registerHandlers(bot: Bot) {
 
     // Create article record
     console.log(`[Bot] Creating article record for URL: ${url}`);
-    const [article] = await db
-      .insert(articles)
-      .values({
-        userId: telegramUser.userId,
-        url: url,
-        status: "pending",
-        processingAttempts: 0,
-      })
-      .returning();
-
-    if (!article) {
-      console.error(`[Bot] Failed to create article record for ${url}`);
-      return;
-    }
+    const article = await createArticle({
+      userId: telegramUser.userId,
+      url: url,
+    });
 
     console.log(`[Bot] Article created with ID: ${article.id}`);
 
@@ -143,6 +153,10 @@ export function registerHandlers(bot: Bot) {
     }
 
     // Spawn worker (non-blocking)
+    if (!ctx.chat || !ctx.message) {
+      return;
+    }
+
     const chatId = ctx.chat.id;
     const messageId = ctx.message.message_id;
 
@@ -174,19 +188,108 @@ export function registerHandlers(bot: Bot) {
 }
 
 /**
- * Extract first URL from message text
+ * Handle long Telegram messages as articles
  */
-function extractUrl(text: string): string | null {
-  // Simple URL regex - matches http:// and https://
-  const urlRegex = /(https?:\/\/[^\s]+)/gi;
-  const matches = text.match(urlRegex);
+async function handleLongMessage(ctx: Context) {
+  const telegramId = ctx.from?.id.toString();
 
-  if (matches && matches.length > 0) {
-    // Return first URL only
-    return matches[0];
+  if (!telegramId) {
+    console.log("[Bot] No telegram ID found, ignoring");
+    return;
   }
 
-  return null;
+  // Check if user is authenticated
+  const telegramUser = await getTelegramUserByTelegramId(telegramId);
+
+  if (!telegramUser) {
+    console.log(`[Bot] User ${telegramId} not authenticated`);
+    await ctx.reply(
+      "Please log in first at the web app to start saving articles.\n\n" +
+        "Once you're logged in, send me any URL or long message and I'll save it for you.\n\n" +
+        "Log in here: https://lateread.app/",
+    );
+    return;
+  }
+
+  console.log(
+    `[Bot] User authenticated: ${telegramUser.userId} (telegram: ${telegramId})`,
+  );
+
+  // Extract metadata from message
+  const metadata = await extractMessageMetadata(ctx);
+
+  if (!metadata) {
+    console.log("[Bot] Failed to extract message metadata");
+    return;
+  }
+
+  const { title, description, url, siteName, htmlContent } = metadata;
+
+  console.log(`[Bot] Processing long message: title="${title}", url="${url}"`);
+
+  // Create article record
+  console.log(`[Bot] Creating article record for long message`);
+  const article = await createArticle({
+    userId: telegramUser.userId,
+    url: url,
+    title: title,
+    description: description,
+    siteName: siteName,
+  });
+
+  console.log(`[Bot] Article created with ID: ${article.id}`);
+
+  // Cache HTML content immediately
+  try {
+    await contentCache.set(telegramUser.userId, article.id, htmlContent);
+    console.log(`[Bot] Content cached for article ${article.id}`);
+  } catch (error) {
+    console.error(
+      `[Bot] Failed to cache content for article ${article.id}:`,
+      error,
+    );
+    // Continue anyway - worker will retry if needed
+  }
+
+  // React with eyes emoji
+  try {
+    await ctx.react("👀");
+    console.log(`[Bot] Added 👀 reaction to message`);
+  } catch (error) {
+    console.error("[Bot] Failed to add reaction:", error);
+  }
+
+  // Spawn worker (non-blocking)
+  if (!ctx.chat || !ctx.message) {
+    console.log("[Bot] No chat or message found for worker callbacks");
+    return;
+  }
+
+  const chatId = ctx.chat.id;
+  const messageId = ctx.message.message_id;
+
+  console.log(`[Bot] Spawning worker for article ${article.id}`);
+  spawnArticleWorker({
+    articleId: article.id,
+    onSuccess: async () => {
+      try {
+        await ctx.api.setMessageReaction(chatId, messageId, [
+          { type: "emoji", emoji: "👍" },
+        ]);
+      } catch (err) {
+        console.error("Failed to update Telegram reaction:", err);
+      }
+    },
+    onFailure: async () => {
+      try {
+        await ctx.api.setMessageReaction(chatId, messageId, [
+          { type: "emoji", emoji: "👎" },
+        ]);
+      } catch (err) {
+        console.error("Failed to update Telegram reaction:", err);
+      }
+    },
+  });
 }
 
 /**
@@ -215,21 +318,31 @@ async function handleLogin(ctx: Context, token: string) {
     if (!result) {
       await ctx.reply(
         "Login failed. The authentication link may have expired or is invalid.\n\n" +
-          "Please try logging in again from the web app.",
+          "Please try logging in again from the web app at https://lateread.app/",
+        {
+          link_preview_options: {
+            is_disabled: true,
+          },
+        },
       );
       return;
     }
 
     await ctx.reply(
-      "Login successful!\n\n" +
-        "You can now return to the web app and start saving articles.\n\n" +
-        "Send me any URL to save an article.",
+      "🎉 Login successful!\n\n" +
+        "You can now return to the web app at https://lateread.app/.\n\n" +
+        "Send me any URL or a long message to save as an article. I'll automatically extract the content, generate tags, and create a summary for you!",
+      {
+        link_preview_options: {
+          is_disabled: true,
+        },
+      },
     );
   } catch (error) {
     console.error("Login error:", error);
     await ctx.reply(
       "An error occurred during login. Please try again.\n\n" +
-        "If the problem persists, please contact support.",
+        "If the problem persists, please contact support at @quiker.",
     );
   }
 }

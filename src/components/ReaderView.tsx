@@ -1,5 +1,6 @@
 import type { FC } from "hono/jsx";
 import type { Article, Tag } from "../db/types";
+import { config } from "../lib/config";
 import { formatRelativeTime } from "../lib/date";
 import { TagBadge } from "./TagBadge";
 
@@ -61,16 +62,18 @@ export const ReaderView: FC<ReaderViewProps> = ({ article, content }) => {
         </details>
       </section>
 
-      <section class="reader-audio">
-        <audio
-          id="article-audio"
-          controls
-          preload="none"
-          src={`/api/articles/${article.id}/tts`}
-          data-title={displayTitle}
-          hx-on-play="setAudioMetadata(this)"
-        />
-      </section>
+      {!config.HIDE_AUDIO_PLAYER && (
+        <section class="reader-audio">
+          <audio
+            id="article-audio"
+            controls
+            preload="none"
+            src={`/api/articles/${article.id}/tts`}
+            data-title={displayTitle}
+            hx-on-play="setAudioMetadata(this)"
+          />
+        </section>
+      )}
 
       <div
         class="reader-content"

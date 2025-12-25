@@ -37,7 +37,7 @@ searchRouter.get("/search", requireAuth("redirect"), async (c) => {
             articles.length > 0 ? (
               <div class="article-grid">
                 {articles.map((article) => (
-                  <ArticleCard article={article} />
+                  <ArticleCard article={article} displayActions={false} />
                 ))}
               </div>
             ) : (

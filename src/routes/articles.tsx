@@ -28,7 +28,6 @@ function isHtmxRequest(c: Context<AppContext>): boolean {
  */
 function renderWithLayout(
   c: Context<AppContext>,
-  title: string,
   // biome-ignore lint/suspicious/noExplicitAny: can be any JSX content
   content: any,
   currentPath?: string,
@@ -41,7 +40,6 @@ function renderWithLayout(
 
   return c.html(
     <Layout
-      title={title}
       isAuthenticated={true}
       currentPath={currentPath}
       overrideControls={overrideControls}
@@ -75,19 +73,13 @@ articlesRouter.get("/articles", requireAuth("redirect"), async (c) => {
     const content = (
       <ArticleList
         articles={articlesWithTags}
-        status={status}
+        archived={archived}
         tag={tag}
         processingCount={processingCount}
       />
     );
 
-    const title = tag
-      ? `Articles tagged "${tag}"`
-      : status === "archived"
-        ? "Archived Articles"
-        : "Articles";
-
-    return renderWithLayout(c, title, content, `/articles?status=${status}`);
+    return renderWithLayout(c, content, `/articles?status=${status}`);
   } catch (error) {
     console.error("Error loading articles:", error);
     return c.html(
@@ -135,13 +127,7 @@ articlesRouter.get("/articles/:id", requireAuth("redirect"), async (c) => {
       </div>
     );
 
-    return renderWithLayout(
-      c,
-      article.title || "Article",
-      readerContent,
-      "/articles",
-      readerControls,
-    );
+    return renderWithLayout(c, readerContent, "/articles", readerControls);
   } catch (error) {
     const errorMessage =
       error instanceof Error ? error.message : "Unknown error";

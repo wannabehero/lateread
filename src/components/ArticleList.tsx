@@ -6,32 +6,26 @@ import { ProcessingBanner } from "./ProcessingBanner";
 
 interface ArticleListProps {
   articles: (Article & { tags: Tag[] })[];
-  status?: string;
+  archived?: boolean;
   tag?: string;
   processingCount?: number;
 }
 
 export const ArticleList: FC<ArticleListProps> = ({
   articles,
-  status,
+  archived,
   tag,
   processingCount = 0,
 }) => {
-  const emptyMessage = tag
-    ? `No articles tagged with "${tag}"`
-    : status === "archived"
-      ? "No archived articles yet"
-      : "No articles yet. Forward a link to the bot to get started!";
-
   return (
     <div id="article-container">
       <ProcessingBanner count={processingCount} />
       {articles.length === 0 ? (
-        <EmptyState message={emptyMessage} />
+        <EmptyState archived={archived} tag={tag} />
       ) : (
         <div class="article-grid">
           {articles.map((article) => (
-            <ArticleCard article={article} status={status} />
+            <ArticleCard article={article} />
           ))}
         </div>
       )}

@@ -22,7 +22,7 @@ home.get("/", async (c) => {
 
       return c.html(
         <Layout isAuthenticated={true} currentPath="/">
-          <ArticleList articles={articlesWithTags} status="all" />
+          <ArticleList articles={articlesWithTags} archived={false} />
         </Layout>,
       );
     } catch (error) {

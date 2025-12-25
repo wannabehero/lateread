@@ -65,16 +65,13 @@ api.post("/api/articles/:id/archive", requireAuth("json-401"), async (c) => {
 
     // Return empty content to remove card from current view
     // User can navigate to other view (archive/unarchive) to see the article
-    // TODO: might as well delete the article div via id or something
     return c.html(
+      // biome-ignore lint/complexity/noUselessFragments: we have to
       <>
-        <div />
-        {remainingCount === 0 ? (
+        {remainingCount === 0 && (
           <div id="article-container" hx-swap-oob="true">
-            <EmptyState message="No articles yet..." />
+            <EmptyState archived={!newStatus} />
           </div>
-        ) : (
-          {}
         )}
       </>,
     );

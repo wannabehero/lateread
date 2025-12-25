@@ -248,6 +248,10 @@ body {
   margin-bottom: 0.5rem;
 }
 
+.article-date {
+  opacity: 0.8;
+}
+
 .article-tags {
   display: flex;
   flex-wrap: wrap;

@@ -52,6 +52,10 @@
   font-weight: 600;
 }
 
+.reader-meta .article-date {
+  opacity: 0.8;
+}
+
 .reader-meta a {
   color: var(--pico-primary);
 }

@@ -1,6 +1,6 @@
 import type { FC } from "hono/jsx";
 import type { Article, Tag } from "../db/types";
-import { formatRelativeTime } from "../lib/date-utils";
+import { formatRelativeTime } from "../lib/date";
 import { TagBadge } from "./TagBadge";
 
 interface ReaderViewProps {

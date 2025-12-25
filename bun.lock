@@ -16,6 +16,7 @@
         "htmx.org": "^2.0.8",
         "jsdom": "^27.3.0",
         "lucide-static": "^0.562.0",
+        "marked": "^17.0.1",
         "zod": "^4.2.1",
       },
       "devDependencies": {
@@ -252,6 +253,8 @@
     "lru-cache": ["lru-cache@11.2.4", "", {}, "sha512-B5Y16Jr9LB9dHVkh6ZevG+vAbOsNOYCX+sXvFWFu7B3Iz5mijW3zdbMyhsh8ANd2mSWBYdJgnqi+mL7/LrOPYg=="],
 
     "lucide-static": ["lucide-static@0.562.0", "", {}, "sha512-TM2vNVOEsO3+ijmno7n/VmxUo0Shr9OXC/UqZc5n4xEVyXX4E4NVvXoRPAZiSsIsdvlQ7alGOcIC/QGtR+OgUQ=="],
+
+    "marked": ["marked@17.0.1", "", { "bin": { "marked": "bin/marked.js" } }, "sha512-boeBdiS0ghpWcSwoNm/jJBwdpFaMnZWRzjA6SkUMYb40SVaN1x7mmfGKp0jvexGcx+7y2La5zRZsYFZI6Qpypg=="],
 
     "mdn-data": ["mdn-data@2.12.2", "", {}, "sha512-IEn+pegP1aManZuckezWCO+XZQDplx1366JoVhTpMpBB1sPey/SbveZQUosKiKiGYjg1wH4pMlNgXbCiYgihQA=="],
 

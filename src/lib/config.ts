@@ -34,6 +34,7 @@ const configSchema = z.object({
   PROCESSING_TIMEOUT_SECONDS: z.coerce.number().default(60),
   MAX_RETRY_ATTEMPTS: z.coerce.number().default(3),
   RETRY_DELAY_MINUTES: z.coerce.number().default(5),
+  LONG_MESSAGE_THRESHOLD: z.coerce.number().default(1000),
 });
 
 // Parse and validate environment variables on module import

@@ -1,7 +1,10 @@
 import { eq } from "drizzle-orm";
 import type { Bot, Context } from "grammy";
+import { marked } from "marked";
 import { articles, telegramUsers } from "../db/schema";
 import { claimAuthToken } from "../lib/auth";
+import { config } from "../lib/config";
+import { contentCache } from "../lib/content-cache";
 import { db } from "../lib/db";
 import { spawnArticleWorker } from "../lib/worker";
 
@@ -77,6 +80,15 @@ export function registerHandlers(bot: Bot) {
     console.log(
       `[Bot] Received message from user ${ctx.from?.id}: "${ctx.message.text.substring(0, 100)}..."`,
     );
+
+    // Check if message is long enough to treat as article
+    if (ctx.message.text.length >= config.LONG_MESSAGE_THRESHOLD) {
+      console.log(
+        `[Bot] Message length ${ctx.message.text.length} >= threshold ${config.LONG_MESSAGE_THRESHOLD}, treating as article`,
+      );
+      await handleLongMessage(ctx);
+      return;
+    }
 
     const url = extractUrl(ctx.message.text);
 
@@ -187,6 +199,185 @@ function extractUrl(text: string): string | null {
   }
 
   return null;
+}
+
+/**
+ * Handle long Telegram messages as articles
+ */
+async function handleLongMessage(ctx: Context) {
+  const telegramId = ctx.from?.id.toString();
+
+  if (!telegramId) {
+    console.log("[Bot] No telegram ID found, ignoring");
+    return;
+  }
+
+  if (!ctx.message || !("text" in ctx.message) || !ctx.message.text) {
+    console.log("[Bot] No text message found, ignoring");
+    return;
+  }
+
+  const messageText = ctx.message.text;
+  const message = ctx.message;
+  const chat = ctx.chat;
+
+  if (!chat) {
+    console.log("[Bot] No chat found, ignoring");
+    return;
+  }
+
+  // Check if user is authenticated
+  const [telegramUser] = await db
+    .select()
+    .from(telegramUsers)
+    .where(eq(telegramUsers.telegramId, telegramId))
+    .limit(1);
+
+  if (!telegramUser) {
+    console.log(`[Bot] User ${telegramId} not authenticated`);
+    await ctx.reply(
+      "Please log in first at the web app to start saving articles.\n\n" +
+        "Once you're logged in, send me any message and I'll save it for you.",
+    );
+    return;
+  }
+
+  console.log(
+    `[Bot] User authenticated: ${telegramUser.userId} (telegram: ${telegramId})`,
+  );
+
+  // Extract title: first line, truncated to 64 chars
+  const lines = messageText.split("\n");
+  const firstLine = lines[0] || messageText.substring(0, 64);
+  const title =
+    firstLine.length > 64 ? firstLine.substring(0, 64) + "..." : firstLine;
+
+  // Extract description: next 200 chars after first line
+  const restOfText = lines.slice(1).join("\n").trim();
+  const description =
+    restOfText.length > 200
+      ? restOfText.substring(0, 200) + "..."
+      : restOfText || title.substring(0, 200);
+
+  // Determine URL and author
+  let url: string;
+  let siteName: string;
+
+  // Check if message is from a channel with username
+  if (chat.type === "channel" && "username" in chat && chat.username) {
+    url = `https://t.me/${chat.username}/${message.message_id}`;
+    siteName =
+      "title" in chat ? chat.title || "Telegram Channel" : "Telegram Channel";
+  }
+  // Check if forwarded from a channel
+  else if (
+    "forward_from_chat" in message &&
+    message.forward_from_chat &&
+    typeof message.forward_from_chat === "object" &&
+    "type" in message.forward_from_chat &&
+    message.forward_from_chat.type === "channel" &&
+    "username" in message.forward_from_chat &&
+    typeof message.forward_from_chat.username === "string" &&
+    message.forward_from_chat.username
+  ) {
+    url = `https://t.me/${message.forward_from_chat.username}`;
+    siteName =
+      "title" in message.forward_from_chat &&
+      typeof message.forward_from_chat.title === "string"
+        ? message.forward_from_chat.title
+        : "Telegram Channel";
+  }
+  // Check if forwarded from anywhere
+  else if ("forward_date" in message && message.forward_date) {
+    url = `lateread://telegram-message`;
+    siteName = "Forwarded to Telegram";
+  }
+  // Regular message
+  else {
+    url = `lateread://telegram-message`;
+    siteName = "Telegram Message";
+  }
+
+  console.log(`[Bot] Processing long message: title="${title}", url="${url}"`);
+
+  // Convert markdown to HTML
+  let htmlContent: string;
+  try {
+    htmlContent = await marked(messageText);
+  } catch (error) {
+    console.error("[Bot] Failed to convert markdown to HTML:", error);
+    // Fallback: wrap in <p> tags
+    htmlContent = `<p>${messageText.replace(/\n/g, "<br>")}</p>`;
+  }
+
+  // Create article record
+  console.log(`[Bot] Creating article record for long message`);
+  const [article] = await db
+    .insert(articles)
+    .values({
+      userId: telegramUser.userId,
+      url: url,
+      title: title,
+      description: description,
+      siteName: siteName,
+      status: "pending",
+      processingAttempts: 0,
+    })
+    .returning();
+
+  if (!article) {
+    console.error(`[Bot] Failed to create article record`);
+    return;
+  }
+
+  console.log(`[Bot] Article created with ID: ${article.id}`);
+
+  // Cache HTML content immediately
+  try {
+    await contentCache.set(telegramUser.userId, article.id, htmlContent);
+    console.log(`[Bot] Content cached for article ${article.id}`);
+  } catch (error) {
+    console.error(
+      `[Bot] Failed to cache content for article ${article.id}:`,
+      error,
+    );
+    // Continue anyway - worker will retry if needed
+  }
+
+  // React with eyes emoji
+  try {
+    await ctx.react("👀");
+    console.log(`[Bot] Added 👀 reaction to message`);
+  } catch (error) {
+    console.error("[Bot] Failed to add reaction:", error);
+  }
+
+  // Spawn worker (non-blocking)
+  const chatId = chat.id;
+  const messageId = message.message_id;
+
+  console.log(`[Bot] Spawning worker for article ${article.id}`);
+  spawnArticleWorker({
+    articleId: article.id,
+    onSuccess: async () => {
+      try {
+        await ctx.api.setMessageReaction(chatId, messageId, [
+          { type: "emoji", emoji: "👍" },
+        ]);
+      } catch (err) {
+        console.error("Failed to update Telegram reaction:", err);
+      }
+    },
+    onFailure: async () => {
+      try {
+        await ctx.api.setMessageReaction(chatId, messageId, [
+          { type: "emoji", emoji: "👎" },
+        ]);
+      } catch (err) {
+        console.error("Failed to update Telegram reaction:", err);
+      }
+    },
+  });
 }
 
 /**

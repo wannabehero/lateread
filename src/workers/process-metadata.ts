@@ -88,25 +88,65 @@ self.onmessage = async (event: MessageEvent) => {
 };
 
 async function processArticle(article: typeof articles.$inferSelect) {
-  // Step 3: Fetch URL content
-  console.log(`[Worker ${article.id}] Fetching content from: ${article.url}`);
-  const extracted = await extractCleanContent(article.url);
+  // Step 3: Check if content is already cached (for Telegram long messages)
+  let htmlContent = await contentCache.get(article.userId, article.id);
+  let textContent: string;
+  let metadata: {
+    title: string | null;
+    description: string | null;
+    imageUrl: string | null;
+    siteName: string | null;
+  };
 
-  if (!extracted.textContent || !extracted.content) {
-    console.error(
-      `[Worker ${article.id}] Failed to extract content from ${article.url}`,
+  if (htmlContent) {
+    // Content already cached (long Telegram message)
+    console.log(
+      `[Worker ${article.id}] Content already cached, skipping fetch`,
     );
-    return;
+
+    // Extract text from cached HTML for LLM
+    textContent = htmlContent.replace(/<[^>]*>/g, " ").replace(/\s+/g, " ");
+    console.log(
+      `[Worker ${article.id}] Extracted text from cached content: ${textContent.length} chars`,
+    );
+
+    // Use existing metadata from article record
+    metadata = {
+      title: article.title,
+      description: article.description,
+      imageUrl: article.imageUrl,
+      siteName: article.siteName,
+    };
+  } else {
+    // Fetch URL content (regular article)
+    console.log(`[Worker ${article.id}] Fetching content from: ${article.url}`);
+    const extracted = await extractCleanContent(article.url);
+
+    if (!extracted.textContent || !extracted.content) {
+      console.error(
+        `[Worker ${article.id}] Failed to extract content from ${article.url}`,
+      );
+      return;
+    }
+
+    console.log(
+      `[Worker ${article.id}] Content extracted: ${extracted.textContent.length} chars`,
+    );
+
+    // Step 4: Metadata already extracted by readability wrapper
+    console.log(
+      `[Worker ${article.id}] Metadata: title="${extracted.title}", description="${extracted.description?.substring(0, 50)}..."`,
+    );
+
+    htmlContent = extracted.content;
+    textContent = extracted.textContent;
+    metadata = {
+      title: extracted.title ?? null,
+      description: extracted.description ?? null,
+      imageUrl: extracted.imageUrl ?? null,
+      siteName: extracted.siteName ?? null,
+    };
   }
-
-  console.log(
-    `[Worker ${article.id}] Content extracted: ${extracted.textContent.length} chars`,
-  );
-
-  // Step 4: Metadata already extracted by readability wrapper
-  console.log(
-    `[Worker ${article.id}] Metadata: title="${extracted.title}", description="${extracted.description?.substring(0, 50)}..."`,
-  );
 
   // Step 5: Generate tags using LLM
   console.log(`[Worker ${article.id}] Loading LLM provider`);
@@ -129,7 +169,7 @@ async function processArticle(article: typeof articles.$inferSelect) {
     `[Worker ${article.id}] Calling LLM for tag extraction and language detection`,
   );
   const { tags: extractedTags, language } = await llmProvider.extractTags(
-    extracted.textContent,
+    textContent,
     existingTagNames,
   );
 
@@ -183,10 +223,14 @@ async function processArticle(article: typeof articles.$inferSelect) {
 
   console.log(`[Worker ${article.id}] Processed ${tagIds.length} tags`);
 
-  // Step 6: Cache clean HTML content
-  console.log(`[Worker ${article.id}] Caching content to filesystem`);
-  await contentCache.set(article.userId, article.id, extracted.content);
-  console.log(`[Worker ${article.id}] Content cached successfully`);
+  // Step 6: Cache clean HTML content (if not already cached)
+  if (!(await contentCache.exists(article.userId, article.id))) {
+    console.log(`[Worker ${article.id}] Caching content to filesystem`);
+    await contentCache.set(article.userId, article.id, htmlContent);
+    console.log(`[Worker ${article.id}] Content cached successfully`);
+  } else {
+    console.log(`[Worker ${article.id}] Content already cached, skipping`);
+  }
 
   // Step 7: Update database in transaction
   console.log(`[Worker ${article.id}] Updating database (transaction)`);
@@ -195,10 +239,10 @@ async function processArticle(article: typeof articles.$inferSelect) {
     await tx
       .update(articles)
       .set({
-        title: extracted.title,
-        description: extracted.description,
-        imageUrl: extracted.imageUrl,
-        siteName: extracted.siteName,
+        title: metadata.title,
+        description: metadata.description,
+        imageUrl: metadata.imageUrl,
+        siteName: metadata.siteName,
         language: language,
         status: "completed",
         processedAt: new Date(),

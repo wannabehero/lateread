@@ -37,16 +37,19 @@ const VOICE_MAP: Record<string, string> = {
   ko: "pqHfZKP75CvOlQylNhV4", // Bill - Korean
   ar: "ODq5zmih8GrVes37Dizd", // Patrick - Arabic
   hi: "pFZP5JQG7iQjIQuC4Bku", // Lily - Hindi
-  _default: "21m00Tcm4TlvDq8ikWAM", // Rachel - fallback for unsupported languages
 };
+
+const DEFAULT_VOICE_ID = "21m00Tcm4TlvDq8ikWAM";
 
 /**
  * Get the best voice ID for the given language code
  * Returns a native voice for the language if available, otherwise defaults to Rachel (English)
  */
-export function getVoiceForLanguage(languageCode: string | null): string {
-  if (!languageCode) return VOICE_MAP._default;
-  return VOICE_MAP[languageCode.toLowerCase()] || VOICE_MAP._default;
+export function getVoiceForLanguage(
+  languageCode: string | null | undefined,
+): string {
+  if (!languageCode) return DEFAULT_VOICE_ID;
+  return VOICE_MAP[languageCode.toLowerCase()] ?? DEFAULT_VOICE_ID;
 }
 
 /**

@@ -92,7 +92,7 @@ export const ReaderView: FC<ReaderViewProps> = ({ article, content }) => {
           <div class="reader-actions">
             <button
               type="button"
-              hx-post={`/api/articles/${article.id}/archive`}
+              hx-post={`/api/articles/${article.id}/archive?redirect=true`}
               hx-swap="delete"
               hx-target="closest .reader-actions"
               hx-disabled-elt="this"

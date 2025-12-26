@@ -62,8 +62,8 @@ healthRoutes.get("/heapsnapshot", async (c) => {
     const file = Bun.file(snapshotPath);
     const blob = await file.blob();
 
-    // Delete the temporary file after reading
-    await import("node:fs/promises").then((fs) => fs.unlink(snapshotPath));
+    // Note: We don't delete the snapshot file here - let the system handle cleanup
+    // Deleting before response completes could cause issues if blob is a file reference
 
     // Generate filename with timestamp
     const timestamp = new Date().toISOString().replace(/[:.]/g, "-");

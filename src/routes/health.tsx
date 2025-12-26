@@ -1,6 +1,10 @@
+import { eq } from "drizzle-orm";
 import { sql } from "drizzle-orm";
 import { Hono } from "hono";
+import { telegramUsers } from "../db/schema";
+import { config } from "../lib/config";
 import { db } from "../lib/db";
+import { requireAuth } from "../middleware/auth";
 import type { AppContext } from "../types/context";
 
 const healthRoutes = new Hono<AppContext>();
@@ -48,10 +52,25 @@ healthRoutes.get("/health/db", async (c) => {
 /**
  * Heap snapshot endpoint
  * Generates and returns a V8 heap snapshot file for memory analysis
+ * SECURITY: Requires authentication and admin Telegram ID
  * Use dynamic import since this is only used occasionally
  */
-healthRoutes.get("/heapsnapshot", async (c) => {
+healthRoutes.get("/heapsnapshot", requireAuth("json-401"), async (c) => {
   try {
+    // Check if user has admin Telegram ID
+    const userId = c.get("userId") as string;
+
+    // If ADMIN_TELEGRAM_ID is configured, verify user has that ID
+    if (config.ADMIN_TELEGRAM_ID) {
+      const telegramUser = await db.query.telegramUsers.findFirst({
+        where: eq(telegramUsers.userId, userId),
+      });
+
+      if (!telegramUser || telegramUser.telegramId !== config.ADMIN_TELEGRAM_ID) {
+        return c.json({ error: "Forbidden: Admin access required" }, 403);
+      }
+    }
+
     // Dynamic import of v8 module
     const v8 = await import("node:v8");
 

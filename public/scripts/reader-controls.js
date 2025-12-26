@@ -17,6 +17,23 @@
   const fontSizeInput = document.getElementById("font-size-input");
   const fontSizeDisplay = document.getElementById("font-size-display");
 
+  // Calculate optimal line height based on font size
+  function calculateLineHeight(fontSize) {
+    // Larger fonts need less relative line-height for optimal readability
+    // 14px -> 1.7, 18px -> 1.6, 24px -> 1.5
+    const minSize = 14;
+    const maxSize = 24;
+    const minLineHeight = 1.5;
+    const maxLineHeight = 1.7;
+
+    // Linear interpolation between min and max
+    const ratio = (fontSize - minSize) / (maxSize - minSize);
+    const lineHeight = maxLineHeight - ratio * (maxLineHeight - minLineHeight);
+
+    // Clamp between min and max
+    return Math.max(minLineHeight, Math.min(maxLineHeight, lineHeight));
+  }
+
   // Apply preferences to CSS variables instantly
   function applyPreferences(prefs) {
     const root = document.documentElement;
@@ -27,8 +44,12 @@
       .getPropertyValue(fontFamilyVar)
       .trim();
 
+    // Calculate appropriate line height for the font size
+    const lineHeight = calculateLineHeight(prefs.fontSize);
+
     root.style.setProperty("--reader-font-family", fontFamilyValue);
     root.style.setProperty("--reader-font-size", `${prefs.fontSize}px`);
+    root.style.setProperty("--reader-line-height", lineHeight);
 
     // Update hidden inputs for HTMX form submission
     fontFamilyInput.value = prefs.fontFamily;

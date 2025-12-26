@@ -8,6 +8,7 @@
     Arial, sans-serif;
   --reader-font-size: 1.125rem;
   --reader-font-weight: 400;
+  --reader-line-height: 1.6;
 
   /* Font family presets as CSS variables */
   --reader-font-sans:
@@ -176,7 +177,7 @@
   font-family: var(--reader-font-family);
   font-size: var(--reader-font-size);
   font-weight: var(--reader-font-weight);
-  line-height: 1.7;
+  line-height: var(--reader-line-height);
   text-align: justify;
 }
 
@@ -371,10 +372,6 @@
 @media (max-width: 480px) {
   .reader-header h1 {
     font-size: 1.3rem;
-  }
-
-  .reader-content {
-    line-height: 1.6;
   }
 
   .reader-control-btn {

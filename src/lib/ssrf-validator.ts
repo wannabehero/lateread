@@ -105,12 +105,19 @@ function isPrivateIPv4(hostname: string): boolean {
     }
 
     // If no second octet constraints, match on first octet only
-    if (range.secondOctetMin === undefined) {
+    if (
+      range.secondOctetMin === undefined ||
+      range.secondOctetMax === undefined
+    ) {
       return true;
     }
 
     // Check second octet range
-    if (second >= range.secondOctetMin && second <= range.secondOctetMax!) {
+    if (
+      second &&
+      second >= range.secondOctetMin &&
+      second <= range.secondOctetMax
+    ) {
       return true;
     }
   }

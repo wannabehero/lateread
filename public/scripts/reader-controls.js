@@ -17,17 +17,19 @@
   const fontSizeInput = document.getElementById("font-size-input");
   const fontSizeDisplay = document.getElementById("font-size-display");
 
+  // Font size limits
+  const MIN_FONT_SIZE = 14;
+  const MAX_FONT_SIZE = 24;
+
   // Calculate optimal line height based on font size
   function calculateLineHeight(fontSize) {
     // Larger fonts need less relative line-height for optimal readability
     // 14px -> 1.7, 18px -> 1.6, 24px -> 1.5
-    const minSize = 14;
-    const maxSize = 24;
     const minLineHeight = 1.5;
     const maxLineHeight = 1.7;
 
     // Linear interpolation between min and max
-    const ratio = (fontSize - minSize) / (maxSize - minSize);
+    const ratio = (fontSize - MIN_FONT_SIZE) / (MAX_FONT_SIZE - MIN_FONT_SIZE);
     const lineHeight = maxLineHeight - ratio * (maxLineHeight - minLineHeight);
 
     // Clamp between min and max
@@ -85,8 +87,8 @@
     const increaseBtn = document.querySelector(
       '[data-font-size-action="increase"]',
     );
-    if (decreaseBtn) decreaseBtn.disabled = prefs.fontSize <= 14;
-    if (increaseBtn) increaseBtn.disabled = prefs.fontSize >= 24;
+    if (decreaseBtn) decreaseBtn.disabled = prefs.fontSize <= MIN_FONT_SIZE;
+    if (increaseBtn) increaseBtn.disabled = prefs.fontSize >= MAX_FONT_SIZE;
   }
 
   // Get current preferences from inputs
@@ -112,9 +114,9 @@
       const currentPrefs = getCurrentPreferences();
       const action = btn.dataset.fontSizeAction;
 
-      if (action === "increase" && currentPrefs.fontSize < 24) {
+      if (action === "increase" && currentPrefs.fontSize < MAX_FONT_SIZE) {
         currentPrefs.fontSize += 1;
-      } else if (action === "decrease" && currentPrefs.fontSize > 14) {
+      } else if (action === "decrease" && currentPrefs.fontSize > MIN_FONT_SIZE) {
         currentPrefs.fontSize -= 1;
       }
 

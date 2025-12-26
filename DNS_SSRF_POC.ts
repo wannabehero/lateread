@@ -183,6 +183,7 @@ function timeout(ms: number): Promise<never> {
 
 /**
  * Safe fetch wrapper with automatic SSRF protection
+ * Validates both initial URL and all redirect targets
  *
  * @param url - URL to fetch
  * @param options - Fetch options + SSRF validation options
@@ -196,12 +197,14 @@ export async function safeFetch(
       enableDNS?: boolean;
       dnsTimeout?: number;
       blockOnDNSError?: boolean;
+      maxRedirects?: number;
     };
   } = {}
 ): Promise<Response> {
   const { ssrfValidation, ...fetchOptions } = options;
+  const maxRedirects = ssrfValidation?.maxRedirects ?? 5;
 
-  // Validate URL is safe
+  // Validate initial URL
   const isSafe = await isSafeUrlWithDNS(url, ssrfValidation);
   if (!isSafe) {
     throw new Error(
@@ -209,8 +212,48 @@ export async function safeFetch(
     );
   }
 
-  // Proceed with fetch
-  return fetch(url, fetchOptions);
+  // Handle redirects manually to validate each hop
+  let currentUrl = url;
+  let redirectCount = 0;
+
+  while (redirectCount <= maxRedirects) {
+    // Fetch with manual redirect handling
+    const response = await fetch(currentUrl, {
+      ...fetchOptions,
+      redirect: "manual",
+    });
+
+    // Check if this is a redirect response
+    if (response.status >= 300 && response.status < 400) {
+      const location = response.headers.get("location");
+
+      if (!location) {
+        // Redirect without Location header - treat as final response
+        return response;
+      }
+
+      // Resolve relative URLs against current URL
+      const redirectUrl = new URL(location, currentUrl).href;
+
+      // Validate redirect target
+      const isRedirectSafe = await isSafeUrlWithDNS(redirectUrl, ssrfValidation);
+      if (!isRedirectSafe) {
+        throw new Error(
+          `SSRF protection: Redirect to private/internal resource blocked (${redirectUrl})`
+        );
+      }
+
+      // Follow the redirect
+      currentUrl = redirectUrl;
+      redirectCount++;
+      continue;
+    }
+
+    // Not a redirect - return the response
+    return response;
+  }
+
+  throw new Error(`Too many redirects (max: ${maxRedirects})`);
 }
 
 // =============================================================================
@@ -282,4 +325,40 @@ async function example4_conditional(url: string, trusted: boolean) {
     // Full DNS validation for user-supplied URLs
     return safeFetch(url);
   }
+}
+
+/**
+ * Example 5: Redirect protection in action
+ */
+async function example5_redirectProtection() {
+  // Attack scenario:
+  // 1. evil.com resolves to public IP (passes initial check)
+  // 2. evil.com responds with: Location: http://169.254.169.254/latest/meta-data/
+  // 3. safeFetch validates redirect target and blocks it
+
+  try {
+    const response = await safeFetch("http://evil.com/article");
+    // Will throw before following malicious redirect
+  } catch (error) {
+    // Error: "SSRF protection: Redirect to private/internal resource blocked (http://169.254.169.254/latest/meta-data/)"
+    console.error("Blocked malicious redirect:", error);
+  }
+}
+
+/**
+ * Example 6: Redirect chain validation
+ */
+async function example6_redirectChain() {
+  // Each hop in the redirect chain is validated:
+  // URL1 (public) -> URL2 (public) -> URL3 (public) -> Final (public) ✓
+  // URL1 (public) -> URL2 (public) -> URL3 (PRIVATE) -> Blocked! ✗
+
+  const response = await safeFetch("http://example.com/multi-redirect", {
+    ssrfValidation: {
+      enableDNS: true,
+      maxRedirects: 10, // Custom max redirects
+    },
+  });
+
+  console.log("All redirects validated successfully");
 }

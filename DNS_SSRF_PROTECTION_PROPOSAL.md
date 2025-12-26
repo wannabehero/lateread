@@ -5,9 +5,16 @@
 The current SSRF protection in `src/lib/ssrf-validator.ts` only validates URLs based on their hostname string. It cannot detect DNS-based attacks where a seemingly safe domain resolves to a private IP address.
 
 **Examples of bypasses:**
-- `metadata.google.internal` → resolves to `169.254.169.254` (GCP metadata)
-- `169.254.169.254.nip.io` → resolves to `169.254.169.254` (AWS metadata)
-- Custom domains that resolve to internal IPs (`internal.attacker.com` → `10.0.0.1`)
+
+1. **DNS-based attacks:**
+   - `metadata.google.internal` → resolves to `169.254.169.254` (GCP metadata)
+   - `169.254.169.254.nip.io` → resolves to `169.254.169.254` (AWS metadata)
+   - Custom domains that resolve to internal IPs (`internal.attacker.com` → `10.0.0.1`)
+
+2. **Redirect-based attacks:**
+   - `evil.com` (public IP) → redirects to `http://169.254.169.254/latest/meta-data/`
+   - `example.com` (public IP) → redirects to `http://localhost:6379/` (Redis)
+   - Multi-hop: `safe.com` → `cdn.com` → `192.168.1.1/admin`
 
 ## Research Summary
 
@@ -53,23 +60,25 @@ Create a new async function `isSafeUrlWithDNS()` that:
 - Breaking change: function becomes async
 - DNS cache poisoning still possible (but mitigated by Bun's cache)
 
-### Option B: Custom Fetch Wrapper
+### Option B: Custom Fetch Wrapper with Redirect Protection
 
 Create a `safeFetch()` wrapper that:
 1. Validates URL with `isSafeUrl()`
 2. Resolves DNS and validates IPs
-3. Performs the fetch
-4. Validates redirect URLs (if following redirects)
+3. Performs fetch with `redirect: "manual"`
+4. Validates each redirect target before following
+5. Returns final response after all validations
 
 **Advantages:**
 - Drop-in replacement for fetch
-- Can validate redirect targets
+- Validates redirect targets (critical for SSRF prevention!)
 - Centralized SSRF protection
+- Prevents redirect-based SSRF attacks
 
 **Disadvantages:**
-- More complex implementation
-- Need to handle all fetch options
-- Redirect validation adds complexity
+- Manual redirect handling required
+- Slightly more complex than native fetch
+- May not preserve all redirect metadata
 
 ### Option C: DNS Rebinding Protection Only
 
@@ -118,20 +127,70 @@ for (const addr of [...ipv4Addresses, ...ipv6Addresses]) {
 - **Timeout**: Configurable DNS timeout (default: 5 seconds)
 - **DNS errors**: Log and optionally block (configurable via env var)
 
+### Redirect Protection Strategy
+
+**Manual redirect handling:**
+```typescript
+// Use redirect: "manual" to intercept each redirect
+const response = await fetch(url, { redirect: "manual" });
+
+if (response.status >= 300 && response.status < 400) {
+  const location = response.headers.get("location");
+  const redirectUrl = new URL(location, currentUrl).href;
+
+  // Validate redirect target before following
+  if (!await isSafeUrlWithDNS(redirectUrl)) {
+    throw new Error("SSRF: Malicious redirect blocked");
+  }
+
+  // Follow redirect...
+}
+```
+
+**Why this is critical:**
+- Redirects can bypass initial URL validation
+- Attacker controls the redirect target
+- Common in URL shorteners, CDNs, authentication flows
+- Protects against redirect chains (validate each hop)
+
+**Redirect handling details:**
+- Maximum redirects: 5 (configurable, matches browser default)
+- Relative URLs: Resolved against current URL
+- Missing Location header: Treat as final response
+- Each redirect adds ~10-100ms (DNS lookup + validation)
+
 ### Performance Considerations
 
 - **Bun DNS cache**: 30-second TTL reduces repeated lookups
 - **Parallel resolution**: Resolve IPv4 and IPv6 concurrently
 - **Fast path**: Keep existing sync validator for obvious cases (localhost, direct IPs)
+- **Redirect overhead**: ~10-100ms per redirect hop (usually 0-2 redirects)
 
 ### Testing Requirements
 
+**DNS validation tests:**
 1. Mock DNS responses for deterministic tests
 2. Test DNS resolution failures (NXDOMAIN, timeout)
-3. Test mixed safe/unsafe IP responses
-4. Test IPv4 + IPv6 resolution
+3. Test mixed safe/unsafe IP responses (some IPs private, some public)
+4. Test IPv4 + IPv6 resolution (parallel and individual)
 5. Test DNS rebinding scenarios
-6. Performance benchmarks (ensure <100ms overhead)
+
+**Redirect protection tests:**
+6. Test single redirect to private IP (should block)
+7. Test redirect chain (public → public → private, should block at third hop)
+8. Test relative redirects (relative to current URL)
+9. Test missing Location header (should treat as final response)
+10. Test max redirects exceeded (should throw error)
+11. Test redirect with DNS resolution to private IP
+
+**Integration tests:**
+12. Test full flow: DNS check → fetch → redirect → DNS check → final response
+13. Mock real-world scenarios (URL shorteners, CDN redirects)
+
+**Performance benchmarks:**
+14. Ensure <100ms overhead for initial DNS lookup (with cache)
+15. Ensure <100ms overhead per redirect hop
+16. Test DNS cache effectiveness (repeated requests to same domain)
 
 ## Migration Path
 

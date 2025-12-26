@@ -1,13 +1,30 @@
-// Header Auto-hide on Scroll
+// Header Auto-hide on Scroll (only on pages with data-collapsible="true")
 (() => {
   const header = document.querySelector(".fixed-nav");
   if (!header) return;
 
   let lastScrollY = window.scrollY;
   let ticking = false;
+  let isCollapsible = false;
   const scrollThreshold = 10; // Minimum scroll distance to trigger hide/show
 
+  // Check if header should be collapsible
+  function checkCollapsible() {
+    isCollapsible = header.hasAttribute("data-collapsible");
+
+    // Reset header state when navigating away from collapsible page
+    if (!isCollapsible) {
+      header.classList.remove("header-hidden");
+    }
+  }
+
   function updateHeader() {
+    // Only apply scroll behavior on collapsible pages
+    if (!isCollapsible) {
+      ticking = false;
+      return;
+    }
+
     const currentScrollY = window.scrollY;
     const scrollDifference = currentScrollY - lastScrollY;
 
@@ -42,12 +59,15 @@
     }
   }
 
+  // Initialize
+  checkCollapsible();
+
   // Listen to scroll events
   window.addEventListener("scroll", onScroll, { passive: true });
 
-  // Handle HTMX page loads (reset state)
+  // Handle HTMX page loads (re-check collapsible state and reset)
   document.body.addEventListener("htmx:afterSwap", () => {
     lastScrollY = window.scrollY;
-    header.classList.remove("header-hidden");
+    checkCollapsible();
   });
 })();

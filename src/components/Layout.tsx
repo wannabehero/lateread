@@ -7,6 +7,7 @@ interface LayoutProps {
   isAuthenticated?: boolean;
   currentPath?: string;
   overrideControls?: any;
+  collapsibleHeader?: boolean;
 }
 
 export const Layout: FC<LayoutProps> = ({
@@ -15,6 +16,7 @@ export const Layout: FC<LayoutProps> = ({
   isAuthenticated = false,
   currentPath = "/",
   overrideControls,
+  collapsibleHeader = false,
 }) => {
   return (
     <html lang="en">
@@ -71,7 +73,10 @@ export const Layout: FC<LayoutProps> = ({
         <script src="/public/scripts/app.js" type="module" defer></script>
       </head>
       <body>
-        <header class="fixed-nav">
+        <header
+          class="fixed-nav"
+          {...(collapsibleHeader && { "data-collapsible": "true" })}
+        >
           <div class="nav-content">
             <div class="nav-brand">
               <a href="/" hx-boost="true">

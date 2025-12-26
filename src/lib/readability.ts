@@ -1,5 +1,6 @@
 import { Readability } from "@mozilla/readability";
 import { JSDOM } from "jsdom";
+import { isSafeUrl } from "./ssrf-validator";
 
 export interface ExtractedContent {
   title: string;
@@ -16,6 +17,13 @@ export async function extractCleanContent(
   url: string,
 ): Promise<ExtractedContent> {
   try {
+    // SSRF protection: validate URL is safe to fetch
+    if (!isSafeUrl(url)) {
+      throw new Error(
+        "SSRF protection: Cannot fetch URLs pointing to private/internal resources",
+      );
+    }
+
     // Fetch URL with timeout and custom user agent
     const controller = new AbortController();
     const timeoutId = setTimeout(() => controller.abort(), 30000); // 30 second timeout

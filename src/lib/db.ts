@@ -23,6 +23,9 @@ const sqlite = new Database(dbPath, { create: true });
 sqlite.run("PRAGMA journal_mode = WAL;");
 sqlite.run("PRAGMA foreign_keys = ON;");
 
+// Set busy timeout to 5 seconds to avoid BUSY errors
+sqlite.run("PRAGMA busy_timeout = 5000;");
+
 // Initialize Drizzle ORM with SQLite dialect
 export const db = drizzle(sqlite, { schema });
 

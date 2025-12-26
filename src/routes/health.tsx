@@ -57,18 +57,20 @@ healthRoutes.get("/health/db", async (c) => {
  */
 healthRoutes.get("/heapsnapshot", requireAuth("json-401"), async (c) => {
   try {
+    // Require ADMIN_TELEGRAM_ID to be set - endpoint disabled if not configured
+    if (!config.ADMIN_TELEGRAM_ID) {
+      return c.json({ error: "Forbidden: Endpoint not configured" }, 403);
+    }
+
     // Check if user has admin Telegram ID
     const userId = c.get("userId") as string;
 
-    // If ADMIN_TELEGRAM_ID is configured, verify user has that ID
-    if (config.ADMIN_TELEGRAM_ID) {
-      const telegramUser = await db.query.telegramUsers.findFirst({
-        where: eq(telegramUsers.userId, userId),
-      });
+    const telegramUser = await db.query.telegramUsers.findFirst({
+      where: eq(telegramUsers.userId, userId),
+    });
 
-      if (!telegramUser || telegramUser.telegramId !== config.ADMIN_TELEGRAM_ID) {
-        return c.json({ error: "Forbidden: Admin access required" }, 403);
-      }
+    if (!telegramUser || telegramUser.telegramId !== config.ADMIN_TELEGRAM_ID) {
+      return c.json({ error: "Forbidden: Admin access required" }, 403);
     }
 
     // Dynamic import of v8 module

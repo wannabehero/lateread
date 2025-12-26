@@ -1,5 +1,4 @@
-import { eq } from "drizzle-orm";
-import { sql } from "drizzle-orm";
+import { eq, sql } from "drizzle-orm";
 import { Hono } from "hono";
 import { telegramUsers } from "../db/schema";
 import { config } from "../lib/config";
@@ -79,22 +78,24 @@ healthRoutes.get("/heapsnapshot", requireAuth("json-401"), async (c) => {
     // Generate heap snapshot and get the file path
     const snapshotPath = v8.writeHeapSnapshot();
 
-    // Read the snapshot file as blob (more memory-efficient than arrayBuffer)
+    // Read the snapshot file (BunFile streams efficiently without loading into memory)
     const file = Bun.file(snapshotPath);
-    const blob = await file.blob();
 
     // Note: We don't delete the snapshot file here - let the system handle cleanup
-    // Deleting before response completes could cause issues if blob is a file reference
+    // Deleting before response completes could cause issues
 
     // Generate filename with timestamp
     const timestamp = new Date().toISOString().replace(/[:.]/g, "-");
     const filename = `lateread-heap-${timestamp}.heapsnapshot`;
 
     // Return the snapshot as a downloadable file
-    // Using blob is more efficient than buffer for large files
-    return c.body(blob, 200, {
-      "Content-Type": "application/octet-stream",
-      "Content-Disposition": `attachment; filename="${filename}"`,
+    // Using new Response(file) allows Bun to stream the file efficiently
+    return new Response(file, {
+      status: 200,
+      headers: {
+        "Content-Type": "application/octet-stream",
+        "Content-Disposition": `attachment; filename="${filename}"`,
+      },
     });
   } catch (error) {
     console.error("Heap snapshot generation failed:", error);

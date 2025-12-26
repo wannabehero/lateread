@@ -208,7 +208,7 @@ describe("readability", () => {
       await extractCleanContent("https://example.com/article");
 
       expect(capturedHeaders).toBeDefined();
-      expect(capturedHeaders?.["User-Agent"]).toContain("Lateread");
+      expect(capturedHeaders?.["User-Agent"]).toContain("lateread");
     });
 
     it("should extract text content", async () => {
@@ -270,6 +270,43 @@ describe("readability", () => {
       const result = await extractCleanContent("https://example.com/broken");
       expect(result).toBeDefined();
       expect(result.title).toBeDefined();
+    });
+
+    describe("SSRF protection", () => {
+      it.each([
+        ["http://localhost/admin", "localhost"],
+        ["http://127.0.0.1:6379", "loopback"],
+        ["http://10.0.0.1", "private IP 10.x.x.x"],
+        ["http://192.168.1.1", "private IP 192.168.x.x"],
+        ["http://172.16.0.1", "private IP 172.16-31.x.x"],
+        ["http://169.254.169.254/latest/meta-data", "AWS metadata"],
+        ["http://[::1]", "IPv6 localhost"],
+        ["http://[fe80::1]", "IPv6 link-local"],
+        ["file:///etc/passwd", "file protocol"],
+        ["ftp://example.com", "FTP protocol"],
+      ])("should block SSRF attempt: %s (%s)", async (url) => {
+        await expect(extractCleanContent(url)).rejects.toThrow(
+          "SSRF protection",
+        );
+      });
+
+      it("should allow valid public URLs", async () => {
+        // @ts-expect-error Fetch override
+        global.fetch = mock(() =>
+          Promise.resolve({
+            ok: true,
+            status: 200,
+            text: () =>
+              Promise.resolve(
+                "<html><body><article><p>Content</p></article></body></html>",
+              ),
+          }),
+        );
+
+        await expect(
+          extractCleanContent("https://example.com/article"),
+        ).resolves.toBeDefined();
+      });
     });
   });
 });

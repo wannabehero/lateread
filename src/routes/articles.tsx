@@ -33,6 +33,7 @@ function renderWithLayout(
   currentPath?: string,
   // biome-ignore lint/suspicious/noExplicitAny: can be any JSX content
   overrideControls?: any,
+  collapsibleHeader = false,
 ): Response | Promise<Response> {
   if (isHtmxRequest(c)) {
     return c.html(content);
@@ -43,6 +44,7 @@ function renderWithLayout(
       isAuthenticated={true}
       currentPath={currentPath}
       overrideControls={overrideControls}
+      collapsibleHeader={collapsibleHeader}
     >
       {content}
     </Layout>,
@@ -127,7 +129,7 @@ articlesRouter.get("/articles/:id", requireAuth("redirect"), async (c) => {
       </div>
     );
 
-    return renderWithLayout(c, readerContent, "/articles", readerControls);
+    return renderWithLayout(c, readerContent, "/articles", readerControls, true);
   } catch (error) {
     const errorMessage =
       error instanceof Error ? error.message : "Unknown error";

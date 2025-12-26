@@ -20,6 +20,13 @@ body {
   border-bottom: 1px solid var(--pico-muted-border-color);
   padding-top: env(safe-area-inset-top);
   padding-bottom: 0;
+  transform: translateY(0);
+  transition: transform 0.25s ease-in-out;
+}
+
+/* Header hidden state (scrolling down) */
+.fixed-nav.header-hidden {
+  transform: translateY(-100%);
 }
 
 .nav-content {
@@ -502,8 +509,8 @@ button.htmx-request {
   opacity: 0;
   transform: translateY(0);
   transition:
-    opacity 0.3s ease-in-out,
-    transform 0.3s ease-in-out;
+    opacity 0.25s ease-in-out,
+    transform 0.25s ease-in-out;
   font-size: 0.9rem;
   font-weight: 600;
   pointer-events: all;

@@ -50,6 +50,7 @@ api.post("/api/articles/:id/read", requireAuth("json-401"), async (c) => {
 api.post("/api/articles/:id/archive", requireAuth("json-401"), async (c) => {
   const userId = c.get("userId");
   const articleId = c.req.param("id");
+  const shouldRedirect = c.req.query("redirect") === "true";
 
   try {
     const newStatus = await toggleArticleArchive(articleId, userId);
@@ -63,7 +64,13 @@ api.post("/api/articles/:id/archive", requireAuth("json-401"), async (c) => {
       newStatus ? "Article archived" : "Article unarchived",
     );
 
-    // Return empty content to remove card from current view
+    // If redirect param is present (from reader view), redirect to articles list
+    if (shouldRedirect) {
+      c.header("HX-Redirect", "/articles");
+      return c.body(null, 204);
+    }
+
+    // Otherwise, return empty content to remove card from current view
     // User can navigate to other view (archive/unarchive) to see the article
     return c.html(
       // biome-ignore lint/complexity/noUselessFragments: we have to

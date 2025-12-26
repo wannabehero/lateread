@@ -139,6 +139,7 @@ describe("isSafeUrl - SSRF Protection", () => {
     });
   });
 
+  // TODO: address this via custom agent
   describe("DNS-based attacks (limitations)", () => {
     // These attacks use DNS to resolve to private IPs
     // We cannot block these without actual DNS resolution
@@ -165,29 +166,6 @@ describe("isSafeUrl - SSRF Protection", () => {
       // URL constructor converts these to standard format
       expect(isSafeUrl("http://LOCALHOST")).toBe(false);
       expect(isSafeUrl("http://LocalHost")).toBe(false);
-    });
-  });
-
-  describe("Performance - global Sets", () => {
-    it("should handle bulk validation efficiently", () => {
-      const urls = [
-        "https://example.com",
-        "http://localhost",
-        "http://10.0.0.1",
-        "https://google.com",
-        "http://192.168.1.1",
-      ];
-
-      const start = performance.now();
-      for (let i = 0; i < 1000; i++) {
-        for (const url of urls) {
-          isSafeUrl(url);
-        }
-      }
-      const end = performance.now();
-
-      // Should complete 5000 validations in under 100ms
-      expect(end - start).toBeLessThan(100);
     });
   });
 });

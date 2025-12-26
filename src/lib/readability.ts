@@ -24,20 +24,14 @@ export async function extractCleanContent(
       );
     }
 
-    // Fetch URL with timeout and custom user agent
-    const controller = new AbortController();
-    const timeoutId = setTimeout(() => controller.abort(), 30000); // 30 second timeout
-
     const response = await fetch(url, {
       headers: {
         "User-Agent":
           "Mozilla/5.0 (compatible; lateread/1.0; +https://github.com/wannabehero)",
       },
-      signal: controller.signal,
+      signal: AbortSignal.timeout(30_000),
       redirect: "follow", // Follow up to 5 redirects (default)
     });
-
-    clearTimeout(timeoutId);
 
     if (!response.ok) {
       throw new Error(`HTTP error: ${response.status} ${response.statusText}`);

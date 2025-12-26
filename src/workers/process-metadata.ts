@@ -5,6 +5,7 @@ import { contentCache } from "../lib/content-cache";
 import { db } from "../lib/db";
 import { getLLMProvider } from "../lib/llm";
 import { extractCleanContent } from "../lib/readability";
+import { withTimeout } from "../lib/timeout";
 
 self.onmessage = async (event: MessageEvent) => {
   const { articleId } = event.data;
@@ -45,16 +46,12 @@ self.onmessage = async (event: MessageEvent) => {
       })
       .where(eq(articles.id, articleId));
 
-    // Set up timeout
-    const timeoutMs = config.PROCESSING_TIMEOUT_SECONDS * 1000;
-    console.log(`[Worker ${articleId}] Timeout set to ${timeoutMs}ms`);
-    const timeoutPromise = new Promise((_, reject) =>
-      setTimeout(() => reject(new Error("Processing timeout")), timeoutMs),
-    );
-
     // Process article with timeout
-    console.log(`[Worker ${articleId}] Starting article processing`);
-    await Promise.race([processArticle(article), timeoutPromise]);
+    const timeoutMs = config.PROCESSING_TIMEOUT_SECONDS * 1000;
+    console.log(
+      `[Worker ${articleId}] Starting article processing with ${timeoutMs}ms timeout`,
+    );
+    await withTimeout(processArticle(article), timeoutMs, "Processing timeout");
 
     // Step 9: Post success message
     console.log(`[Worker ${articleId}] Processing completed successfully`);

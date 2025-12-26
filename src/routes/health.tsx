@@ -58,12 +58,11 @@ healthRoutes.get("/heapsnapshot", async (c) => {
     // Generate heap snapshot and get the file path
     const snapshotPath = v8.writeHeapSnapshot();
 
-    // Read the snapshot file
+    // Read the snapshot file as blob (more memory-efficient than arrayBuffer)
     const file = Bun.file(snapshotPath);
-    const buffer = await file.arrayBuffer();
+    const blob = await file.blob();
 
     // Delete the temporary file after reading
-    await Bun.write(snapshotPath, "");
     await import("node:fs/promises").then((fs) => fs.unlink(snapshotPath));
 
     // Generate filename with timestamp
@@ -71,7 +70,8 @@ healthRoutes.get("/heapsnapshot", async (c) => {
     const filename = `lateread-heap-${timestamp}.heapsnapshot`;
 
     // Return the snapshot as a downloadable file
-    return c.body(buffer, 200, {
+    // Using blob is more efficient than buffer for large files
+    return c.body(blob, 200, {
       "Content-Type": "application/octet-stream",
       "Content-Disposition": `attachment; filename="${filename}"`,
     });

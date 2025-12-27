@@ -1,5 +1,6 @@
-import { describe, expect, it } from "bun:test";
-import { isSafeUrl } from "./ssrf-validator";
+import { beforeEach, describe, expect, it, mock } from "bun:test";
+import { isSafeUrl, isSafeUrlWithDNS } from "./ssrf-validator";
+import dns from "node:dns/promises";
 
 describe("isSafeUrl - SSRF Protection", () => {
   describe("Valid public URLs", () => {
@@ -166,6 +167,235 @@ describe("isSafeUrl - SSRF Protection", () => {
       // URL constructor converts these to standard format
       expect(isSafeUrl("http://LOCALHOST")).toBe(false);
       expect(isSafeUrl("http://LocalHost")).toBe(false);
+    });
+  });
+});
+
+describe("isSafeUrlWithDNS - DNS-based SSRF Protection", () => {
+  // Store original functions to restore later
+  const originalResolve4 = dns.resolve4;
+  const originalResolve6 = dns.resolve6;
+
+  beforeEach(() => {
+    // Restore mocks before each test
+    dns.resolve4 = originalResolve4;
+    dns.resolve6 = originalResolve6;
+  });
+
+  describe("URL structure validation (pre-DNS checks)", () => {
+    it("should block invalid URLs before DNS lookup", async () => {
+      expect(await isSafeUrlWithDNS("http://localhost")).toBe(false);
+      expect(await isSafeUrlWithDNS("http://127.0.0.1")).toBe(false);
+      expect(await isSafeUrlWithDNS("http://10.0.0.1")).toBe(false);
+      expect(await isSafeUrlWithDNS("file:///etc/passwd")).toBe(false);
+    });
+
+    it("should allow direct public IPs without DNS lookup", async () => {
+      expect(await isSafeUrlWithDNS("http://8.8.8.8")).toBe(true);
+      expect(await isSafeUrlWithDNS("http://1.1.1.1")).toBe(true);
+    });
+  });
+
+  describe("DNS resolution to private IPs", () => {
+    it("should block domain resolving to private IPv4", async () => {
+      // Mock DNS to return private IP
+      dns.resolve4 = mock(() => Promise.resolve(["169.254.169.254"]));
+      dns.resolve6 = mock(() => Promise.reject(new Error("ENOTFOUND")));
+
+      const result = await isSafeUrlWithDNS(
+        "http://metadata.google.internal",
+      );
+      expect(result).toBe(false);
+    });
+
+    it("should block domain resolving to localhost", async () => {
+      dns.resolve4 = mock(() => Promise.resolve(["127.0.0.1"]));
+      dns.resolve6 = mock(() => Promise.reject(new Error("ENOTFOUND")));
+
+      const result = await isSafeUrlWithDNS("http://evil.com");
+      expect(result).toBe(false);
+    });
+
+    it("should block domain resolving to private network", async () => {
+      dns.resolve4 = mock(() => Promise.resolve(["192.168.1.1"]));
+      dns.resolve6 = mock(() => Promise.reject(new Error("ENOTFOUND")));
+
+      const result = await isSafeUrlWithDNS("http://internal.example.com");
+      expect(result).toBe(false);
+    });
+
+    it("should block domain resolving to AWS metadata service", async () => {
+      dns.resolve4 = mock(() => Promise.resolve(["169.254.169.254"]));
+      dns.resolve6 = mock(() => Promise.reject(new Error("ENOTFOUND")));
+
+      const result = await isSafeUrlWithDNS("http://evil.nip.io");
+      expect(result).toBe(false);
+    });
+  });
+
+  describe("DNS resolution to public IPs", () => {
+    it("should allow domain resolving to public IPv4", async () => {
+      dns.resolve4 = mock(() => Promise.resolve(["93.184.216.34"]));
+      dns.resolve6 = mock(() => Promise.reject(new Error("ENOTFOUND")));
+
+      const result = await isSafeUrlWithDNS("http://example.com");
+      expect(result).toBe(true);
+    });
+
+    it("should allow domain resolving to multiple public IPs", async () => {
+      dns.resolve4 = mock(() =>
+        Promise.resolve(["93.184.216.34", "93.184.216.35"]),
+      );
+      dns.resolve6 = mock(() => Promise.reject(new Error("ENOTFOUND")));
+
+      const result = await isSafeUrlWithDNS("http://example.com");
+      expect(result).toBe(true);
+    });
+  });
+
+  describe("Mixed public and private IPs", () => {
+    it("should block if ANY resolved IP is private", async () => {
+      // Domain resolves to both public and private IPs
+      dns.resolve4 = mock(() =>
+        Promise.resolve(["93.184.216.34", "192.168.1.1"]),
+      );
+      dns.resolve6 = mock(() => Promise.reject(new Error("ENOTFOUND")));
+
+      const result = await isSafeUrlWithDNS("http://mixed.example.com");
+      expect(result).toBe(false);
+    });
+  });
+
+  describe("IPv6 DNS resolution", () => {
+    it("should block domain resolving to private IPv6", async () => {
+      dns.resolve4 = mock(() => Promise.reject(new Error("ENOTFOUND")));
+      dns.resolve6 = mock(() => Promise.resolve(["fe80::1"]));
+
+      const result = await isSafeUrlWithDNS("http://ipv6.example.com");
+      expect(result).toBe(false);
+    });
+
+    it("should allow domain resolving to public IPv6", async () => {
+      dns.resolve4 = mock(() => Promise.reject(new Error("ENOTFOUND")));
+      dns.resolve6 = mock(() =>
+        Promise.resolve(["2606:2800:220:1:248:1893:25c8:1946"]),
+      );
+
+      const result = await isSafeUrlWithDNS("http://example.com");
+      expect(result).toBe(true);
+    });
+
+    it("should validate both IPv4 and IPv6 addresses", async () => {
+      dns.resolve4 = mock(() => Promise.resolve(["93.184.216.34"]));
+      dns.resolve6 = mock(() =>
+        Promise.resolve(["2606:2800:220:1:248:1893:25c8:1946"]),
+      );
+
+      const result = await isSafeUrlWithDNS("http://example.com");
+      expect(result).toBe(true);
+    });
+  });
+
+  describe("DNS lookup failures", () => {
+    it("should allow on NXDOMAIN (non-existent domain) by default", async () => {
+      dns.resolve4 = mock(() =>
+        Promise.reject(Object.assign(new Error("ENOTFOUND"), { code: "ENOTFOUND" })),
+      );
+      dns.resolve6 = mock(() =>
+        Promise.reject(Object.assign(new Error("ENOTFOUND"), { code: "ENOTFOUND" })),
+      );
+
+      const result = await isSafeUrlWithDNS("http://nonexistent.example.com");
+      expect(result).toBe(true); // Allow, let fetch fail naturally
+    });
+
+    it("should block on DNS error if blockOnDNSError=true", async () => {
+      dns.resolve4 = mock(() =>
+        Promise.reject(Object.assign(new Error("ENOTFOUND"), { code: "ENOTFOUND" })),
+      );
+      dns.resolve6 = mock(() =>
+        Promise.reject(Object.assign(new Error("ENOTFOUND"), { code: "ENOTFOUND" })),
+      );
+
+      const result = await isSafeUrlWithDNS("http://nonexistent.example.com", {
+        blockOnDNSError: true,
+      });
+      expect(result).toBe(false);
+    });
+
+    it("should handle DNS timeout gracefully", async () => {
+      dns.resolve4 = mock(
+        () => new Promise((resolve) => setTimeout(() => resolve([]), 10000)),
+      );
+      dns.resolve6 = mock(() => Promise.reject(new Error("ENOTFOUND")));
+
+      const result = await isSafeUrlWithDNS("http://slow.example.com", {
+        dnsTimeout: 100,
+      });
+      expect(result).toBe(true); // Timeout, allow by default
+    });
+  });
+
+  describe("Configuration options", () => {
+    it("should skip DNS checks if enableDNS=false", async () => {
+      // Should not call DNS resolve functions
+      dns.resolve4 = mock(() => Promise.resolve(["169.254.169.254"]));
+      dns.resolve6 = mock(() => Promise.reject(new Error("ENOTFOUND")));
+
+      const result = await isSafeUrlWithDNS(
+        "http://metadata.google.internal",
+        { enableDNS: false },
+      );
+
+      // Should pass URL validation but skip DNS
+      expect(result).toBe(true);
+    });
+
+    it("should respect custom DNS timeout", async () => {
+      const startTime = Date.now();
+
+      dns.resolve4 = mock(
+        () => new Promise((resolve) => setTimeout(() => resolve([]), 5000)),
+      );
+      dns.resolve6 = mock(() => Promise.reject(new Error("ENOTFOUND")));
+
+      await isSafeUrlWithDNS("http://slow.example.com", {
+        dnsTimeout: 500,
+      });
+
+      const elapsed = Date.now() - startTime;
+      expect(elapsed).toBeLessThan(1000); // Should timeout quickly
+    });
+  });
+
+  describe("Real-world attack scenarios", () => {
+    it("should block nip.io DNS tricks", async () => {
+      // nip.io resolves to the IP in the subdomain
+      dns.resolve4 = mock(() => Promise.resolve(["169.254.169.254"]));
+      dns.resolve6 = mock(() => Promise.reject(new Error("ENOTFOUND")));
+
+      const result = await isSafeUrlWithDNS(
+        "http://169.254.169.254.nip.io/latest/meta-data",
+      );
+      expect(result).toBe(false);
+    });
+
+    it("should block GCP metadata endpoint", async () => {
+      dns.resolve4 = mock(() => Promise.resolve(["169.254.169.254"]));
+      dns.resolve6 = mock(() => Promise.reject(new Error("ENOTFOUND")));
+
+      const result = await isSafeUrlWithDNS(
+        "http://metadata.google.internal/",
+      );
+      expect(result).toBe(false);
+    });
+
+    it("should block custom domain pointing to internal network", async () => {
+      dns.resolve4 = mock(() => Promise.resolve(["10.0.0.1"]));
+      dns.resolve6 = mock(() => Promise.reject(new Error("ENOTFOUND")));
+
+      const result = await isSafeUrlWithDNS("http://internal.attacker.com");
+      expect(result).toBe(false);
     });
   });
 });

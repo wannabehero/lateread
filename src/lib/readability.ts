@@ -1,6 +1,7 @@
 import { Readability } from "@mozilla/readability";
 import { JSDOM } from "jsdom";
-import { isSafeUrl } from "./ssrf-validator";
+import { safeFetch } from "./safe-fetch";
+import { config } from "./config";
 
 export interface ExtractedContent {
   title: string;
@@ -17,20 +18,19 @@ export async function extractCleanContent(
   url: string,
 ): Promise<ExtractedContent> {
   try {
-    // SSRF protection: validate URL is safe to fetch
-    if (!isSafeUrl(url)) {
-      throw new Error(
-        "SSRF protection: Cannot fetch URLs pointing to private/internal resources",
-      );
-    }
-
-    const response = await fetch(url, {
+    // Fetch URL with SSRF protection (DNS + redirect validation)
+    const response = await safeFetch(url, {
       headers: {
         "User-Agent":
           "Mozilla/5.0 (compatible; lateread/1.0; +https://github.com/wannabehero)",
       },
-      signal: AbortSignal.timeout(30_000),
-      redirect: "follow", // Follow up to 5 redirects (default)
+      signal: AbortSignal.timeout(30_000), // 30 second timeout
+      ssrfValidation: {
+        enableDNS: config.SSRF_DNS_CHECKS_ENABLED,
+        dnsTimeout: config.SSRF_DNS_TIMEOUT_MS,
+        blockOnDNSError: config.SSRF_BLOCK_ON_DNS_ERROR,
+        maxRedirects: config.SSRF_MAX_REDIRECTS,
+      },
     });
 
     if (!response.ok) {

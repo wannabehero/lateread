@@ -17,15 +17,11 @@ const configSchema = z.object({
   TELEGRAM_BOT_TOKEN: z.string().min(1, "TELEGRAM_BOT_TOKEN is required"),
   BOT_USERNAME: z.string().min(1, "BOT_USERNAME is required"),
 
-  // LLM (Anthropic Claude)
-  ANTHROPIC_API_KEY: z.string().min(1, "ANTHROPIC_API_KEY is required"),
+  // LLM (Anthropic Claude) - optional
+  ANTHROPIC_API_KEY: z.string().optional(),
 
-  // ElevenLabs TTS
-  ELEVENLABS_API_KEY: z.string().min(1, "ELEVENLABS_API_KEY is required"),
-  HIDE_AUDIO_PLAYER: z
-    .string()
-    .optional()
-    .transform((val) => val === "true"),
+  // ElevenLabs TTS - optional
+  ELEVENLABS_API_KEY: z.string().optional(),
 
   // Authentication & Session
   SESSION_SECRET: z

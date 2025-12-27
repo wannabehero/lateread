@@ -137,7 +137,7 @@ async function processArticle(article: Article, logger: Logger) {
   }
 
   // Step 5: Generate tags using LLM
-  const llmProvider = getLLMProvider();
+  const llmProvider = await getLLMProvider();
 
   const existingTags = (await getUserTags(article.userId)).map((t) => t.name);
   logger.info("Found existing tags", {

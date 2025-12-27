@@ -1,7 +1,8 @@
 import type { FC } from "hono/jsx";
 import type { Article, Tag } from "../db/types";
-import { config } from "../lib/config";
 import { formatRelativeTime } from "../lib/date";
+import { isLLMAvailable } from "../lib/llm";
+import { isTTSAvailable } from "../lib/tts";
 import { TagBadge } from "./TagBadge";
 
 interface ReaderViewProps {
@@ -43,26 +44,28 @@ export const ReaderView: FC<ReaderViewProps> = ({ article, content }) => {
         )}
       </header>
 
-      <section class="reader-summary">
-        <details>
-          <summary
-            hx-post={`/api/articles/${article.id}/summarize`}
-            hx-target="#summaries"
-            hx-swap="innerHTML"
-            hx-trigger="click once"
-          >
-            Summary
-          </summary>
-          <div id="summaries" class="summary-content">
-            <div class="summary-placeholder">
-              <span class="spinner"></span>
-              Generating...
+      {isLLMAvailable() && (
+        <section class="reader-summary">
+          <details>
+            <summary
+              hx-post={`/api/articles/${article.id}/summarize`}
+              hx-target="#summaries"
+              hx-swap="innerHTML"
+              hx-trigger="click once"
+            >
+              Summary
+            </summary>
+            <div id="summaries" class="summary-content">
+              <div class="summary-placeholder">
+                <span class="spinner"></span>
+                Generating...
+              </div>
             </div>
-          </div>
-        </details>
-      </section>
+          </details>
+        </section>
+      )}
 
-      {!config.HIDE_AUDIO_PLAYER && (
+      {isTTSAvailable() && (
         <section class="reader-audio">
           <audio
             id="article-audio"

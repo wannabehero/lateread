@@ -1,4 +1,3 @@
-import Anthropic from "@anthropic-ai/sdk";
 import { config } from "./config";
 import {
   SUMMARIZATION_SYSTEM_PROMPT,
@@ -7,6 +6,9 @@ import {
 import { defaultLogger } from "./logger";
 
 const logger = defaultLogger.child({ module: "llm" });
+
+// Dynamic import type for Anthropic SDK (optional peer dependency)
+type Anthropic = typeof import("@anthropic-ai/sdk").default;
 
 export interface TagExtractionResult {
   tags: string[];
@@ -48,13 +50,47 @@ export function extractJsonFromResponse<T>(
   }
 }
 
-class ClaudeProvider {
-  private client: Anthropic;
+/**
+ * Interface for LLM providers (real or noop)
+ */
+interface LLMProvider {
+  extractTags(
+    content: string,
+    existingTags: string[],
+  ): Promise<TagExtractionResult>;
+  summarize(
+    content: string,
+    languageCode?: string | null,
+  ): Promise<SummaryResult>;
+}
+
+/**
+ * No-op LLM provider used when ANTHROPIC_API_KEY is not configured
+ * Returns default values for all operations
+ */
+class NoopLLMProvider implements LLMProvider {
+  async extractTags(
+    _content: string,
+    _existingTags: string[],
+  ): Promise<TagExtractionResult> {
+    return { tags: [], language: "en", confidence: 0 };
+  }
+
+  async summarize(
+    _content: string,
+    _languageCode?: string | null,
+  ): Promise<SummaryResult> {
+    throw new Error("LLM provider not configured");
+  }
+}
+
+class ClaudeProvider implements LLMProvider {
+  private client: InstanceType<Anthropic>;
   private taggingModel = "claude-haiku-4-5";
   private summaryModel = "claude-sonnet-4-5";
 
-  constructor(apiKey: string) {
-    this.client = new Anthropic({
+  constructor(apiKey: string, AnthropicSDK: Anthropic) {
+    this.client = new AnthropicSDK({
       apiKey,
     });
   }
@@ -169,11 +205,45 @@ ${truncatedContent}`;
 }
 
 // Singleton instance
-let llmProvider: ClaudeProvider | null = null;
+let llmProvider: LLMProvider | null = null;
 
-export function getLLMProvider(): ClaudeProvider {
-  if (!llmProvider) {
-    llmProvider = new ClaudeProvider(config.ANTHROPIC_API_KEY);
+/**
+ * Check if LLM functionality is available
+ */
+export function isLLMAvailable(): boolean {
+  return !!config.ANTHROPIC_API_KEY;
+}
+
+/**
+ * Get LLM provider (real or noop based on API key configuration)
+ * If ANTHROPIC_API_KEY is not set, returns a noop provider that:
+ * - Returns empty tags and default language for extractTags
+ * - Throws error for summarize (should not be called)
+ */
+export async function getLLMProvider(): Promise<LLMProvider> {
+  if (llmProvider) {
+    return llmProvider;
   }
-  return llmProvider;
+
+  // If no API key configured, return noop provider
+  if (!config.ANTHROPIC_API_KEY) {
+    console.warn("ANTHROPIC_API_KEY not configured, using noop LLM provider");
+    llmProvider = new NoopLLMProvider();
+    return llmProvider;
+  }
+
+  // Dynamic import of Anthropic SDK (optional peer dependency)
+  try {
+    const { default: Anthropic } = await import("@anthropic-ai/sdk");
+    llmProvider = new ClaudeProvider(config.ANTHROPIC_API_KEY, Anthropic);
+    return llmProvider;
+  } catch (error) {
+    console.error(
+      "Failed to import @anthropic-ai/sdk. Install it with: bun add @anthropic-ai/sdk",
+      error,
+    );
+    throw new Error(
+      "LLM functionality requires @anthropic-ai/sdk. Install it with: bun add @anthropic-ai/sdk",
+    );
+  }
 }

@@ -1,12 +1,4 @@
-import { ElevenLabsClient } from "@elevenlabs/elevenlabs-js";
 import { config } from "./config";
-
-/**
- * Global ElevenLabs client instance
- */
-export const elevenlabsClient = new ElevenLabsClient({
-  apiKey: config.ELEVENLABS_API_KEY,
-});
 
 /**
  * Default TTS configuration
@@ -40,6 +32,13 @@ const VOICE_MAP: Record<string, string> = {
 };
 
 const DEFAULT_VOICE_ID = "21m00Tcm4TlvDq8ikWAM";
+
+/**
+ * Check if TTS functionality is available
+ */
+export function isTTSAvailable(): boolean {
+  return !!config.ELEVENLABS_API_KEY;
+}
 
 /**
  * Get the best voice ID for the given language code
@@ -83,16 +82,40 @@ export function htmlToPlainText(html: string): string {
  * Generate TTS audio stream for the given text
  * Returns a ReadableStream of audio chunks
  * Automatically selects the best voice based on the article's language
+ * Throws error if ELEVENLABS_API_KEY is not configured
  */
 export async function generateTTSStream(
   text: string,
   languageCode?: string | null,
 ): Promise<ReadableStream<Uint8Array>> {
-  const voiceId = getVoiceForLanguage(languageCode);
+  // Check if TTS is available
+  if (!config.ELEVENLABS_API_KEY) {
+    throw new Error(
+      "TTS functionality not available - ELEVENLABS_API_KEY not configured",
+    );
+  }
 
-  return elevenlabsClient.textToSpeech.stream(voiceId, {
-    text: text.slice(0, 40_000), // 40k chars is the limit for streaming
-    modelId: TTS_CONFIG.modelId,
-    outputFormat: TTS_CONFIG.outputFormat,
-  });
+  // Dynamic import of ElevenLabs SDK (optional peer dependency)
+  try {
+    const { ElevenLabsClient } = await import("@elevenlabs/elevenlabs-js");
+
+    const client = new ElevenLabsClient({
+      apiKey: config.ELEVENLABS_API_KEY,
+    });
+
+    const voiceId = getVoiceForLanguage(languageCode);
+
+    return client.textToSpeech.stream(voiceId, {
+      text: text.slice(0, 40_000), // 40k chars is the limit for streaming
+      modelId: TTS_CONFIG.modelId,
+      outputFormat: TTS_CONFIG.outputFormat,
+    });
+  } catch (error) {
+    if ((error as Error).message?.includes("Cannot find package")) {
+      throw new Error(
+        "TTS functionality requires @elevenlabs/elevenlabs-js. Install it with: bun add @elevenlabs/elevenlabs-js",
+      );
+    }
+    throw error;
+  }
 }

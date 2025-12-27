@@ -36,7 +36,7 @@ export async function getOrGenerateSummary(
   // Extract plain text from HTML for better summarization
   const textContent = content.replace(/<[^>]*>/g, " ").replace(/\s+/g, " ");
 
-  const llmProvider = getLLMProvider();
+  const llmProvider = await getLLMProvider();
   const summary = await llmProvider.summarize(textContent, languageCode);
 
   // Cache the summary

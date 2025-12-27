@@ -3,8 +3,9 @@ import { stream } from "hono/streaming";
 import { EmptyState } from "../components/EmptyState";
 import { ProcessingBanner } from "../components/ProcessingBanner";
 import { SummaryView } from "../components/SummaryView";
-import { ValidationError } from "../lib/errors";
-import { generateTTSStream, htmlToPlainText } from "../lib/tts";
+import { ExternalServiceError, ValidationError } from "../lib/errors";
+import { isLLMAvailable } from "../lib/llm";
+import { generateTTSStream, htmlToPlainText, isTTSAvailable } from "../lib/tts";
 import { requireAuth } from "../middleware/auth";
 import {
   countArticles,
@@ -81,6 +82,11 @@ api.post("/api/articles/:id/summarize", requireAuth("json-401"), async (c) => {
   const userId = c.get("userId");
   const articleId = c.req.param("id");
 
+  // Check if LLM is available
+  if (!isLLMAvailable()) {
+    throw new ExternalServiceError("LLM");
+  }
+
   // Verify article exists and belongs to user
   const article = await getArticleWithTagsById(articleId, userId);
 
@@ -124,6 +130,11 @@ api.get(
 api.get("/api/articles/:id/tts", requireAuth("json-401"), async (c) => {
   const userId = c.get("userId");
   const articleId = c.req.param("id");
+
+  // Check if TTS is available
+  if (!isTTSAvailable()) {
+    throw new ExternalServiceError("TTS");
+  }
 
   // Verify article exists and belongs to user
   const article = await getArticleWithTagsById(articleId, userId);

@@ -6,6 +6,7 @@ import {
   type UserPreferences,
 } from "../db/types";
 import { db } from "../lib/db";
+import { NotFoundError } from "../lib/errors";
 
 /**
  * Get all user preferences (parsed from JSON column)
@@ -20,7 +21,7 @@ export async function getUserPreferences(
     .limit(1);
 
   if (!user) {
-    throw new Error("User not found");
+    throw new NotFoundError("User", userId);
   }
 
   try {

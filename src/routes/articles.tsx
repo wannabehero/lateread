@@ -61,34 +61,24 @@ articlesRouter.get("/articles", requireAuth("redirect"), async (c) => {
 
   const archived = status === "archived";
 
-  try {
-    const [articlesWithTags, processingCount] = await Promise.all([
-      getArticlesWithTags(userId, {
-        archived,
-        tag,
-      }),
-      countArticlesByStatus(userId, ["pending", "processing"]),
-    ]);
+  const [articlesWithTags, processingCount] = await Promise.all([
+    getArticlesWithTags(userId, {
+      archived,
+      tag,
+    }),
+    countArticlesByStatus(userId, ["pending", "processing"]),
+  ]);
 
-    const content = (
-      <ArticleList
-        articles={articlesWithTags}
-        archived={archived}
-        tag={tag}
-        processingCount={processingCount}
-      />
-    );
+  const content = (
+    <ArticleList
+      articles={articlesWithTags}
+      archived={archived}
+      tag={tag}
+      processingCount={processingCount}
+    />
+  );
 
-    return renderWithLayout(c, content, `/articles?status=${status}`);
-  } catch (error) {
-    console.error("Error loading articles:", error);
-    return c.html(
-      <div class="error">
-        <p>Failed to load articles. Please try again.</p>
-      </div>,
-      500,
-    );
-  }
+  return renderWithLayout(c, content, `/articles?status=${status}`);
 });
 
 /**
@@ -98,80 +88,35 @@ articlesRouter.get("/articles/:id", requireAuth("redirect"), async (c) => {
   const userId = c.get("userId");
   const articleId = c.req.param("id");
 
-  try {
-    // Get article with tags
-    const [article, preferences] = await Promise.all([
-      getArticleById(articleId, userId),
-      getReaderPreferences(userId),
-    ]);
+  // Get article with tags
+  const [article, preferences] = await Promise.all([
+    getArticleById(articleId, userId),
+    getReaderPreferences(userId),
+  ]);
 
-    // Get content from cache or fetch if missing
-    const content = await getArticleContent(userId, articleId, article.url);
+  // Get content from cache or fetch if missing
+  const content = await getArticleContent(userId, articleId, article.url);
 
-    const readerContent = <ReaderView article={article} content={content} />;
+  const readerContent = <ReaderView article={article} content={content} />;
 
-    const readerControls = (
-      <div class="nav-actions">
-        <div class="nav-menu reader-settings-menu">
-          <button type="button" class="nav-icon-button">
-            <img
-              src="/public/icons/settings-2.svg"
-              alt="Settings"
-              class="nav-icon"
-            />
-          </button>
-          <div class="nav-dropdown reader-settings-dropdown">
-            <ReaderControls preferences={preferences} />
-          </div>
+  const readerControls = (
+    <div class="nav-actions">
+      <div class="nav-menu reader-settings-menu">
+        <button type="button" class="nav-icon-button">
+          <img
+            src="/public/icons/settings-2.svg"
+            alt="Settings"
+            class="nav-icon"
+          />
+        </button>
+        <div class="nav-dropdown reader-settings-dropdown">
+          <ReaderControls preferences={preferences} />
         </div>
       </div>
-    );
+    </div>
+  );
 
-    return renderWithLayout(
-      c,
-      readerContent,
-      "/articles",
-      readerControls,
-      true,
-    );
-  } catch (error) {
-    const errorMessage =
-      error instanceof Error ? error.message : "Unknown error";
-
-    if (errorMessage === "Article not found") {
-      return c.html(
-        <div class="error">
-          <p>Article not found</p>
-        </div>,
-        404,
-      );
-    }
-
-    console.error("Error loading article:", error);
-
-    // Try to get article URL for fallback link
-    let articleUrl: string | null = null;
-    try {
-      const article = await getArticleById(articleId, userId);
-      articleUrl = article.url;
-    } catch {
-      // Ignore - article lookup failed
-    }
-
-    return c.html(
-      <div class="error">
-        <p>Failed to load article content.</p>
-        {articleUrl && (
-          <p>
-            <a href={articleUrl} target="_blank" rel="noopener noreferrer">
-              View original article
-            </a>
-          </p>
-        )}
-      </div>,
-      500,
-    );
-  }
+  return renderWithLayout(c, readerContent, "/articles", readerControls, true);
 });
 
 export default articlesRouter;

@@ -1,6 +1,7 @@
 import { join } from "node:path";
 import { config } from "../lib/config";
 import { contentCache } from "../lib/content-cache";
+import { ExternalServiceError } from "../lib/errors";
 import { extractCleanContent } from "../lib/readability";
 
 /**
@@ -25,7 +26,7 @@ export async function getArticleContent(
   const extracted = await extractCleanContent(articleUrl);
 
   if (!extracted.content) {
-    throw new Error("Failed to extract article content");
+    throw new ExternalServiceError("Readability content extraction", new Error("No content extracted"));
   }
 
   content = extracted.content;

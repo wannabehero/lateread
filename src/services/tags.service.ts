@@ -2,6 +2,7 @@ import { and, eq } from "drizzle-orm";
 import { tags } from "../db/schema";
 import type { Tag } from "../db/types";
 import { db } from "../lib/db";
+import { InternalError } from "../lib/errors";
 
 /**
  * Get all tags for a user
@@ -43,10 +44,13 @@ export async function getOrCreateTag(
     .returning();
 
   if (!newTag) {
-    throw new Error("Failed to create tag");
+    throw new InternalError("Failed to create tag", {
+      userId,
+      tagName: normalizedName,
+    });
   }
 
-  return newTag?.id;
+  return newTag.id;
 }
 
 /**

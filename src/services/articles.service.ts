@@ -9,8 +9,9 @@ import {
   or,
   sql,
 } from "drizzle-orm";
+import { articleSummaries, articles, articleTags, tags } from "../db/schema";
 import type { Article, Tag } from "../db/types";
-import { articleSummaries, articles, articleTags, db, tags } from "../lib/db";
+import { db } from "../lib/db";
 import { searchCachedArticleIds } from "./content.service";
 
 type ArticleWithTags = Article & {

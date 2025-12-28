@@ -1,6 +1,7 @@
 import { and, eq, lt, ne, or, sql } from "drizzle-orm";
+import { articles } from "../db/schema";
 import { config } from "../lib/config";
-import { articles, db } from "../lib/db";
+import { db } from "../lib/db";
 
 export interface StuckArticle {
   id: string;

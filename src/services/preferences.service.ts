@@ -1,10 +1,11 @@
 import { eq } from "drizzle-orm";
+import { users } from "../db/schema";
 import {
   DEFAULT_READER_PREFERENCES,
   type ReaderPreferences,
   type UserPreferences,
 } from "../db/types";
-import { db, users } from "../lib/db";
+import { db } from "../lib/db";
 
 /**
  * Get all user preferences (parsed from JSON column)

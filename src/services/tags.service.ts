@@ -1,6 +1,7 @@
 import { and, eq } from "drizzle-orm";
+import { tags } from "../db/schema";
 import type { Tag } from "../db/types";
-import { db, tags } from "../lib/db";
+import { db } from "../lib/db";
 
 /**
  * Get all tags for a user

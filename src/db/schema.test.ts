@@ -6,11 +6,9 @@ import {
   createTag,
   createUser,
 } from "../../test/fixtures";
-import { createTestDatabase, resetDatabase } from "../../test/setup";
+import { db } from "../../test/preload";
+import { resetDatabase } from "../../test/setup";
 import * as schema from "./schema";
-
-const testDb = createTestDatabase();
-const { db } = testDb;
 
 describe("database schema", () => {
   beforeEach(async () => {

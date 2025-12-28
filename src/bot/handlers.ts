@@ -83,11 +83,14 @@ export function registerHandlers(bot: Bot) {
       return;
     }
 
+    // Authenticate user
+    const telegramUser = await authenticateTelegramUser(ctx);
+    if (!telegramUser) {
+      return;
+    }
+
     // Get text or caption from message
-    const messageText =
-      ("text" in ctx.message && ctx.message.text) ||
-      ("caption" in ctx.message && ctx.message.caption) ||
-      "";
+    const messageText = getMessageText(ctx);
 
     console.log(
       `[Bot] Received message from user ${ctx.from?.id}: "${messageText.substring(0, 100)}..."`,
@@ -98,7 +101,7 @@ export function registerHandlers(bot: Bot) {
       console.log(
         `[Bot] Message length ${messageText.length} >= threshold ${config.LONG_MESSAGE_THRESHOLD}, treating as article`,
       );
-      await handleLongMessage(ctx);
+      await handleLongMessage(ctx, telegramUser);
       return;
     }
 
@@ -111,30 +114,6 @@ export function registerHandlers(bot: Bot) {
 
     console.log(`[Bot] Extracted URL: ${url}`);
 
-    // Check if user is authenticated
-    const telegramId = ctx.from?.id.toString();
-
-    if (!telegramId) {
-      console.log("[Bot] No telegram ID found, ignoring");
-      return;
-    }
-
-    const telegramUser = await getTelegramUserByTelegramId(telegramId);
-
-    if (!telegramUser) {
-      console.log(`[Bot] User ${telegramId} not authenticated`);
-      await ctx.reply(
-        "Please log in first at the web app to start saving articles.\n\n" +
-          "Once you're logged in, send me any URL or long message and I'll save it for you.\n\n" +
-          "Log in here: https://lateread.app/",
-      );
-      return;
-    }
-
-    console.log(
-      `[Bot] User authenticated: ${telegramUser.userId} (telegram: ${telegramId})`,
-    );
-
     // Create article record
     console.log(`[Bot] Creating article record for URL: ${url}`);
     const article = await createArticle({
@@ -144,61 +123,25 @@ export function registerHandlers(bot: Bot) {
 
     console.log(`[Bot] Article created with ID: ${article.id}`);
 
-    // React with eyes emoji
-    try {
-      await ctx.react("👀");
-      console.log(`[Bot] Added 👀 reaction to message`);
-    } catch (error) {
-      console.error("[Bot] Failed to add reaction:", error);
-    }
-
-    // Spawn worker (non-blocking)
-    if (!ctx.chat || !ctx.message) {
-      return;
-    }
-
-    const chatId = ctx.chat.id;
-    const messageId = ctx.message.message_id;
-
-    console.log(`[Bot] Spawning worker for article ${article.id}`);
-    spawnArticleWorker({
-      articleId: article.id,
-      onSuccess: async () => {
-        try {
-          await ctx.api.setMessageReaction(chatId, messageId, [
-            { type: "emoji", emoji: "👍" },
-          ]);
-        } catch (err) {
-          console.error("Failed to update Telegram reaction:", err);
-        }
-      },
-      onFailure: async () => {
-        try {
-          await ctx.api.setMessageReaction(chatId, messageId, [
-            { type: "emoji", emoji: "👎" },
-          ]);
-        } catch (err) {
-          console.error("Failed to update Telegram reaction:", err);
-        }
-      },
-    });
+    // Process with worker
+    await processArticleWithWorker(ctx, article.id);
   });
 
   console.log("Bot handlers registered");
 }
 
 /**
- * Handle long Telegram messages as articles
+ * Authenticate a Telegram user from context
+ * Returns telegramUser if authenticated, null otherwise (sends error message to user)
  */
-async function handleLongMessage(ctx: Context) {
+async function authenticateTelegramUser(ctx: Context) {
   const telegramId = ctx.from?.id.toString();
 
   if (!telegramId) {
     console.log("[Bot] No telegram ID found, ignoring");
-    return;
+    return null;
   }
 
-  // Check if user is authenticated
   const telegramUser = await getTelegramUserByTelegramId(telegramId);
 
   if (!telegramUser) {
@@ -208,12 +151,86 @@ async function handleLongMessage(ctx: Context) {
         "Once you're logged in, send me any URL or long message and I'll save it for you.\n\n" +
         "Log in here: https://lateread.app/",
     );
-    return;
+    return null;
   }
 
   console.log(
     `[Bot] User authenticated: ${telegramUser.userId} (telegram: ${telegramId})`,
   );
+
+  return telegramUser;
+}
+
+/**
+ * Extract text or caption from message
+ */
+function getMessageText(ctx: Context): string {
+  if (!ctx.message) {
+    return "";
+  }
+
+  return (
+    ("text" in ctx.message && ctx.message.text) ||
+    ("caption" in ctx.message && ctx.message.caption) ||
+    ""
+  );
+}
+
+/**
+ * Process article with worker and reaction callbacks
+ */
+async function processArticleWithWorker(
+  ctx: Context,
+  articleId: string,
+): Promise<void> {
+  // React with eyes emoji
+  try {
+    await ctx.react("👀");
+    console.log(`[Bot] Added 👀 reaction to message`);
+  } catch (error) {
+    console.error("[Bot] Failed to add reaction:", error);
+  }
+
+  // Spawn worker (non-blocking)
+  if (!ctx.chat || !ctx.message) {
+    console.log("[Bot] No chat or message found for worker callbacks");
+    return;
+  }
+
+  const chatId = ctx.chat.id;
+  const messageId = ctx.message.message_id;
+
+  console.log(`[Bot] Spawning worker for article ${articleId}`);
+  spawnArticleWorker({
+    articleId: articleId,
+    onSuccess: async () => {
+      try {
+        await ctx.api.setMessageReaction(chatId, messageId, [
+          { type: "emoji", emoji: "👍" },
+        ]);
+      } catch (err) {
+        console.error("Failed to update Telegram reaction:", err);
+      }
+    },
+    onFailure: async () => {
+      try {
+        await ctx.api.setMessageReaction(chatId, messageId, [
+          { type: "emoji", emoji: "👎" },
+        ]);
+      } catch (err) {
+        console.error("Failed to update Telegram reaction:", err);
+      }
+    },
+  });
+}
+
+/**
+ * Handle long Telegram messages as articles
+ */
+async function handleLongMessage(
+  ctx: Context,
+  telegramUser: { userId: string },
+) {
 
   // Extract metadata from message
   const metadata = await extractMessageMetadata(ctx);
@@ -251,45 +268,8 @@ async function handleLongMessage(ctx: Context) {
     // Continue anyway - worker will retry if needed
   }
 
-  // React with eyes emoji
-  try {
-    await ctx.react("👀");
-    console.log(`[Bot] Added 👀 reaction to message`);
-  } catch (error) {
-    console.error("[Bot] Failed to add reaction:", error);
-  }
-
-  // Spawn worker (non-blocking)
-  if (!ctx.chat || !ctx.message) {
-    console.log("[Bot] No chat or message found for worker callbacks");
-    return;
-  }
-
-  const chatId = ctx.chat.id;
-  const messageId = ctx.message.message_id;
-
-  console.log(`[Bot] Spawning worker for article ${article.id}`);
-  spawnArticleWorker({
-    articleId: article.id,
-    onSuccess: async () => {
-      try {
-        await ctx.api.setMessageReaction(chatId, messageId, [
-          { type: "emoji", emoji: "👍" },
-        ]);
-      } catch (err) {
-        console.error("Failed to update Telegram reaction:", err);
-      }
-    },
-    onFailure: async () => {
-      try {
-        await ctx.api.setMessageReaction(chatId, messageId, [
-          { type: "emoji", emoji: "👎" },
-        ]);
-      } catch (err) {
-        console.error("Failed to update Telegram reaction:", err);
-      }
-    },
-  });
+  // Process with worker
+  await processArticleWithWorker(ctx, article.id);
 }
 
 /**

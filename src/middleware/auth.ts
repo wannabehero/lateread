@@ -17,7 +17,7 @@ type AuthStrategy = "redirect" | "json-401";
  */
 export function requireAuth(strategy: AuthStrategy = "redirect") {
   return async (c: Context<AppContext>, next: Next) => {
-    const session = getSession(c);
+    const session = await getSession(c);
 
     if (!session?.userId) {
       if (strategy === "json-401") {

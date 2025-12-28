@@ -45,6 +45,9 @@ export async function createAuthToken(): Promise<AuthTokenResult> {
  * Claims an auth token by linking it to a user
  * Creates User and TelegramUser records if they don't exist
  * Returns user information on success
+ *
+ * Uses a transaction to prevent race conditions when multiple requests
+ * try to claim the same token or create users for the same telegramId
  */
 export async function claimAuthToken(
   token: string,
@@ -53,70 +56,72 @@ export async function claimAuthToken(
   firstName: string | null = null,
   lastName: string | null = null,
 ): Promise<ClaimTokenResult | null> {
-  // Query auth token
-  const [authToken] = await db
-    .select()
-    .from(authTokens)
-    .where(eq(authTokens.token, token))
-    .limit(1);
+  return await db.transaction(async (tx) => {
+    // Query auth token
+    const [authToken] = await tx
+      .select()
+      .from(authTokens)
+      .where(eq(authTokens.token, token))
+      .limit(1);
 
-  if (!authToken) {
-    return null;
-  }
-
-  // Check if token is expired
-  if (authToken.expiresAt < new Date()) {
-    return null;
-  }
-
-  // Check if token already claimed
-  if (authToken.userId) {
-    return null;
-  }
-
-  // Check if telegram user already exists
-  const [existingTelegramUser] = await db
-    .select()
-    .from(telegramUsers)
-    .where(eq(telegramUsers.telegramId, telegramId))
-    .limit(1);
-
-  let userId: string;
-
-  if (existingTelegramUser) {
-    // User already exists, use their ID
-    userId = existingTelegramUser.userId;
-  } else {
-    // Create new user and telegram user records
-    const result = await db.insert(users).values({}).returning();
-    const newUser = result[0];
-
-    if (!newUser) {
-      throw new Error("Failed to create user");
+    if (!authToken) {
+      return null;
     }
 
-    userId = newUser.id;
+    // Check if token is expired
+    if (authToken.expiresAt < new Date()) {
+      return null;
+    }
 
-    await db.insert(telegramUsers).values({
+    // Check if token already claimed
+    if (authToken.userId) {
+      return null;
+    }
+
+    // Check if telegram user already exists
+    const [existingTelegramUser] = await tx
+      .select()
+      .from(telegramUsers)
+      .where(eq(telegramUsers.telegramId, telegramId))
+      .limit(1);
+
+    let userId: string;
+
+    if (existingTelegramUser) {
+      // User already exists, use their ID
+      userId = existingTelegramUser.userId;
+    } else {
+      // Create new user and telegram user records
+      const result = await tx.insert(users).values({}).returning();
+      const newUser = result[0];
+
+      if (!newUser) {
+        throw new Error("Failed to create user");
+      }
+
+      userId = newUser.id;
+
+      await tx.insert(telegramUsers).values({
+        userId,
+        telegramId,
+        username,
+        firstName,
+        lastName,
+      });
+    }
+
+    // Update token with userId
+    await tx
+      .update(authTokens)
+      .set({ userId })
+      .where(eq(authTokens.token, token));
+
+    return {
       userId,
       telegramId,
       username,
-      firstName,
-      lastName,
-    });
-  }
-
-  // Update token with userId
-  await db
-    .update(authTokens)
-    .set({ userId })
-    .where(eq(authTokens.token, token));
-
-  return {
-    userId,
-    telegramId,
-    username,
-  };
+    };
+  });
 }
 
 /**

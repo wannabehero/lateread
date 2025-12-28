@@ -5,16 +5,8 @@ const PUBLIC_DIR = "./public";
 const NODE_MODULES = "./node_modules";
 
 const ASSETS_TO_COPY = [
-  {
-    src: join(NODE_MODULES, "htmx.org/dist/htmx.min.js"),
-    dest: join(PUBLIC_DIR, "htmx.min.js"),
-    name: "htmx.min.js",
-  },
-  {
-    src: join(NODE_MODULES, "@picocss/pico/css/pico.min.css"),
-    dest: join(PUBLIC_DIR, "pico.min.css"),
-    name: "pico.min.css",
-  },
+  { src: "htmx.org/dist/htmx.min.js", dest: "htmx.min.js" },
+  { src: "@picocss/pico/css/pico.min.css", dest: "pico.min.css" },
 ] as const;
 
 async function copyAssets() {
@@ -24,8 +16,10 @@ async function copyAssets() {
 
   try {
     for (const asset of ASSETS_TO_COPY) {
-      await copyFile(asset.src, asset.dest);
-      console.log(`Copied ${asset.name}`);
+      const srcPath = join(NODE_MODULES, asset.src);
+      const destPath = join(PUBLIC_DIR, asset.dest);
+      await copyFile(srcPath, destPath);
+      console.log(`Copied ${asset.src} to ${asset.dest}`);
     }
     console.log("All assets copied successfully");
   } catch (error) {

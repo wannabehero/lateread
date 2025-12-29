@@ -1,5 +1,5 @@
-import { describe, it, expect, beforeEach, afterEach, mock } from "bun:test";
-import { logger } from "./logger";
+import { afterEach, beforeEach, describe, expect, it, mock } from "bun:test";
+import { createLogger, getLogger, logger } from "./logger";
 
 describe("logger", () => {
   let consoleLogMock: ReturnType<typeof mock>;
@@ -202,6 +202,142 @@ describe("logger", () => {
 
       expect(parsed.message).toBe("Article processed");
       expect(parsed.articleId).toBe("abc-123");
+    });
+  });
+
+  describe("child loggers", () => {
+    it("should create child logger with merged context", () => {
+      const parentLogger = createLogger({ service: "articles" });
+      const childLogger = parentLogger.child({ reqId: "req-123" });
+
+      childLogger.info("Processing request");
+
+      const output = consoleLogMock.mock.calls[0][0];
+      const parsed = JSON.parse(output);
+
+      expect(parsed.service).toBe("articles");
+      expect(parsed.reqId).toBe("req-123");
+      expect(parsed.message).toBe("Processing request");
+    });
+
+    it("should merge child context with call metadata", () => {
+      const childLogger = logger.child({ reqId: "abc-123" });
+      childLogger.info("User action", { userId: "user-456", action: "login" });
+
+      const output = consoleLogMock.mock.calls[0][0];
+      const parsed = JSON.parse(output);
+
+      expect(parsed.reqId).toBe("abc-123");
+      expect(parsed.userId).toBe("user-456");
+      expect(parsed.action).toBe("login");
+    });
+
+    it("should give call metadata priority over context", () => {
+      const childLogger = logger.child({ reqId: "original-123" });
+      // Override reqId in call
+      childLogger.info("Overriding context", { reqId: "override-456" });
+
+      const output = consoleLogMock.mock.calls[0][0];
+      const parsed = JSON.parse(output);
+
+      // Call metadata should override context
+      expect(parsed.reqId).toBe("override-456");
+    });
+
+    it("should support multiple levels of child loggers", () => {
+      const level1 = createLogger({ service: "api" });
+      const level2 = level1.child({ reqId: "req-123" });
+      const level3 = level2.child({ operation: "fetch" });
+
+      level3.info("Nested operation", { userId: "user-789" });
+
+      const output = consoleLogMock.mock.calls[0][0];
+      const parsed = JSON.parse(output);
+
+      expect(parsed.service).toBe("api");
+      expect(parsed.reqId).toBe("req-123");
+      expect(parsed.operation).toBe("fetch");
+      expect(parsed.userId).toBe("user-789");
+    });
+
+    it("should isolate child logger contexts", () => {
+      const parent = createLogger({ service: "api" });
+      const child1 = parent.child({ reqId: "req-1" });
+      const child2 = parent.child({ reqId: "req-2" });
+
+      child1.info("Request 1");
+      child2.info("Request 2");
+
+      const output1 = consoleLogMock.mock.calls[0][0];
+      const output2 = consoleLogMock.mock.calls[1][0];
+      const parsed1 = JSON.parse(output1);
+      const parsed2 = JSON.parse(output2);
+
+      expect(parsed1.reqId).toBe("req-1");
+      expect(parsed2.reqId).toBe("req-2");
+      expect(parsed1.service).toBe("api");
+      expect(parsed2.service).toBe("api");
+    });
+
+    it("should preserve parent context when child adds new fields", () => {
+      const parent = createLogger({ service: "api", version: "1.0" });
+      const child = parent.child({ reqId: "req-123" });
+
+      child.info("Test message");
+
+      const output = consoleLogMock.mock.calls[0][0];
+      const parsed = JSON.parse(output);
+
+      expect(parsed.service).toBe("api");
+      expect(parsed.version).toBe("1.0");
+      expect(parsed.reqId).toBe("req-123");
+    });
+
+    it("should expose context property on logger", () => {
+      const childLogger = logger.child({
+        reqId: "abc-123",
+        userId: "user-456",
+      });
+
+      expect(childLogger.context).toEqual({
+        reqId: "abc-123",
+        userId: "user-456",
+      });
+    });
+  });
+
+  describe("getLogger", () => {
+    it("should return logger from context", () => {
+      const mockLogger = createLogger({ reqId: "test-123" });
+      const mockContext = {
+        get: (key: string) => (key === "logger" ? mockLogger : undefined),
+      };
+
+      const result = getLogger(mockContext);
+
+      expect(result).toBe(mockLogger);
+      expect(result.context).toEqual({ reqId: "test-123" });
+    });
+
+    it("should fallback to root logger when context has no logger", () => {
+      const mockContext = {
+        get: () => undefined,
+      };
+
+      const result = getLogger(mockContext);
+
+      expect(result).toBe(logger);
+      expect(result.context).toEqual({});
+    });
+
+    it("should fallback to root logger when logger is undefined", () => {
+      const mockContext = {
+        get: (key: string) => (key === "logger" ? undefined : null),
+      };
+
+      const result = getLogger(mockContext);
+
+      expect(result).toBe(logger);
     });
   });
 });

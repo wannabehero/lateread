@@ -108,7 +108,14 @@ function verifyAndParse(signedValue: string): SessionData {
   // Verify HMAC signature using constant-time comparison
   const expectedSignature = createHmacSignature(payloadBase64);
 
-  if (!constantTimeEqual(signature, expectedSignature)) {
+  // Use crypto.timingSafeEqual for constant-time comparison
+  const signatureBuffer = Buffer.from(signature, "utf-8");
+  const expectedBuffer = Buffer.from(expectedSignature, "utf-8");
+
+  if (
+    signatureBuffer.length !== expectedBuffer.length ||
+    !crypto.timingSafeEqual(signatureBuffer, expectedBuffer)
+  ) {
     throw new Error("Invalid session signature");
   }
 
@@ -159,19 +166,3 @@ function createHmacSignature(data: string): string {
   return signature.replace(/\+/g, "-").replace(/\//g, "_").replace(/=/g, "");
 }
 
-/**
- * Constant-time string comparison to prevent timing attacks
- * Compares two strings byte-by-byte, always checking all characters
- */
-function constantTimeEqual(a: string, b: string): boolean {
-  if (a.length !== b.length) {
-    return false;
-  }
-
-  let result = 0;
-  for (let i = 0; i < a.length; i++) {
-    result |= a.charCodeAt(i) ^ b.charCodeAt(i);
-  }
-
-  return result === 0;
-}

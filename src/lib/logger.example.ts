@@ -131,8 +131,8 @@ export function exampleRouteHandler(c: Context<AppContext>) {
   return c.json({ success: true });
 }
 
-// Example 9: Passing logger to service functions
-async function processArticle(
+// Example 9: Passing logger to service functions (old pattern)
+async function processArticleOldPattern(
   articleId: string,
   log: ReturnType<typeof getLogger>,
 ) {
@@ -147,13 +147,36 @@ async function processArticle(
   }
 }
 
-export function exampleServiceWithLogger(c: Context<AppContext>) {
+export function exampleServiceWithLoggerOldPattern(c: Context<AppContext>) {
   const log = getLogger(c);
   const articleId = "article-123";
 
   // Pass logger to service function
-  processArticle(articleId, log);
+  processArticleOldPattern(articleId, log);
   // All logs will include reqId from the request context
+}
+
+// Example 9b: Using context storage (new pattern - no passing logger around!)
+async function processArticleNewPattern(articleId: string) {
+  // Get logger from context storage - no need to pass it!
+  const log = getLogger();
+  log.info("Processing started", { articleId });
+
+  try {
+    // ... processing logic
+    log.info("Processing completed", { articleId, duration: 1200 });
+  } catch (error) {
+    log.error("Processing failed", { articleId, error });
+    throw error;
+  }
+}
+
+export function exampleServiceWithContextStorage(c: Context<AppContext>) {
+  const articleId = "article-123";
+
+  // No need to pass logger - service gets it from context storage
+  processArticleNewPattern(articleId);
+  // All logs will still include requestId from the middleware
 }
 
 // Example 10: Multiple child logger levels

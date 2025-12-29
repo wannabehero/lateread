@@ -3,6 +3,8 @@ import { config } from "./lib/config";
 
 import { Hono } from "hono";
 import { serveStatic } from "hono/bun";
+import { contextStorage } from "hono/context-storage";
+import { requestId } from "hono/request-id";
 import { startBot, stopBot } from "./bot/index";
 import { startCrons } from "./cron";
 import { runMigrations } from "./lib/db";
@@ -25,7 +27,13 @@ runMigrations();
 // Create Hono app with typed context
 const app = new Hono<AppContext>();
 
-// Request logger middleware (adds reqId to all requests)
+// Context storage middleware (enables getContext() anywhere)
+app.use("*", contextStorage());
+
+// Request ID middleware (generates UUID per request)
+app.use("*", requestId());
+
+// Logger middleware (creates request-scoped logger with requestId)
 app.use("*", loggerMiddleware);
 
 // Serve static files from public directory

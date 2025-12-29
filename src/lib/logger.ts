@@ -1,3 +1,5 @@
+import { getContext } from "hono/context-storage";
+
 /**
  * Log levels in order of severity
  */
@@ -259,25 +261,46 @@ export const logger = createLogger();
  * Gets the logger instance from Hono context.
  * Falls back to root logger if called outside request context.
  *
- * Use this in route handlers to get the request-scoped logger with reqId.
+ * Supports two calling patterns:
+ * 1. With context: `getLogger(c)` - explicitly pass context
+ * 2. Without context: `getLogger()` - uses context storage (requires contextStorage middleware)
  *
- * @param c - Hono context
+ * @param c - Optional Hono context
  * @returns Logger instance (request-scoped if available, root otherwise)
  *
  * @example
  * ```typescript
  * import { getLogger } from "../lib/logger";
  *
+ * // In route handlers (explicit context)
  * app.get("/articles", async (c) => {
  *   const log = getLogger(c);
  *   log.info("Fetching articles", { filter: "unread" });
- *   // Output includes reqId from middleware
  *   return c.json({ articles: [] });
  * });
+ *
+ * // In services or anywhere (using context storage)
+ * async function processArticle(articleId: string) {
+ *   const log = getLogger();
+ *   log.info("Processing article", { articleId });
+ * }
  * ```
  */
-export function getLogger(c: {
+export function getLogger(c?: {
   get(key: "logger"): Logger | undefined;
 }): Logger {
-  return c.get("logger") ?? logger;
+  // If context provided, use it
+  if (c) {
+    return c.get("logger") ?? logger;
+  }
+
+  // Try to get context from context storage
+  // Note: This requires contextStorage middleware to be enabled
+  try {
+    const ctx = getContext();
+    return ctx.get("logger") ?? logger;
+  } catch {
+    // Context storage not available or outside request context
+    return logger;
+  }
 }

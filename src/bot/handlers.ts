@@ -202,7 +202,7 @@ async function processArticleWithWorker(
 
   console.log(`[Bot] Spawning worker for article ${articleId}`);
   spawnArticleWorker({
-    articleId: articleId,
+    articleId,
     onSuccess: async () => {
       try {
         await ctx.api.setMessageReaction(chatId, messageId, [
@@ -231,7 +231,6 @@ async function handleLongMessage(
   ctx: Context,
   telegramUser: { userId: string },
 ) {
-
   // Extract metadata from message
   const metadata = await extractMessageMetadata(ctx);
 

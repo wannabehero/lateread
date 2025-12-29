@@ -32,7 +32,7 @@ export class ContentCache {
         return null;
       }
 
-      return await file.text();
+      return file.text();
     } catch (error) {
       console.error(`Failed to read cache for article ${articleId}:`, error);
       return null;
@@ -70,7 +70,7 @@ export class ContentCache {
     try {
       const filePath = this.getFilePath(userId, articleId);
       const file = Bun.file(filePath);
-      return await file.exists();
+      return file.exists();
     } catch {
       return false;
     }

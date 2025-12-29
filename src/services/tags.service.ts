@@ -6,7 +6,7 @@ import { db, tags } from "../lib/db";
  * Get all tags for a user
  */
 export async function getUserTags(userId: string): Promise<Tag[]> {
-  return await db.select().from(tags).where(eq(tags.userId, userId));
+  return db.select().from(tags).where(eq(tags.userId, userId));
 }
 
 /**

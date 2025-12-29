@@ -78,7 +78,7 @@ articlesRouter.get("/articles", requireAuth("redirect"), async (c) => {
     />
   );
 
-  return renderWithLayout(c, content, `/articles?status=${status}`);
+  return renderWithLayout(c, content);
 });
 
 /**
@@ -116,7 +116,7 @@ articlesRouter.get("/articles/:id", requireAuth("redirect"), async (c) => {
     </div>
   );
 
-  return renderWithLayout(c, readerContent, "/articles", readerControls, true);
+  return renderWithLayout(c, readerContent, readerControls, true);
 });
 
 export default articlesRouter;

@@ -1,4 +1,5 @@
 import {
+  afterAll,
   afterEach,
   beforeEach,
   describe,
@@ -40,7 +41,6 @@ mock.module("hono/cookie", () => ({
 mock.module("./config", () => ({
   config: {
     SESSION_SECRET: "test-secret-key-for-hmac-sha256-signing",
-    SESSION_MAX_AGE_DAYS: 7,
     NODE_ENV: "test",
   },
 }));
@@ -81,6 +81,46 @@ describe("session", () => {
       expect(session?.userId).toBe("user123");
       expect(session?.iat).toBeGreaterThan(0);
       expect(session?.exp).toBeGreaterThan(session?.iat ?? Infinity);
+    });
+
+    describe.each([
+      ["test", false],
+      ["production", true],
+    ])("cookie security options for %s with secure=%p", (env, secure) => {
+      beforeEach(() => {
+        mock.module("./config", () => ({
+          config: {
+            SESSION_SECRET: "test-secret-key-for-hmac-sha256-signing",
+            NODE_ENV: env,
+          },
+        }));
+      });
+
+      afterAll(() => {
+        mock.module("./config", () => ({
+          config: {
+            SESSION_SECRET: "test-secret-key-for-hmac-sha256-signing",
+            NODE_ENV: "test",
+          },
+        }));
+      });
+
+      it("should set cookie with correct security options", () => {
+        const c = createMockContext();
+
+        setSession(c, { userId: "user123" });
+
+        const cookie = mockCookies.lateread_session;
+        expect(cookie).toBeTruthy();
+
+        // Verify security options
+        expect(cookie?.options?.httpOnly).toBe(true);
+        expect(cookie?.options?.sameSite).toBe("Strict");
+        expect(cookie?.options?.path).toBe("/");
+        expect(cookie?.options?.maxAge).toBe(180 * 24 * 60 * 60); // 180 days in seconds
+
+        expect(cookie?.options?.secure).toBe(secure);
+      });
     });
 
     it("should return null for missing session cookie", () => {
@@ -186,50 +226,45 @@ describe("session", () => {
       expect(session?.exp).toBeGreaterThan(Math.floor(Date.now() / 1000));
     });
 
-    it("should reject session with invalid data structure", () => {
+    it.each([
+      { userId: null, iat: 1234567890, exp: 1234657890 }, // null userId
+      { userId: "", iat: 1234567890, exp: 1234657890 }, // empty userId
+      { userId: "x".repeat(1001), iat: 1234567890, exp: 1234657890 }, // userId too long
+      { userId: "valid", iat: -1, exp: 1234657890 }, // negative iat
+      { userId: "valid", iat: 1234567890, exp: -1 }, // negative exp
+      { userId: "valid", iat: "not-a-number", exp: 1234657890 }, // string iat
+      { iat: 1234567890, exp: 1234657890 }, // missing userId
+    ])("should reject session with invalid data structure", (payload) => {
       const c = createMockContext();
 
-      // Test various malformed payloads with valid signatures
-      const malformedPayloads = [
-        { userId: null, iat: 1234567890, exp: 1234657890 }, // null userId
-        { userId: "", iat: 1234567890, exp: 1234657890 }, // empty userId
-        { userId: "x".repeat(1001), iat: 1234567890, exp: 1234657890 }, // userId too long
-        { userId: "valid", iat: -1, exp: 1234657890 }, // negative iat
-        { userId: "valid", iat: 1234567890, exp: -1 }, // negative exp
-        { userId: "valid", iat: "not-a-number", exp: 1234657890 }, // string iat
-        { iat: 1234567890, exp: 1234657890 }, // missing userId
-      ];
+      const payloadJson = JSON.stringify(payload);
+      const payloadBase64 = Buffer.from(payloadJson, "utf-8")
+        .toString("base64")
+        .replace(/\+/g, "-")
+        .replace(/\//g, "_")
+        .replace(/=/g, "");
 
-      for (const payload of malformedPayloads) {
-        const payloadJson = JSON.stringify(payload);
-        const payloadBase64 = Buffer.from(payloadJson, "utf-8")
-          .toString("base64")
-          .replace(/\+/g, "-")
-          .replace(/\//g, "_")
-          .replace(/=/g, "");
+      // Generate valid HMAC signature for the malformed payload
+      const hasher = new Bun.CryptoHasher(
+        "sha256",
+        "test-secret-key-for-hmac-sha256-signing",
+      );
+      hasher.update(payloadBase64);
+      const signature = hasher
+        .digest("base64")
+        .replace(/\+/g, "-")
+        .replace(/\//g, "_")
+        .replace(/=/g, "");
 
-        // Generate valid HMAC signature for the malformed payload
-        const hasher = new Bun.CryptoHasher(
-          "sha256",
-          "test-secret-key-for-hmac-sha256-signing",
-        );
-        hasher.update(payloadBase64);
-        const signature = hasher
-          .digest("base64")
-          .replace(/\+/g, "-")
-          .replace(/\//g, "_")
-          .replace(/=/g, "");
+      const malformedCookie = `${payloadBase64}.${signature}`;
 
-        const malformedCookie = `${payloadBase64}.${signature}`;
+      mockCookies.lateread_session = {
+        value: malformedCookie,
+      };
+      const session = getSession(c);
 
-        mockCookies.lateread_session = {
-          value: malformedCookie,
-        };
-        const session = getSession(c);
-
-        // Should reject due to validation failure
-        expect(session).toBeNull();
-      }
+      // Should reject due to validation failure
+      expect(session).toBeNull();
     });
   });
 

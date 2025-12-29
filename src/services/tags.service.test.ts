@@ -1,21 +1,11 @@
-import { beforeEach, describe, expect, it, mock } from "bun:test";
+import { beforeEach, describe, expect, it } from "bun:test";
+import { db, resetDatabase } from "../../test/bootstrap";
 import { createTag, createUser } from "../../test/fixtures";
-import { createTestDatabase, resetDatabase } from "../../test/setup";
 import { deleteTag, getOrCreateTag, getUserTags } from "./tags.service";
-
-// Create test database
-const testDb = createTestDatabase();
-const { db } = testDb;
-
-// Mock the db import
-mock.module("../lib/db", () => ({
-  db,
-  tags: require("../db/schema").tags,
-}));
 
 describe("tags.service", () => {
   beforeEach(async () => {
-    await resetDatabase(db);
+    resetDatabase();
   });
 
   describe("getUserTags", () => {

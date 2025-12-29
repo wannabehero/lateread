@@ -1,5 +1,6 @@
 import { eq } from "drizzle-orm";
-import { db, telegramUsers } from "../lib/db";
+import { telegramUsers } from "../db/schema";
+import { db } from "../lib/db";
 
 /**
  * Get telegram user by telegram ID

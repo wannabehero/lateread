@@ -40,9 +40,3 @@ export function runMigrations() {
     throw error;
   }
 }
-
-// Export the raw SQLite connection for advanced use cases
-export const sqliteConnection = sqlite;
-
-// Export schema for use in queries
-export * from "../db/schema.ts";

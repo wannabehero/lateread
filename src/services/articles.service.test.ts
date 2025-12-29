@@ -1,11 +1,12 @@
-import { beforeEach, describe, expect, it, mock } from "bun:test";
+import { beforeEach, describe, expect, it } from "bun:test";
+import { db, resetDatabase } from "../../test/bootstrap";
 import {
   addTagToArticle,
   createCompletedArticle,
   createTag,
   createUser,
 } from "../../test/fixtures";
-import { createTestDatabase, resetDatabase } from "../../test/setup";
+import * as schema from "../db/schema";
 import {
   getArticleById,
   getArticlesWithTags,
@@ -13,27 +14,15 @@ import {
   toggleArticleArchive,
 } from "./articles.service";
 
-// Create test database
-const testDb = createTestDatabase();
-const { db } = testDb;
-
-// Mock the db import
-mock.module("../lib/db", () => ({
-  db,
-  articles: require("../db/schema").articles,
-  tags: require("../db/schema").tags,
-  articleTags: require("../db/schema").articleTags,
-  articleSummaries: require("../db/schema").articleSummaries,
-}));
-
 describe("articles.service", () => {
-  beforeEach(async () => {
-    await resetDatabase(db);
+  beforeEach(() => {
+    resetDatabase();
   });
 
   describe("getArticlesWithTags", () => {
     it("should return articles with tags for a user", async () => {
       const user = await createUser(db);
+
       const article = await createCompletedArticle(db, user.id, {
         title: "Test Article",
       });
@@ -105,8 +94,7 @@ describe("articles.service", () => {
       const user = await createUser(db);
 
       // Create pending article (won't be returned)
-      const { db: testDbInstance } = testDb;
-      await testDbInstance.insert(require("../db/schema").articles).values({
+      await db.insert(schema.articles).values({
         userId: user.id,
         url: "https://example.com/pending",
         status: "pending",

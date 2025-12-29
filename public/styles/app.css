@@ -1,5 +1,5 @@
 /* Main application stylesheet */
 /* Imports all component stylesheets */
 
-@import url('./misc.css');
-@import url('./reader.css');
+@import url("./misc.css");
+@import url("./reader.css");

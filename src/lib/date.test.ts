@@ -170,12 +170,12 @@ describe("formatRelativeTime", () => {
         expected: "Dec 25, 2020",
         description: "3+ years ago",
       },
-    ])(
-      "should format $description as '$expected'",
-      ({ timestamp, expected }) => {
-        expect(formatRelativeTime(timestamp)).toBe(expected);
-      },
-    );
+    ])("should format $description as '$expected'", ({
+      timestamp,
+      expected,
+    }) => {
+      expect(formatRelativeTime(timestamp)).toBe(expected);
+    });
   });
 
   describe("edge cases", () => {

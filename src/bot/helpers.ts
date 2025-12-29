@@ -38,13 +38,13 @@ export async function extractMessageMetadata(
   const lines = messageText.split("\n");
   const firstLine = lines[0] || messageText.substring(0, 64);
   const title =
-    firstLine.length > 64 ? firstLine.substring(0, 64) + "..." : firstLine;
+    firstLine.length > 64 ? `${firstLine.substring(0, 64)}...` : firstLine;
 
   // Extract description: next 200 chars after first line
   const restOfText = lines.slice(1).join("\n").trim();
   const description =
     restOfText.length > 200
-      ? restOfText.substring(0, 200) + "..."
+      ? `${restOfText.substring(0, 200)}...`
       : restOfText || title.substring(0, 200);
 
   // Determine URL and author

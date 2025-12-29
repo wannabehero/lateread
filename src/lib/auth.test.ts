@@ -1,6 +1,6 @@
-import { beforeEach, describe, expect, it, mock } from "bun:test";
+import { beforeEach, describe, expect, it } from "bun:test";
 import { eq } from "drizzle-orm";
-import { createTestDatabase, resetDatabase } from "../../test/setup";
+import { db, resetDatabase } from "../../test/bootstrap";
 import { authTokens } from "../db/schema";
 import {
   claimAuthToken,
@@ -11,18 +11,9 @@ import {
 } from "./auth";
 import { config } from "./config";
 
-// Create test database
-const testDb = createTestDatabase();
-const { db } = testDb;
-
-// Mock the db import in auth module to use test database
-mock.module("./db", () => ({
-  db,
-}));
-
 describe("auth", () => {
-  beforeEach(async () => {
-    await resetDatabase(db);
+  beforeEach(() => {
+    resetDatabase();
   });
 
   describe("createAuthToken", () => {

@@ -116,7 +116,10 @@
 
       if (action === "increase" && currentPrefs.fontSize < MAX_FONT_SIZE) {
         currentPrefs.fontSize += 1;
-      } else if (action === "decrease" && currentPrefs.fontSize > MIN_FONT_SIZE) {
+      } else if (
+        action === "decrease" &&
+        currentPrefs.fontSize > MIN_FONT_SIZE
+      ) {
         currentPrefs.fontSize -= 1;
       }
 

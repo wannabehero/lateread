@@ -21,7 +21,7 @@ home.get("/", async (c) => {
       });
 
       return c.html(
-        <Layout isAuthenticated={true} currentPath="/">
+        <Layout isAuthenticated={true}>
           <ArticleList articles={articlesWithTags} archived={false} />
         </Layout>,
       );

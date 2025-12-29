@@ -1,7 +1,6 @@
 import { beforeEach, describe, expect, it } from "bun:test";
 import { eq } from "drizzle-orm";
-import { db } from "../../test/preload";
-import { resetDatabase } from "../../test/setup";
+import { db, resetDatabase } from "../../test/bootstrap";
 import { authTokens } from "../db/schema";
 import {
   claimAuthToken,
@@ -13,8 +12,8 @@ import {
 import { config } from "./config";
 
 describe("auth", () => {
-  beforeEach(async () => {
-    await resetDatabase(db);
+  beforeEach(() => {
+    resetDatabase();
   });
 
   describe("createAuthToken", () => {

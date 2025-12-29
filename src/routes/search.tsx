@@ -57,7 +57,7 @@ searchRouter.get("/search", requireAuth("redirect"), async (c) => {
     // Full page render
     const title = query ? `Search: "${query}"` : "Search";
     return c.html(
-      <Layout title={title} isAuthenticated={true} currentPath="/search">
+      <Layout title={title} isAuthenticated={true}>
         {content}
       </Layout>,
     );

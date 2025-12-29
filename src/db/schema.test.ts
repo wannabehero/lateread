@@ -1,18 +1,17 @@
 import { beforeEach, describe, expect, it } from "bun:test";
 import { eq } from "drizzle-orm";
+import { db, resetDatabase } from "../../test/bootstrap";
 import {
   addTagToArticle,
   createArticle,
   createTag,
   createUser,
 } from "../../test/fixtures";
-import { db } from "../../test/preload";
-import { resetDatabase } from "../../test/setup";
 import * as schema from "./schema";
 
 describe("database schema", () => {
-  beforeEach(async () => {
-    await resetDatabase(db);
+  beforeEach(() => {
+    resetDatabase();
   });
 
   describe("telegramUsers table", () => {

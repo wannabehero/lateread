@@ -40,6 +40,3 @@ export function runMigrations() {
     throw error;
   }
 }
-
-// Export the raw SQLite connection for advanced use cases
-export const sqliteConnection = sqlite;

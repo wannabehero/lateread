@@ -1,12 +1,11 @@
 import { beforeEach, describe, expect, it } from "bun:test";
+import { db, resetDatabase } from "../../test/bootstrap";
 import {
   addTagToArticle,
   createCompletedArticle,
   createTag,
   createUser,
 } from "../../test/fixtures";
-import { db } from "../../test/preload";
-import { resetDatabase } from "../../test/setup";
 import * as schema from "../db/schema";
 import {
   getArticleById,
@@ -16,13 +15,14 @@ import {
 } from "./articles.service";
 
 describe("articles.service", () => {
-  beforeEach(async () => {
-    await resetDatabase(db);
+  beforeEach(() => {
+    resetDatabase();
   });
 
   describe("getArticlesWithTags", () => {
     it("should return articles with tags for a user", async () => {
       const user = await createUser(db);
+
       const article = await createCompletedArticle(db, user.id, {
         title: "Test Article",
       });

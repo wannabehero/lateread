@@ -1,12 +1,11 @@
 import { beforeEach, describe, expect, it } from "bun:test";
+import { db, resetDatabase } from "../../test/bootstrap";
 import { createTag, createUser } from "../../test/fixtures";
-import { db } from "../../test/preload";
-import { resetDatabase } from "../../test/setup";
 import { deleteTag, getOrCreateTag, getUserTags } from "./tags.service";
 
 describe("tags.service", () => {
   beforeEach(async () => {
-    await resetDatabase(db);
+    resetDatabase();
   });
 
   describe("getUserTags", () => {

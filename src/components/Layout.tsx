@@ -2,10 +2,10 @@ import type { FC } from "hono/jsx";
 
 interface LayoutProps {
   title?: string;
-  // biome-ignore lint/suspicious/noExplicitAny: can be any content
+  // biome-ignore lint/suspicious/noExplicitAny: any jsx content
   children: any;
   isAuthenticated?: boolean;
-  currentPath?: string;
+  // biome-ignore lint/suspicious/noExplicitAny: any jsx content
   overrideControls?: any;
   collapsibleHeader?: boolean;
 }
@@ -14,7 +14,6 @@ export const Layout: FC<LayoutProps> = ({
   title = "lateread",
   children,
   isAuthenticated = false,
-  currentPath = "/",
   overrideControls,
   collapsibleHeader = false,
 }) => {

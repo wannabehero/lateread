@@ -1,4 +1,2 @@
 [test]
-# Preload script that runs before all tests
-# Sets up global mocks for database
 preload = ["./test/preload.ts"]

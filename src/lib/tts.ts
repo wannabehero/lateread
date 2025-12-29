@@ -1,10 +1,36 @@
 import { config } from "./config";
 
+// Dynamic import type for ElevenLabs SDK (optional peer dependency)
+type ElevenLabsClientType =
+  typeof import("@elevenlabs/elevenlabs-js").ElevenLabsClient;
+
+/**
+ * Interface for TTS providers (real or noop)
+ */
+interface TTSProvider {
+  generateStream(
+    text: string,
+    languageCode?: string | null,
+  ): Promise<ReadableStream<Uint8Array>>;
+}
+
+/**
+ * No-op TTS provider used when ELEVENLABS_API_KEY is not configured
+ */
+class NoopTTSProvider implements TTSProvider {
+  async generateStream(
+    _text: string,
+    _languageCode?: string | null,
+  ): Promise<ReadableStream<Uint8Array>> {
+    throw new Error("TTS provider not configured");
+  }
+}
+
 /**
  * Default TTS configuration
  * Using Flash v2.5 - fastest model with ~75ms latency
  */
-export const TTS_CONFIG = {
+const TTS_CONFIG = {
   modelId: "eleven_flash_v2_5", // Fastest model
   outputFormat: "mp3_44100_128" as const,
 } as const;
@@ -34,6 +60,44 @@ const VOICE_MAP: Record<string, string> = {
 const DEFAULT_VOICE_ID = "21m00Tcm4TlvDq8ikWAM";
 
 /**
+ * Get the best voice ID for the given language code
+ * Returns a native voice for the language if available, otherwise defaults to Rachel (English)
+ */
+function getVoiceForLanguage(languageCode: string | null | undefined): string {
+  if (!languageCode) return DEFAULT_VOICE_ID;
+  return VOICE_MAP[languageCode.toLowerCase()] ?? DEFAULT_VOICE_ID;
+}
+
+/**
+ * ElevenLabs TTS provider implementation
+ */
+class ElevenLabsTTSProvider implements TTSProvider {
+  private client: InstanceType<ElevenLabsClientType>;
+
+  constructor(apiKey: string, ElevenLabsSDK: ElevenLabsClientType) {
+    this.client = new ElevenLabsSDK({
+      apiKey,
+    });
+  }
+
+  async generateStream(
+    text: string,
+    languageCode?: string | null,
+  ): Promise<ReadableStream<Uint8Array>> {
+    const voiceId = getVoiceForLanguage(languageCode);
+
+    return this.client.textToSpeech.stream(voiceId, {
+      text: text.slice(0, 40_000), // 40k chars is the limit for streaming
+      modelId: TTS_CONFIG.modelId,
+      outputFormat: TTS_CONFIG.outputFormat,
+    });
+  }
+}
+
+// Singleton instance
+let ttsProvider: TTSProvider | null = null;
+
+/**
  * Check if TTS functionality is available
  */
 export function isTTSAvailable(): boolean {
@@ -41,14 +105,38 @@ export function isTTSAvailable(): boolean {
 }
 
 /**
- * Get the best voice ID for the given language code
- * Returns a native voice for the language if available, otherwise defaults to Rachel (English)
+ * Get TTS provider (real or noop based on API key configuration)
+ * If ELEVENLABS_API_KEY is not set, returns a noop provider that throws errors
  */
-export function getVoiceForLanguage(
-  languageCode: string | null | undefined,
-): string {
-  if (!languageCode) return DEFAULT_VOICE_ID;
-  return VOICE_MAP[languageCode.toLowerCase()] ?? DEFAULT_VOICE_ID;
+export async function getTTSProvider(): Promise<TTSProvider> {
+  if (ttsProvider) {
+    return ttsProvider;
+  }
+
+  // If no API key configured, return noop provider
+  if (!config.ELEVENLABS_API_KEY) {
+    console.warn("ELEVENLABS_API_KEY not configured, using noop TTS provider");
+    ttsProvider = new NoopTTSProvider();
+    return ttsProvider;
+  }
+
+  // Dynamic import of ElevenLabs SDK (optional peer dependency)
+  try {
+    const { ElevenLabsClient } = await import("@elevenlabs/elevenlabs-js");
+    ttsProvider = new ElevenLabsTTSProvider(
+      config.ELEVENLABS_API_KEY,
+      ElevenLabsClient,
+    );
+    return ttsProvider;
+  } catch (error) {
+    console.error(
+      "Failed to import @elevenlabs/elevenlabs-js. Install it with: bun add @elevenlabs/elevenlabs-js",
+      error,
+    );
+    throw new Error(
+      "TTS functionality requires @elevenlabs/elevenlabs-js. Install it with: bun add @elevenlabs/elevenlabs-js",
+    );
+  }
 }
 
 /**
@@ -82,40 +170,11 @@ export function htmlToPlainText(html: string): string {
  * Generate TTS audio stream for the given text
  * Returns a ReadableStream of audio chunks
  * Automatically selects the best voice based on the article's language
- * Throws error if ELEVENLABS_API_KEY is not configured
  */
 export async function generateTTSStream(
   text: string,
   languageCode?: string | null,
 ): Promise<ReadableStream<Uint8Array>> {
-  // Check if TTS is available
-  if (!config.ELEVENLABS_API_KEY) {
-    throw new Error(
-      "TTS functionality not available - ELEVENLABS_API_KEY not configured",
-    );
-  }
-
-  // Dynamic import of ElevenLabs SDK (optional peer dependency)
-  try {
-    const { ElevenLabsClient } = await import("@elevenlabs/elevenlabs-js");
-
-    const client = new ElevenLabsClient({
-      apiKey: config.ELEVENLABS_API_KEY,
-    });
-
-    const voiceId = getVoiceForLanguage(languageCode);
-
-    return client.textToSpeech.stream(voiceId, {
-      text: text.slice(0, 40_000), // 40k chars is the limit for streaming
-      modelId: TTS_CONFIG.modelId,
-      outputFormat: TTS_CONFIG.outputFormat,
-    });
-  } catch (error) {
-    if ((error as Error).message?.includes("Cannot find package")) {
-      throw new Error(
-        "TTS functionality requires @elevenlabs/elevenlabs-js. Install it with: bun add @elevenlabs/elevenlabs-js",
-      );
-    }
-    throw error;
-  }
+  const provider = await getTTSProvider();
+  return provider.generateStream(text, languageCode);
 }

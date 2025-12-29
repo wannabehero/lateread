@@ -1,6 +1,7 @@
 import type { Context } from "hono";
 import { deleteCookie, getCookie, setCookie } from "hono/cookie";
 import { config } from "./config";
+import { UnauthorizedError } from "./errors";
 
 const SESSION_COOKIE_NAME = "lateread_session";
 const SESSION_MAX_AGE = config.SESSION_MAX_AGE_DAYS * 24 * 60 * 60; // Convert to seconds
@@ -116,7 +117,7 @@ function verifyAndParse(signedValue: string): SessionData {
     signatureBuffer.length !== expectedBuffer.length ||
     !crypto.timingSafeEqual(signatureBuffer, expectedBuffer)
   ) {
-    throw new Error("Invalid session signature");
+    throw new UnauthorizedError("Invalid session signature");
   }
 
   // Decode and parse payload
@@ -126,7 +127,7 @@ function verifyAndParse(signedValue: string): SessionData {
   // Check expiration
   const now = Math.floor(Date.now() / 1000);
   if (data.exp < now) {
-    throw new Error("Session expired");
+    throw new UnauthorizedError("Session expired");
   }
 
   return data;

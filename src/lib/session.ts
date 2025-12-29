@@ -25,7 +25,7 @@ interface SessionData {
  * Get session data from request
  * Returns null if session is invalid or expired
  */
-export async function getSession(c: Context): Promise<SessionData | null> {
+export function getSession(c: Context): SessionData | null {
   const sessionCookie = getCookie(c, SESSION_COOKIE_NAME);
 
   if (!sessionCookie) {
@@ -34,7 +34,7 @@ export async function getSession(c: Context): Promise<SessionData | null> {
 
   try {
     // Verify HMAC signature and check expiration
-    const data = await verifyAndParse(sessionCookie);
+    const data = verifyAndParse(sessionCookie);
     return data;
   } catch (error) {
     console.error("Invalid session cookie:", error);
@@ -46,10 +46,10 @@ export async function getSession(c: Context): Promise<SessionData | null> {
  * Set session data in response
  * Automatically adds iat (issued at) and exp (expiration) timestamps
  */
-export async function setSession(
+export function setSession(
   c: Context,
   data: Omit<SessionData, "iat" | "exp">
-): Promise<void> {
+): void {
   const now = Math.floor(Date.now() / 1000);
   const sessionData: SessionData = {
     ...data,
@@ -57,7 +57,7 @@ export async function setSession(
     exp: now + SESSION_MAX_AGE,
   };
 
-  const sessionValue = await signAndStringify(sessionData);
+  const sessionValue = signAndStringify(sessionData);
 
   setCookie(c, SESSION_COOKIE_NAME, sessionValue, {
     maxAge: SESSION_MAX_AGE,
@@ -81,10 +81,10 @@ export function clearSession(c: Context): void {
  * Sign and stringify session data with HMAC-SHA256
  * Returns: base64url(json).base64url(hmac_signature)
  */
-async function signAndStringify(data: SessionData): Promise<string> {
+function signAndStringify(data: SessionData): string {
   const payload = JSON.stringify(data);
   const payloadBase64 = toBase64Url(payload);
-  const signature = await createHmacSignature(payloadBase64);
+  const signature = createHmacSignature(payloadBase64);
   return `${payloadBase64}.${signature}`;
 }
 
@@ -92,7 +92,7 @@ async function signAndStringify(data: SessionData): Promise<string> {
  * Verify HMAC signature and parse session data
  * Validates signature using constant-time comparison and checks expiration
  */
-async function verifyAndParse(signedValue: string): Promise<SessionData> {
+function verifyAndParse(signedValue: string): SessionData {
   const parts = signedValue.split(".");
   if (parts.length !== 2) {
     throw new Error("Invalid session format");
@@ -106,7 +106,7 @@ async function verifyAndParse(signedValue: string): Promise<SessionData> {
   }
 
   // Verify HMAC signature using constant-time comparison
-  const expectedSignature = await createHmacSignature(payloadBase64);
+  const expectedSignature = createHmacSignature(payloadBase64);
 
   if (!constantTimeEqual(signature, expectedSignature)) {
     throw new Error("Invalid session signature");
@@ -148,29 +148,15 @@ function fromBase64Url(base64url: string): string {
 }
 
 /**
- * Create HMAC-SHA256 signature for the given data
+ * Create HMAC-SHA256 signature for the given data using Bun.CryptoHasher
  * Returns base64url-encoded signature
  */
-async function createHmacSignature(data: string): Promise<string> {
-  const encoder = new TextEncoder();
-  const keyData = encoder.encode(config.SESSION_SECRET);
-  const messageData = encoder.encode(data);
-
-  // Import key for HMAC
-  const key = await crypto.subtle.importKey(
-    "raw",
-    keyData,
-    { name: "HMAC", hash: "SHA-256" },
-    false,
-    ["sign"]
-  );
-
-  // Sign the data
-  const signature = await crypto.subtle.sign("HMAC", key, messageData);
-
-  // Convert to base64url
-  const base64 = Buffer.from(signature).toString("base64");
-  return base64.replace(/\+/g, "-").replace(/\//g, "_").replace(/=/g, "");
+function createHmacSignature(data: string): string {
+  const hasher = new Bun.CryptoHasher("sha256", config.SESSION_SECRET);
+  hasher.update(data);
+  const signature = hasher.digest("base64");
+  // Convert to base64url (replace +/= with URL-safe chars)
+  return signature.replace(/\+/g, "-").replace(/\//g, "_").replace(/=/g, "");
 }
 
 /**

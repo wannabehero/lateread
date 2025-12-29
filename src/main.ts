@@ -40,7 +40,6 @@ app.route("/", searchRoutes);
 app.route("/", apiRoutes);
 app.route("/", healthRoutes);
 
-// Register error handler (MUST be after all routes)
 app.onError(errorHandler);
 
 // Setup and start Telegram bot

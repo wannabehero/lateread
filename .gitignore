@@ -22,6 +22,7 @@ dist/
 # Public assets (generated from node_modules)
 public/htmx.min.js
 public/pico.min.css
+public/pico.colors.min.css
 
 # IDE
 .vscode/

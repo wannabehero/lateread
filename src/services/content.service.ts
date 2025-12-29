@@ -26,7 +26,10 @@ export async function getArticleContent(
   const extracted = await extractCleanContent(articleUrl);
 
   if (!extracted.content) {
-    throw new ExternalServiceError("Readability content extraction", new Error("No content extracted"));
+    throw new ExternalServiceError(
+      "Readability content extraction",
+      new Error("No content extracted"),
+    );
   }
 
   content = extracted.content;

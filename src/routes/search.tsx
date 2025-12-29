@@ -23,53 +23,43 @@ searchRouter.get("/search", requireAuth("redirect"), async (c) => {
   const userId = c.get("userId");
   const query = c.req.query("q");
 
-  try {
-    // Search across all statuses (no archived filter)
-    const articles = query ? await getArticlesWithTags(userId, { query }) : [];
+  // Search across all statuses (no archived filter)
+  const articles = query ? await getArticlesWithTags(userId, { query }) : [];
 
-    const content = <SearchPage query={query} articles={articles} />;
+  const content = <SearchPage query={query} articles={articles} />;
 
-    // If HTMX request, return only the search results section
-    if (isHtmxRequest(c)) {
-      return c.html(
-        <div id="search-results">
-          {query ? (
-            articles.length > 0 ? (
-              <div class="article-grid">
-                {articles.map((article) => (
-                  <ArticleCard article={article} displayActions={false} />
-                ))}
-              </div>
-            ) : (
-              <div class="empty-state">
-                <p>No articles found for "{query}"</p>
-              </div>
-            )
+  // If HTMX request, return only the search results section
+  if (isHtmxRequest(c)) {
+    return c.html(
+      <div id="search-results">
+        {query ? (
+          articles.length > 0 ? (
+            <div class="article-grid">
+              {articles.map((article) => (
+                <ArticleCard article={article} displayActions={false} />
+              ))}
+            </div>
           ) : (
             <div class="empty-state">
-              <p>Enter a search query to find articles</p>
+              <p>No articles found for "{query}"</p>
             </div>
-          )}
-        </div>,
-      );
-    }
-
-    // Full page render
-    const title = query ? `Search: "${query}"` : "Search";
-    return c.html(
-      <Layout title={title} isAuthenticated={true}>
-        {content}
-      </Layout>,
-    );
-  } catch (error) {
-    console.error("Error searching articles:", error);
-    return c.html(
-      <div class="error">
-        <p>Failed to search articles. Please try again.</p>
+          )
+        ) : (
+          <div class="empty-state">
+            <p>Enter a search query to find articles</p>
+          </div>
+        )}
       </div>,
-      500,
     );
   }
+
+  // Full page render
+  const title = query ? `Search: "${query}"` : "Search";
+  return c.html(
+    <Layout title={title} isAuthenticated={true}>
+      {content}
+    </Layout>,
+  );
 });
 
 export default searchRouter;

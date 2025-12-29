@@ -7,6 +7,7 @@ const NODE_MODULES = "./node_modules";
 const ASSETS_TO_COPY = [
   { src: "htmx.org/dist/htmx.min.js", dest: "htmx.min.js" },
   { src: "@picocss/pico/css/pico.min.css", dest: "pico.min.css" },
+  { src: "@picocss/pico/css/pico.colors.min.css", dest: "pico.colors.min.css" },
 ] as const;
 
 async function copyAssets() {

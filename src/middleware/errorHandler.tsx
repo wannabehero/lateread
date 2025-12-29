@@ -1,10 +1,17 @@
 import type { Context, ErrorHandler } from "hono";
 import type { ContentfulStatusCode } from "hono/utils/http-status";
-import { formatErrorResponse } from "../components/errors/ErrorMessage";
 import { ErrorPage } from "../components/errors/ErrorPage";
 import { ErrorPartial } from "../components/errors/ErrorPartial";
 import { AppError, InternalError } from "../lib/errors";
 import type { AppContext } from "../types/context";
+
+function formatErrorResponse(error: AppError) {
+  return {
+    error: error.message,
+    statusCode: error.statusCode,
+    ...(error.context && { context: error.context }),
+  };
+}
 
 /**
  * Detect request type for appropriate error response
@@ -39,10 +46,11 @@ function getRequestType(c: Context<AppContext>): "htmx" | "json" | "html" {
  * - HTMX requests → ErrorPartial (inline error)
  * - JSON API requests → Structured JSON
  * - Browser requests → ErrorPage (full page with Layout)
- *
- * IMPORTANT: Register this using app.onError() in main.ts
  */
-export const errorHandler: ErrorHandler = (err: Error, c: Context) => {
+export const errorHandler: ErrorHandler = (
+  err: Error,
+  c: Context<AppContext>,
+) => {
   // Convert unknown errors to AppError
   const error =
     err instanceof AppError
@@ -63,25 +71,23 @@ export const errorHandler: ErrorHandler = (err: Error, c: Context) => {
     ...(error.context || {}),
   };
 
-  if (error.isOperational) {
-    console.warn("Operational error:", logContext);
-  } else {
+  if (error.statusCode >= 500) {
     console.error("Unexpected error:", logContext, err);
+  } else {
+    console.warn("Operational error:", logContext);
   }
 
   // Return appropriate response based on request type
-  const requestType = getRequestType(c as Context<AppContext>);
+  const requestType = getRequestType(c);
 
   switch (requestType) {
     case "htmx":
       // HTMX partial - return error fragment for swap
+      c.header("hx-reswap", "outerHTML");
       return c.html(
-        <ErrorPartial
-          message={error.message}
-          retryable={error.retryable}
-          retryUrl={error.retryable ? c.req.path : undefined}
-        />,
-        error.statusCode as ContentfulStatusCode,
+        <ErrorPartial message={error.message} />,
+        // In order for swap to happen we override the status code to 200
+        200,
       );
 
     case "json":
@@ -92,14 +98,9 @@ export const errorHandler: ErrorHandler = (err: Error, c: Context) => {
       );
 
     case "html":
-    default:
       // Full HTML page
       return c.html(
-        <ErrorPage
-          statusCode={error.statusCode}
-          message={error.message}
-          retryUrl={error.retryable ? c.req.path : undefined}
-        />,
+        <ErrorPage statusCode={error.statusCode} message={error.message} />,
         error.statusCode as ContentfulStatusCode,
       );
   }

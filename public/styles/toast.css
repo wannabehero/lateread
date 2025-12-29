@@ -1,0 +1,60 @@
+/* Toast Notifications */
+#toast-container {
+  position: fixed;
+  bottom: 2rem;
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: 9999;
+  display: flex;
+  flex-direction: column-reverse;
+  gap: 0.5rem;
+  pointer-events: none;
+  align-items: center;
+}
+
+.toast {
+  padding: 0.75rem 1.5rem;
+  background: color-mix(in srgb, var(--pico-background-color) 85%, transparent);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  border-radius: 50px;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+  opacity: 0;
+  transform: translateY(0);
+  transition:
+    opacity 0.25s ease-in-out,
+    transform 0.25s ease-in-out;
+  font-size: 0.9rem;
+  font-weight: 600;
+  pointer-events: all;
+  color: var(--pico-contrast);
+  text-align: center;
+  white-space: nowrap;
+  border: 1px solid color-mix(in srgb, var(--pico-contrast) 15%, transparent);
+  min-height: 44px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.toast-show {
+  opacity: 1;
+  transform: translateY(0);
+}
+
+/*
+All toasts use the same styling now
+
+.toast-success,
+.toast-error,
+.toast-info {
+
+}
+
+*/
+
+@media (max-width: 768px) {
+  #toast-container {
+    bottom: 1rem;
+  }
+}

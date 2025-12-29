@@ -17,13 +17,6 @@ import type { AppContext } from "../types/context";
 const articlesRouter = new Hono<AppContext>();
 
 /**
- * Helper: Check if request is from HTMX
- */
-function isHtmxRequest(c: Context<AppContext>): boolean {
-  return c.req.header("hx-request") === "true";
-}
-
-/**
  * Helper: Render with Layout or return partial
  */
 function renderWithLayout(
@@ -34,10 +27,6 @@ function renderWithLayout(
   overrideControls?: any,
   collapsibleHeader = false,
 ): Response | Promise<Response> {
-  if (isHtmxRequest(c)) {
-    return c.html(content);
-  }
-
   return c.html(
     <Layout
       isAuthenticated={true}

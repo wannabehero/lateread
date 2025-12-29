@@ -1,5 +1,7 @@
 /* Main application stylesheet */
 /* Imports all component stylesheets */
 
+@import url("./error.css");
 @import url("./misc.css");
 @import url("./reader.css");
+@import url("./toast.css");

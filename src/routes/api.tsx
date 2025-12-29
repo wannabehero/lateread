@@ -53,7 +53,8 @@ api.post("/api/articles/:id/archive", requireAuth("json-401"), async (c) => {
 
   // If redirect param is present (from reader view), redirect to articles list
   if (shouldRedirect) {
-    c.header("HX-Redirect", "/articles");
+    c.header("hx-trigger", "scrollToTop");
+    c.header("hx-location", "/articles");
     return c.body(null, 204);
   }
 

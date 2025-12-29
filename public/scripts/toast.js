@@ -39,3 +39,11 @@ document.body.addEventListener("htmx:afterRequest", (event) => {
     showToast(successMessage, "success");
   }
 });
+
+document.body.addEventListener("htmx:timeout", () => {
+  showToast("Request timed out.", "error");
+});
+
+document.body.addEventListener("htmx:sendError", () => {
+  showToast("Network error. Please check your connection.", "error");
+});

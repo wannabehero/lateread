@@ -7,6 +7,7 @@ import { logger } from "hono/logger";
 import { startBot, stopBot } from "./bot/index";
 import { startCrons } from "./cron";
 import { runMigrations } from "./lib/db";
+import { errorHandler } from "./middleware/errorHandler";
 import apiRoutes from "./routes/api";
 import articlesRoutes from "./routes/articles";
 import authRoutes from "./routes/auth";
@@ -38,6 +39,8 @@ app.route("/", articlesRoutes);
 app.route("/", searchRoutes);
 app.route("/", apiRoutes);
 app.route("/", healthRoutes);
+
+app.onError(errorHandler);
 
 // Setup and start Telegram bot
 startBot().catch((error) => {

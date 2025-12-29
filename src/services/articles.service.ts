@@ -12,6 +12,7 @@ import {
 import { articleSummaries, articles, articleTags, tags } from "../db/schema";
 import type { Article, Tag } from "../db/types";
 import { db } from "../lib/db";
+import { InternalError, NotFoundError } from "../lib/errors";
 import { searchCachedArticleIds } from "./content.service";
 
 type ArticleWithTags = Article & {
@@ -167,7 +168,7 @@ export async function getArticleById(
     .limit(1);
 
   if (!result) {
-    throw new Error("Article not found");
+    throw new NotFoundError("Article", articleId);
   }
 
   return {
@@ -193,7 +194,7 @@ export async function markArticleAsRead(
     .limit(1);
 
   if (!article) {
-    throw new Error("Article not found");
+    throw new NotFoundError("Article", articleId);
   }
 
   // Update readAt timestamp
@@ -219,7 +220,7 @@ export async function toggleArticleArchive(
     .limit(1);
 
   if (!article) {
-    throw new Error("Article not found");
+    throw new NotFoundError("Article", articleId);
   }
 
   const newArchivedStatus = !article.archived;
@@ -276,7 +277,10 @@ export async function createArticle(params: {
     .returning();
 
   if (!article) {
-    throw new Error("Failed to create article");
+    throw new InternalError("Failed to create article", {
+      userId: params.userId,
+      url: params.url,
+    });
   }
 
   return article;

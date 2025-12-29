@@ -16,39 +16,31 @@ const auth = new Hono<AppContext>();
  * POST /auth/telegram - Create auth token and return HTMX fragment
  */
 auth.post("/auth/telegram", async (c) => {
-  try {
-    const result = await createAuthToken();
+  const result = await createAuthToken();
 
-    // Return HTMX fragment with polling
-    return c.html(
-      <div
-        id="auth-content"
-        hx-on--after-settle={`if(event.detail.elt===this)open('${result.telegramUrl}','_blank')`}
-      >
-        <p>
-          <a href={result.telegramUrl} target="_blank">
-            Proceed to Telegram to Login
-          </a>
-          <br />
-          <small>
-            Opens @{config.BOT_USERNAME} and completes authentication
-            automatically
-          </small>
-          <br />
-          <small>Link expires in {TOKEN_EXPIRATION_MINUTES} minutes</small>
-        </p>
+  // Return HTMX fragment with polling
+  return c.html(
+    <div
+      id="auth-content"
+      hx-on--after-settle={`if(event.detail.elt===this)open('${result.telegramUrl}','_blank')`}
+    >
+      <p>
+        <a href={result.telegramUrl} target="_blank">
+          Proceed to Telegram to Login
+        </a>
+        <br />
+        <small>
+          Opens @{config.BOT_USERNAME} and completes authentication
+          automatically
+        </small>
+        <br />
+        <small>Link expires in {TOKEN_EXPIRATION_MINUTES} minutes</small>
+      </p>
 
-        {/* Polling element - checks auth status every 2 seconds */}
-        <AuthPolling token={result.token} immediate={true} />
-      </div>,
-    );
-  } catch (error) {
-    console.error("Error creating auth token:", error);
-    return c.html(
-      <AuthError message="Failed to create authentication session. Please try again." />,
-      500,
-    );
-  }
+      {/* Polling element - checks auth status every 2 seconds */}
+      <AuthPolling token={result.token} immediate={true} />
+    </div>,
+  );
 });
 
 /**
@@ -57,42 +49,34 @@ auth.post("/auth/telegram", async (c) => {
 auth.get("/auth/check/:token", async (c) => {
   const token = c.req.param("token");
 
-  try {
-    const status = await getAuthTokenStatus(token);
+  const status = await getAuthTokenStatus(token);
 
-    if (status.status === "success") {
-      // Set session cookie
-      setSession(c, { userId: status.userId });
+  if (status.status === "success") {
+    // Set session cookie
+    setSession(c, { userId: status.userId });
 
-      // Use hx-redirect header to trigger client-side redirect
-      c.header("hx-redirect", "/");
+    // Use hx-redirect header to trigger client-side redirect
+    c.header("hx-redirect", "/");
 
-      return c.html(
-        <div id="auth-polling">
-          <p>Authentication successful! Redirecting...</p>
-        </div>,
-      );
-    }
-
-    if (status.status === "expired") {
-      // Token expired - show error
-      return c.html(
-        <AuthError
-          message="Authentication session expired. Please try again."
-          buttonText="Login with Telegram"
-        />,
-      );
-    }
-
-    // Still pending - continue polling
-    return c.html(<AuthPolling token={token} />);
-  } catch (error) {
-    console.error("Error checking auth token:", error);
     return c.html(
-      <AuthError message="An error occurred. Please try again." />,
-      500,
+      <div id="auth-polling">
+        <p>Authentication successful! Redirecting...</p>
+      </div>,
     );
   }
+
+  if (status.status === "expired") {
+    // Token expired - show error
+    return c.html(
+      <AuthError
+        message="Authentication session expired. Please try again."
+        buttonText="Login with Telegram"
+      />,
+    );
+  }
+
+  // Still pending - continue polling
+  return c.html(<AuthPolling token={token} />);
 });
 
 /**

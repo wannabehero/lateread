@@ -15,27 +15,15 @@ home.get("/", async (c) => {
 
   // If authenticated, show article list (all non-archived articles)
   if (session?.userId) {
-    try {
-      const articlesWithTags = await getArticlesWithTags(session.userId, {
-        archived: false,
-      });
+    const articlesWithTags = await getArticlesWithTags(session.userId, {
+      archived: false,
+    });
 
-      return c.html(
-        <Layout isAuthenticated={true}>
-          <ArticleList articles={articlesWithTags} archived={false} />
-        </Layout>,
-      );
-    } catch (error) {
-      console.error("Error loading articles:", error);
-      return c.html(
-        <Layout isAuthenticated={true}>
-          <div class="error">
-            <p>Failed to load articles. Please try again.</p>
-          </div>
-        </Layout>,
-        500,
-      );
-    }
+    return c.html(
+      <Layout isAuthenticated={true}>
+        <ArticleList articles={articlesWithTags} archived={false} />
+      </Layout>,
+    );
   }
 
   // Show login page

@@ -63,6 +63,7 @@ export const Layout: FC<LayoutProps> = ({
 
         {/* Pico CSS */}
         <link rel="stylesheet" href="/public/pico.min.css" />
+        <link rel="stylesheet" href="/public/pico.colors.min.css" />
 
         {/* Custom styles */}
         <link rel="stylesheet" href="/public/styles/app.css" />

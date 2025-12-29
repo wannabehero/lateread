@@ -1,31 +1,27 @@
-import { describe, expect, it, beforeEach, mock } from "bun:test";
+import {
+  afterEach,
+  beforeEach,
+  describe,
+  expect,
+  it,
+  mock,
+  setSystemTime,
+} from "bun:test";
 import type { Context } from "hono";
+import { clearSession, getSession, setSession } from "./session";
 
-/**
- * Session tests
- *
- * Tests HMAC-SHA256 session implementation including:
- * - Session creation with timestamps
- * - Session verification and expiration
- * - Signature tampering detection
- * - Constant-time comparison
- * - Base64url encoding/decoding
- */
-
-// Mock hono/cookie module
 let mockCookies: Record<string, string> = {};
 
 mock.module("hono/cookie", () => ({
-  getCookie: (c: Context, name: string) => mockCookies[name] || undefined,
-  setCookie: (c: Context, name: string, value: string, options?: any) => {
+  getCookie: (_c: Context, name: string) => mockCookies[name] || undefined,
+  setCookie: (_c: Context, name: string, value: string) => {
     mockCookies[name] = value;
   },
-  deleteCookie: (c: Context, name: string, options?: any) => {
+  deleteCookie: (_c: Context, name: string) => {
     delete mockCookies[name];
   },
 }));
 
-// Mock config module with minimal required config
 mock.module("./config", () => ({
   config: {
     SESSION_SECRET: "test-secret-key-for-hmac-sha256-signing",
@@ -34,14 +30,10 @@ mock.module("./config", () => ({
   },
 }));
 
-// Import after mocking
-const { clearSession, getSession, setSession } = await import("./session");
-
-// Mock Hono context for testing
 function createMockContext(): Context {
   return {
     req: {
-      header: (name: string) => undefined,
+      header: (_name: string) => undefined,
     },
     header: () => {},
     set: () => {},
@@ -50,9 +42,13 @@ function createMockContext(): Context {
 
 describe("session", () => {
   beforeEach(() => {
-    // Clear mock cookies before each test
     mockCookies = {};
   });
+
+  afterEach(() => {
+    setSystemTime();
+  });
+
   describe("setSession and getSession", () => {
     it("should create session with valid HMAC signature", () => {
       const c = createMockContext();
@@ -64,13 +60,12 @@ describe("session", () => {
       expect(cookieValue).toBeTruthy();
       expect(cookieValue).toMatch(/^[A-Za-z0-9_-]+\.[A-Za-z0-9_-]+$/); // base64url.base64url format
 
-      // Verify we can decode it
       const session = getSession(c);
 
-      expect(session).toBeTruthy();
+      expect(session).not.toBeNull();
       expect(session?.userId).toBe("user123");
       expect(session?.iat).toBeGreaterThan(0);
-      expect(session?.exp).toBeGreaterThan(session!.iat);
+      expect(session?.exp).toBeGreaterThan(session?.iat ?? Infinity);
     });
 
     it("should return null for missing session cookie", () => {
@@ -107,9 +102,13 @@ describe("session", () => {
       setSession(c, { userId: "user123" });
       const originalCookie = mockCookies.lateread_session;
 
+      if (!originalCookie) {
+        throw new Error("Original cookie not found");
+      }
+
       // Tamper with payload (change base64url encoded data)
       const [payload, signature] = originalCookie.split(".");
-      const tamperedPayload = payload + "X"; // Slightly modify payload
+      const tamperedPayload = `${payload}X`; // Slightly modify payload
       const tamperedCookie = `${tamperedPayload}.${signature}`;
 
       mockCookies.lateread_session = tamperedCookie;
@@ -125,9 +124,13 @@ describe("session", () => {
       setSession(c, { userId: "user123" });
       const originalCookie = mockCookies.lateread_session;
 
+      if (!originalCookie) {
+        throw new Error("Original cookie not found");
+      }
+
       // Tamper with signature
       const [payload, signature] = originalCookie.split(".");
-      const tamperedSignature = signature.slice(0, -1) + "X"; // Change last char
+      const tamperedSignature = `${signature?.slice(0, -1)}X`; // Change last char
       const tamperedCookie = `${payload}.${tamperedSignature}`;
 
       mockCookies.lateread_session = tamperedCookie;
@@ -137,76 +140,24 @@ describe("session", () => {
     });
 
     it("should reject expired session", () => {
+      setSystemTime(new Date("2025-12-15T12:00:00Z"));
+
       const c = createMockContext();
 
-      // Create a session that's already expired
-      const expiredSessionData = {
-        userId: "user123",
-        iat: Math.floor(Date.now() / 1000) - 3600, // 1 hour ago
-        exp: Math.floor(Date.now() / 1000) - 1, // Expired 1 second ago
-      };
+      setSession(c, { userId: "user123" });
 
-      // Manually construct the session cookie using Bun.CryptoHasher
-      const payload = JSON.stringify(expiredSessionData);
-      const payloadBase64 = Buffer.from(payload, "utf-8")
-        .toString("base64")
-        .replace(/\+/g, "-")
-        .replace(/\//g, "_")
-        .replace(/=/g, "");
+      setSystemTime(new Date("2026-12-15T12:00:00Z"));
 
-      // Generate valid HMAC signature using Bun.CryptoHasher
-      const hasher = new Bun.CryptoHasher(
-        "sha256",
-        "test-secret-key-for-hmac-sha256-signing"
-      );
-      hasher.update(payloadBase64);
-      const signature = hasher
-        .digest("base64")
-        .replace(/\+/g, "-")
-        .replace(/\//g, "_")
-        .replace(/=/g, "");
-
-      const expiredCookie = `${payloadBase64}.${signature}`;
-
-      mockCookies.lateread_session = expiredCookie;
       const session = getSession(c);
-
-      expect(session).toBeNull(); // Should reject expired session
+      expect(session).toBeNull();
     });
 
     it("should accept session that is not yet expired", () => {
+      setSystemTime(new Date("2025-12-15T12:00:00Z"));
+
       const c = createMockContext();
+      setSession(c, { userId: "user456" });
 
-      // Create a session that expires in 1 hour
-      const validSessionData = {
-        userId: "user456",
-        iat: Math.floor(Date.now() / 1000),
-        exp: Math.floor(Date.now() / 1000) + 3600, // Expires in 1 hour
-      };
-
-      // Manually construct the session cookie using Bun.CryptoHasher
-      const payload = JSON.stringify(validSessionData);
-      const payloadBase64 = Buffer.from(payload, "utf-8")
-        .toString("base64")
-        .replace(/\+/g, "-")
-        .replace(/\//g, "_")
-        .replace(/=/g, "");
-
-      // Generate valid HMAC signature using Bun.CryptoHasher
-      const hasher = new Bun.CryptoHasher(
-        "sha256",
-        "test-secret-key-for-hmac-sha256-signing"
-      );
-      hasher.update(payloadBase64);
-      const signature = hasher
-        .digest("base64")
-        .replace(/\+/g, "-")
-        .replace(/\//g, "_")
-        .replace(/=/g, "");
-
-      const validCookie = `${payloadBase64}.${signature}`;
-
-      mockCookies.lateread_session = validCookie;
       const session = getSession(c);
 
       expect(session).toBeTruthy();
@@ -260,6 +211,10 @@ describe("session", () => {
       setSession(c2, { userId: "user2" });
       const cookie2 = mockCookies.lateread_session;
 
+      if (!cookie1 || !cookie2) {
+        throw new Error("Cookies not set");
+      }
+
       expect(cookie1).not.toBe(cookie2);
 
       // Even the signatures should be different
@@ -270,36 +225,20 @@ describe("session", () => {
 
     it("should produce consistent signatures for same data and timestamp", () => {
       // This test verifies that HMAC is deterministic
-      const fixedTimestamp = 1700000000;
-      const sessionData = {
-        userId: "testuser",
-        iat: fixedTimestamp,
-        exp: fixedTimestamp + 3600,
-      };
+      setSystemTime(new Date("2025-12-15T12:00:00Z"));
 
-      const payload = JSON.stringify(sessionData);
-      const payloadBase64 = Buffer.from(payload, "utf-8")
-        .toString("base64")
-        .replace(/\+/g, "-")
-        .replace(/\//g, "_")
-        .replace(/=/g, "");
+      const c = createMockContext();
+      setSession(c, { userId: "test-user" });
 
-      // Generate signature twice using Bun.CryptoHasher
-      const hasher1 = new Bun.CryptoHasher(
-        "sha256",
-        "test-secret-key-for-hmac-sha256-signing"
-      );
-      hasher1.update(payloadBase64);
-      const sig1 = hasher1.digest("base64");
+      const cookieValue = mockCookies.lateread_session;
 
-      const hasher2 = new Bun.CryptoHasher(
-        "sha256",
-        "test-secret-key-for-hmac-sha256-signing"
-      );
-      hasher2.update(payloadBase64);
-      const sig2 = hasher2.digest("base64");
+      if (!cookieValue) {
+        throw new Error("Cookie not set");
+      }
 
-      expect(sig1).toBe(sig2); // HMAC should be deterministic
+      const [, sig1] = cookieValue.split(".");
+
+      expect(sig1).toBe("X4aFQWw4okGaTEgZyNTChD2FJo53lDZhR3qFiVR9MRM");
     });
   });
 });

@@ -20,6 +20,9 @@ interface SessionData {
  * - Signature is HMAC-SHA256(payload, SESSION_SECRET) in base64url
  * - Uses constant-time comparison to prevent timing attacks
  * - Validates expiration timestamp on each request
+ *
+ * Generally it's almost JWT but I didn't want to bring in a dependency.
+ * Also bun is fun and provides primitives for HMAC-SHA256 out of the box.
  */
 
 /**
@@ -49,7 +52,7 @@ export function getSession(c: Context): SessionData | null {
  */
 export function setSession(
   c: Context,
-  data: Omit<SessionData, "iat" | "exp">
+  data: Omit<SessionData, "iat" | "exp">,
 ): void {
   const now = Math.floor(Date.now() / 1000);
   const sessionData: SessionData = {
@@ -166,4 +169,3 @@ function createHmacSignature(data: string): string {
   // Convert to base64url (replace +/= with URL-safe chars)
   return signature.replace(/\+/g, "-").replace(/\//g, "_").replace(/=/g, "");
 }
-

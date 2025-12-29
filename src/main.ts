@@ -3,11 +3,11 @@ import { config } from "./lib/config";
 
 import { Hono } from "hono";
 import { serveStatic } from "hono/bun";
-import { logger } from "hono/logger";
 import { startBot, stopBot } from "./bot/index";
 import { startCrons } from "./cron";
 import { runMigrations } from "./lib/db";
 import { errorHandler } from "./middleware/errorHandler";
+import { loggerMiddleware } from "./middleware/logger";
 import apiRoutes from "./routes/api";
 import articlesRoutes from "./routes/articles";
 import authRoutes from "./routes/auth";
@@ -26,8 +26,8 @@ runMigrations();
 // Create Hono app with typed context
 const app = new Hono<AppContext>();
 
-// Request logger
-app.use("*", logger());
+// Request logger middleware (adds reqId to all requests)
+app.use("*", loggerMiddleware);
 
 // Serve static files from public directory
 app.use("/public/*", serveStatic({ root: "./" }));

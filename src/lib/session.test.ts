@@ -10,12 +10,27 @@ import {
 import type { Context } from "hono";
 import { clearSession, getSession, setSession } from "./session";
 
-let mockCookies: Record<string, string> = {};
+let mockCookies: Record<
+  string,
+  {
+    value: string;
+    options?: Record<string, unknown>;
+  }
+> = {};
 
 mock.module("hono/cookie", () => ({
-  getCookie: (_c: Context, name: string) => mockCookies[name] || undefined,
-  setCookie: (_c: Context, name: string, value: string) => {
-    mockCookies[name] = value;
+  getCookie: (_c: Context, name: string) =>
+    mockCookies[name]?.value ?? undefined,
+  setCookie: (
+    _c: Context,
+    name: string,
+    value: string,
+    options: Record<string, unknown>,
+  ) => {
+    mockCookies[name] = {
+      value,
+      options,
+    };
   },
   deleteCookie: (_c: Context, name: string) => {
     delete mockCookies[name];
@@ -56,9 +71,9 @@ describe("session", () => {
       setSession(c, { userId: "user123" });
 
       // Verify cookie was set
-      const cookieValue = mockCookies.lateread_session;
-      expect(cookieValue).toBeTruthy();
-      expect(cookieValue).toMatch(/^[A-Za-z0-9_-]+\.[A-Za-z0-9_-]+$/); // base64url.base64url format
+      const cookie = mockCookies.lateread_session;
+      expect(cookie).toBeTruthy();
+      expect(cookie?.value).toMatch(/^[A-Za-z0-9_-]+\.[A-Za-z0-9_-]+$/);
 
       const session = getSession(c);
 
@@ -89,7 +104,9 @@ describe("session", () => {
       ];
 
       for (const cookieValue of malformedCookies) {
-        mockCookies.lateread_session = cookieValue;
+        mockCookies.lateread_session = {
+          value: cookieValue,
+        };
         const session = getSession(c);
         expect(session).toBeNull();
       }
@@ -107,11 +124,13 @@ describe("session", () => {
       }
 
       // Tamper with payload (change base64url encoded data)
-      const [payload, signature] = originalCookie.split(".");
+      const [payload, signature] = originalCookie.value.split(".");
       const tamperedPayload = `${payload}X`; // Slightly modify payload
       const tamperedCookie = `${tamperedPayload}.${signature}`;
 
-      mockCookies.lateread_session = tamperedCookie;
+      mockCookies.lateread_session = {
+        value: tamperedCookie,
+      };
       const session = getSession(c);
 
       expect(session).toBeNull(); // Should reject tampered session
@@ -129,11 +148,13 @@ describe("session", () => {
       }
 
       // Tamper with signature
-      const [payload, signature] = originalCookie.split(".");
+      const [payload, signature] = originalCookie.value.split(".");
       const tamperedSignature = `${signature?.slice(0, -1)}X`; // Change last char
       const tamperedCookie = `${payload}.${tamperedSignature}`;
 
-      mockCookies.lateread_session = tamperedCookie;
+      mockCookies.lateread_session = {
+        value: tamperedCookie,
+      };
       const session = getSession(c);
 
       expect(session).toBeNull(); // Should reject tampered signature
@@ -164,6 +185,52 @@ describe("session", () => {
       expect(session?.userId).toBe("user456");
       expect(session?.exp).toBeGreaterThan(Math.floor(Date.now() / 1000));
     });
+
+    it("should reject session with invalid data structure", () => {
+      const c = createMockContext();
+
+      // Test various malformed payloads with valid signatures
+      const malformedPayloads = [
+        { userId: null, iat: 1234567890, exp: 1234657890 }, // null userId
+        { userId: "", iat: 1234567890, exp: 1234657890 }, // empty userId
+        { userId: "x".repeat(1001), iat: 1234567890, exp: 1234657890 }, // userId too long
+        { userId: "valid", iat: -1, exp: 1234657890 }, // negative iat
+        { userId: "valid", iat: 1234567890, exp: -1 }, // negative exp
+        { userId: "valid", iat: "not-a-number", exp: 1234657890 }, // string iat
+        { iat: 1234567890, exp: 1234657890 }, // missing userId
+      ];
+
+      for (const payload of malformedPayloads) {
+        const payloadJson = JSON.stringify(payload);
+        const payloadBase64 = Buffer.from(payloadJson, "utf-8")
+          .toString("base64")
+          .replace(/\+/g, "-")
+          .replace(/\//g, "_")
+          .replace(/=/g, "");
+
+        // Generate valid HMAC signature for the malformed payload
+        const hasher = new Bun.CryptoHasher(
+          "sha256",
+          "test-secret-key-for-hmac-sha256-signing",
+        );
+        hasher.update(payloadBase64);
+        const signature = hasher
+          .digest("base64")
+          .replace(/\+/g, "-")
+          .replace(/\//g, "_")
+          .replace(/=/g, "");
+
+        const malformedCookie = `${payloadBase64}.${signature}`;
+
+        mockCookies.lateread_session = {
+          value: malformedCookie,
+        };
+        const session = getSession(c);
+
+        // Should reject due to validation failure
+        expect(session).toBeNull();
+      }
+    });
   });
 
   describe("clearSession", () => {
@@ -186,15 +253,15 @@ describe("session", () => {
 
       setSession(c, { userId: "user-with-special-chars-!@#$%^&*()" });
 
-      const cookieValue = mockCookies.lateread_session;
+      const cookie = mockCookies.lateread_session;
 
       // Verify no standard base64 characters that aren't URL-safe
-      expect(cookieValue).not.toContain("+");
-      expect(cookieValue).not.toContain("/");
-      expect(cookieValue).not.toContain("=");
+      expect(cookie?.value).not.toContain("+");
+      expect(cookie?.value).not.toContain("/");
+      expect(cookie?.value).not.toContain("=");
 
       // Should only contain base64url characters
-      expect(cookieValue).toMatch(/^[A-Za-z0-9_-]+\.[A-Za-z0-9_-]+$/);
+      expect(cookie?.value).toMatch(/^[A-Za-z0-9_-]+\.[A-Za-z0-9_-]+$/);
     });
   });
 
@@ -218,8 +285,8 @@ describe("session", () => {
       expect(cookie1).not.toBe(cookie2);
 
       // Even the signatures should be different
-      const [, sig1] = cookie1.split(".");
-      const [, sig2] = cookie2.split(".");
+      const [, sig1] = cookie1.value.split(".");
+      const [, sig2] = cookie2.value.split(".");
       expect(sig1).not.toBe(sig2);
     });
 
@@ -236,7 +303,7 @@ describe("session", () => {
         throw new Error("Cookie not set");
       }
 
-      const [, sig1] = cookieValue.split(".");
+      const [, sig1] = cookieValue.value.split(".");
 
       expect(sig1).toBe("X4aFQWw4okGaTEgZyNTChD2FJo53lDZhR3qFiVR9MRM");
     });

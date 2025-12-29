@@ -1,16 +1,23 @@
 import type { Context } from "hono";
 import { deleteCookie, getCookie, setCookie } from "hono/cookie";
+import { z } from "zod";
 import { config } from "./config";
 import { UnauthorizedError } from "./errors";
 
 const SESSION_COOKIE_NAME = "lateread_session";
 const SESSION_MAX_AGE = config.SESSION_MAX_AGE_DAYS * 24 * 60 * 60; // Convert to seconds
 
-interface SessionData {
-  userId: string;
-  iat: number; // Issued at (Unix timestamp in seconds)
-  exp: number; // Expiration (Unix timestamp in seconds)
-}
+/**
+ * Session data schema with validation
+ * Ensures all fields are present and have correct types
+ */
+const SessionDataSchema = z.object({
+  userId: z.string().min(1).max(1000), // Prevent huge userIds
+  iat: z.number().int().positive(), // Issued at (Unix timestamp in seconds)
+  exp: z.number().int().positive(), // Expiration (Unix timestamp in seconds)
+});
+
+type SessionData = z.infer<typeof SessionDataSchema>;
 
 /**
  * Session implementation using HMAC-SHA256 signed cookies
@@ -67,7 +74,7 @@ export function setSession(
     maxAge: SESSION_MAX_AGE,
     httpOnly: true,
     secure: config.NODE_ENV === "production",
-    sameSite: "Lax",
+    sameSite: "Strict",
     path: "/",
   });
 }
@@ -125,7 +132,22 @@ function verifyAndParse(signedValue: string): SessionData {
 
   // Decode and parse payload
   const payload = fromBase64Url(payloadBase64);
-  const data = JSON.parse(payload) as SessionData;
+
+  // Parse and validate session data structure
+  let parsedData: unknown;
+  try {
+    parsedData = JSON.parse(payload);
+  } catch {
+    throw new Error("Invalid session format");
+  }
+
+  // Validate session data schema
+  const parseResult = SessionDataSchema.safeParse(parsedData);
+  if (!parseResult.success) {
+    throw new Error("Invalid session data structure");
+  }
+
+  const data = parseResult.data;
 
   // Check expiration
   const now = Math.floor(Date.now() / 1000);
@@ -149,13 +171,17 @@ function toBase64Url(str: string): string {
  * Base64url decode to string
  */
 function fromBase64Url(base64url: string): string {
-  // Convert base64url back to standard base64
-  let base64 = base64url.replace(/-/g, "+").replace(/_/g, "/");
-  // Add padding if needed
-  while (base64.length % 4) {
-    base64 += "=";
+  try {
+    // Convert base64url back to standard base64
+    let base64 = base64url.replace(/-/g, "+").replace(/_/g, "/");
+    // Add padding if needed
+    while (base64.length % 4) {
+      base64 += "=";
+    }
+    return Buffer.from(base64, "base64").toString("utf-8");
+  } catch {
+    throw new Error("Invalid session format");
   }
-  return Buffer.from(base64, "base64").toString("utf-8");
 }
 
 /**

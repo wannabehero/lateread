@@ -1,11 +1,22 @@
 # Contextual Logger Design
 
 ## Overview
-Add support for creating child loggers with shared context (like `reqId`) that automatically flow through the request lifecycle.
+Add support for creating child loggers with shared context (like `requestId`) that automatically flow through the request lifecycle, using Hono's built-in `contextStorage` and `requestId` middleware.
 
 ## Design Decisions
 
-### 1. Logger Interface
+### 1. Use Hono's Built-in Middleware
+Instead of creating custom middleware, leverage Hono's official middleware:
+- **`contextStorage()`** - Enables `getContext()` anywhere in the request lifecycle
+- **`requestId()`** - Generates UUID per request and sets `requestId` in context
+
+This approach:
+- Follows Hono conventions and best practices
+- Reduces custom code and maintenance burden
+- Provides standardized request ID generation
+- Enables accessing context anywhere via `getContext()`
+
+### 2. Logger Interface
 Refactor from object literal to factory function that supports child loggers:
 
 ```typescript
@@ -39,76 +50,145 @@ reqLogger.info("User action", { userId: "456" });
 - Allows overriding context values per call if needed
 
 ### 3. Request ID Generation
-Use `crypto.randomUUID()` for request IDs:
-- Universally unique across distributed systems
-- Built-in Web API (no dependencies)
-- Standard format (8-4-4-4-12 hex)
+Use Hono's `requestId()` middleware:
+- Generates UUID via `crypto.randomUUID()` by default
+- Sets `requestId` in context automatically
+- Adds `X-Request-Id` response header for tracing
+- Configurable via options (custom generator, header name, etc.)
 
 ### 4. Middleware Integration
-Create `loggerMiddleware()` that:
-1. Generates `reqId` using `crypto.randomUUID()`
-2. Creates child logger: `logger.child({ reqId })`
-3. Stores in context: `c.set("logger", requestLogger)`
-4. **No automatic request logging** - let handlers decide what to log
+Apply middleware in correct order:
+1. **`contextStorage()`** - Must be first, enables global context access
+2. **`requestId()`** - Generates requestId and stores in context
+3. **`loggerMiddleware()`** - Custom middleware that:
+   - Gets `requestId` from context: `c.get("requestId")`
+   - Creates child logger: `logger.child({ reqId: requestId })`
+   - Stores in context: `c.set("logger", requestLogger)`
+   - **No automatic request logging** - let handlers decide what to log
 
 ### 5. Context Access Pattern
-Add helper function for type-safe logger access:
+Two ways to access the logger:
 
 ```typescript
-// In lib/logger.ts
+// Pattern 1: Explicit context (in route handlers)
 export function getLogger(c: Context<AppContext>): Logger {
   return c.get("logger") ?? logger;
 }
 
-// Usage in handlers
-const log = getLogger(c);
-log.info("Article created", { articleId: "123" });
+// Pattern 2: Context storage (anywhere in request lifecycle)
+export function getLogger(): Logger {
+  try {
+    const ctx = getContext();
+    return ctx.get("logger") ?? logger;
+  } catch {
+    return logger; // Fallback if outside request context
+  }
+}
+
+// Combined: Support both patterns
+export function getLogger(c?: Context<AppContext>): Logger;
 ```
 
-**Fallback behavior**: Returns root logger if called outside request context
-
-### 6. Type Safety
-Extend `AppVariables` to include logger:
-
+**Usage examples:**
 ```typescript
-// types/context.ts
-import type { Logger } from "../lib/logger";
+// In route handlers (explicit context)
+app.get("/articles", async (c) => {
+  const log = getLogger(c);
+  log.info("Fetching articles");
+});
 
-export interface AppVariables {
-  userId: string;
-  logger: Logger; // New
+// In services (using context storage)
+async function processArticle(articleId: string) {
+  const log = getLogger(); // No context needed!
+  log.info("Processing article", { articleId });
 }
 ```
 
+**Fallback behavior**: Returns root logger if called outside request context or if context storage not available
+
+### 6. Type Safety
+Extend `AppVariables` to include logger and requestId:
+
+```typescript
+// types/context.ts
+import type { RequestIdVariables } from "hono/request-id";
+import type { Logger } from "../lib/logger";
+
+export interface AppVariables extends RequestIdVariables {
+  userId: string;
+  logger: Logger;
+}
+```
+
+This provides full type safety:
+- `c.get("requestId")` returns `string`
+- `c.get("logger")` returns `Logger`
+- `c.get("userId")` returns `string`
+
 ## Implementation Plan
 
-### Phase 1: Refactor Logger
-- [ ] Create `Logger` interface
-- [ ] Implement `createLogger()` factory
-- [ ] Add `child()` method with context merging
-- [ ] Update internal `log()` to merge base context + call metadata
-- [ ] Export `logger` as root instance (backward compatible)
-- [ ] Add `getLogger(c)` helper
-- [ ] Update tests for child logger functionality
+### Phase 1: Refactor Logger ✅
+- [x] Create `Logger` interface
+- [x] Implement `createLogger()` factory
+- [x] Add `child()` method with context merging
+- [x] Update internal `log()` to merge base context + call metadata
+- [x] Export `logger` as root instance (backward compatible)
+- [x] Add `getLogger(c?)` helper with optional context
+- [x] Update tests for child logger functionality
 
-### Phase 2: Middleware
-- [ ] Create `src/middleware/logger.ts`
-- [ ] Implement `loggerMiddleware()` with reqId generation
-- [ ] Export middleware function
+### Phase 2: Middleware ✅
+- [x] Use Hono's `contextStorage()` and `requestId()` middleware
+- [x] Create `src/middleware/logger.ts`
+- [x] Implement `loggerMiddleware()` that uses `requestId` from context
+- [x] Remove custom UUID generation (use Hono's instead)
 
-### Phase 3: Type Definitions
-- [ ] Add `Logger` type to `AppVariables`
-- [ ] Update imports in `context.ts`
+### Phase 3: Type Definitions ✅
+- [x] Import `RequestIdVariables` from "hono/request-id"
+- [x] Extend `AppVariables` with `RequestIdVariables`
+- [x] Add `Logger` type to `AppVariables`
 
-### Phase 4: Integration
-- [ ] Import `loggerMiddleware` in `main.ts`
-- [ ] Apply middleware globally: `app.use("*", loggerMiddleware)`
-- [ ] Decide whether to keep or remove Hono's built-in logger
+### Phase 4: Integration ✅
+- [x] Import built-in middleware in `main.ts`
+- [x] Apply middleware in order: `contextStorage()` → `requestId()` → `loggerMiddleware`
+- [x] Remove Hono's built-in logger (replaced with our structured logger)
 
-### Phase 5: Documentation
-- [ ] Update logger.example.ts with child logger examples
-- [ ] Add middleware usage examples
-- [ ] Document getLogger() pattern for services
+### Phase 5: Documentation ✅
+- [x] Update logger.example.ts with child logger examples
+- [x] Add middleware usage examples
+- [x] Document getLogger() pattern for services (both explicit and context storage)
+- [x] Update design doc to reflect Hono middleware usage
+
+## Implementation Summary
+
+Successfully implemented contextual logging using Hono's built-in middleware:
+
+**Key Components:**
+1. **Logger factory** - `createLogger()` with child logger support
+2. **Hono middleware stack** - `contextStorage()` → `requestId()` → `loggerMiddleware`
+3. **Flexible access** - `getLogger(c)` or `getLogger()` via context storage
+4. **Type-safe context** - Extends `RequestIdVariables` for full type safety
+
+**Benefits:**
+- **Less custom code** - Leverages Hono's battle-tested middleware
+- **Standard patterns** - Follows Hono conventions and best practices
+- **Zero boilerplate** - Services don't need context passed around
+- **Request tracing** - Automatic `requestId` in logs and response headers
+- **Backward compatible** - Root logger still works everywhere
+
+**Usage:**
+```typescript
+// Route handlers
+app.get("/articles", async (c) => {
+  const log = getLogger(c);  // Explicit context
+  log.info("Fetching articles");
+});
+
+// Services (with context storage)
+async function processArticle(articleId: string) {
+  const log = getLogger();  // Gets from context storage
+  log.info("Processing", { articleId });  // Includes requestId automatically
+}
+```
 
 ## Usage Examples
 

@@ -61,7 +61,7 @@ export async function getStuckArticles(): Promise<StuckArticle[]> {
  * - Have reached or exceeded MAX_RETRY_ATTEMPTS
  */
 export async function getExhaustedArticles(): Promise<ExhaustedArticle[]> {
-  return await db
+  return db
     .select({
       id: articles.id,
       url: articles.url,

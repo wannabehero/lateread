@@ -56,7 +56,7 @@ export async function claimAuthToken(
   firstName: string | null = null,
   lastName: string | null = null,
 ): Promise<ClaimTokenResult | null> {
-  return await db.transaction(async (tx) => {
+  return db.transaction(async (tx) => {
     // Query auth token
     const [authToken] = await tx
       .select()
@@ -92,8 +92,7 @@ export async function claimAuthToken(
       userId = existingTelegramUser.userId;
     } else {
       // Create new user and telegram user records
-      const result = await tx.insert(users).values({}).returning();
-      const newUser = result[0];
+      const [newUser] = await tx.insert(users).values({}).returning();
 
       if (!newUser) {
         throw new Error("Failed to create user");

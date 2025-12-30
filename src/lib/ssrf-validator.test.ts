@@ -1,6 +1,6 @@
-import { beforeEach, describe, expect, it, mock } from "bun:test";
-import { isSafeUrl, isSafeUrlWithDNS } from "./ssrf-validator";
+import { afterEach, describe, expect, it, jest, mock, spyOn } from "bun:test";
 import dns from "node:dns/promises";
+import { isSafeUrl, isSafeUrlWithDNS } from "./ssrf-validator";
 
 describe("isSafeUrl - SSRF Protection", () => {
   describe("Valid public URLs", () => {
@@ -140,26 +140,6 @@ describe("isSafeUrl - SSRF Protection", () => {
     });
   });
 
-  // TODO: address this via custom agent
-  describe("DNS-based attacks (limitations)", () => {
-    // These attacks use DNS to resolve to private IPs
-    // We cannot block these without actual DNS resolution
-    it.each([
-      [
-        "http://metadata.google.internal/",
-        "GCP metadata (resolves to 169.254.169.254)",
-      ],
-      [
-        "http://169.254.169.254.nip.io/",
-        "nip.io DNS trick (resolves to IP in hostname)",
-      ],
-    ])("CANNOT block %s without DNS resolution (%s)", (url) => {
-      // These will pass validation but are still dangerous
-      // Additional protection would require DNS resolution before fetch
-      expect(isSafeUrl(url)).toBe(true);
-    });
-  });
-
   describe("URL encoding/obfuscation attempts", () => {
     // Note: These tests verify current behavior
     // URL constructor normalizes these, so they're handled correctly
@@ -172,14 +152,11 @@ describe("isSafeUrl - SSRF Protection", () => {
 });
 
 describe("isSafeUrlWithDNS - DNS-based SSRF Protection", () => {
-  // Store original functions to restore later
-  const originalResolve4 = dns.resolve4;
-  const originalResolve6 = dns.resolve6;
+  const spyDnsResolve4 = spyOn(dns, "resolve4");
+  const spyDnsResolve6 = spyOn(dns, "resolve6");
 
-  beforeEach(() => {
-    // Restore mocks before each test
-    dns.resolve4 = originalResolve4;
-    dns.resolve6 = originalResolve6;
+  afterEach(() => {
+    mock.clearAllMocks();
   });
 
   describe("URL structure validation (pre-DNS checks)", () => {
@@ -188,191 +165,204 @@ describe("isSafeUrlWithDNS - DNS-based SSRF Protection", () => {
       expect(await isSafeUrlWithDNS("http://127.0.0.1")).toBe(false);
       expect(await isSafeUrlWithDNS("http://10.0.0.1")).toBe(false);
       expect(await isSafeUrlWithDNS("file:///etc/passwd")).toBe(false);
+
+      expect(spyDnsResolve4).not.toHaveBeenCalled();
+      expect(spyDnsResolve6).not.toHaveBeenCalled();
     });
 
     it("should allow direct public IPs without DNS lookup", async () => {
       expect(await isSafeUrlWithDNS("http://8.8.8.8")).toBe(true);
       expect(await isSafeUrlWithDNS("http://1.1.1.1")).toBe(true);
+
+      expect(spyDnsResolve4).not.toHaveBeenCalled();
+      expect(spyDnsResolve6).not.toHaveBeenCalled();
     });
   });
 
   describe("DNS resolution to private IPs", () => {
     it("should block domain resolving to private IPv4", async () => {
-      // Mock DNS to return private IP
-      dns.resolve4 = mock(() => Promise.resolve(["169.254.169.254"]));
-      dns.resolve6 = mock(() => Promise.reject(new Error("ENOTFOUND")));
+      spyDnsResolve4.mockResolvedValueOnce(["169.254.169.254"]);
+      spyDnsResolve6.mockRejectedValueOnce(new Error("ENOTFOUND"));
 
-      const result = await isSafeUrlWithDNS(
-        "http://metadata.google.internal",
-      );
+      const result = await isSafeUrlWithDNS("http://metadata.google.internal");
       expect(result).toBe(false);
+
+      expect(spyDnsResolve4).toHaveBeenCalledTimes(1);
+      expect(spyDnsResolve4).toHaveBeenCalledWith("metadata.google.internal");
+      expect(spyDnsResolve6).toHaveBeenCalledTimes(1);
+      expect(spyDnsResolve6).toHaveBeenCalledWith("metadata.google.internal");
     });
 
     it("should block domain resolving to localhost", async () => {
-      dns.resolve4 = mock(() => Promise.resolve(["127.0.0.1"]));
-      dns.resolve6 = mock(() => Promise.reject(new Error("ENOTFOUND")));
+      spyDnsResolve4.mockResolvedValueOnce(["127.0.0.1"]);
+      spyDnsResolve6.mockRejectedValueOnce(new Error("ENOTFOUND"));
 
       const result = await isSafeUrlWithDNS("http://evil.com");
       expect(result).toBe(false);
+
+      expect(spyDnsResolve4).toHaveBeenCalledTimes(1);
+      expect(spyDnsResolve4).toHaveBeenCalledWith("evil.com");
+      expect(spyDnsResolve6).toHaveBeenCalledTimes(1);
+      expect(spyDnsResolve6).toHaveBeenCalledWith("evil.com");
     });
 
     it("should block domain resolving to private network", async () => {
-      dns.resolve4 = mock(() => Promise.resolve(["192.168.1.1"]));
-      dns.resolve6 = mock(() => Promise.reject(new Error("ENOTFOUND")));
+      spyDnsResolve4.mockResolvedValueOnce(["192.168.1.1"]);
+      spyDnsResolve6.mockRejectedValueOnce(new Error("ENOTFOUND"));
 
       const result = await isSafeUrlWithDNS("http://internal.example.com");
       expect(result).toBe(false);
+
+      expect(spyDnsResolve4).toHaveBeenCalledTimes(1);
+      expect(spyDnsResolve4).toHaveBeenCalledWith("internal.example.com");
+      expect(spyDnsResolve6).toHaveBeenCalledTimes(1);
+      expect(spyDnsResolve6).toHaveBeenCalledWith("internal.example.com");
     });
 
     it("should block domain resolving to AWS metadata service", async () => {
-      dns.resolve4 = mock(() => Promise.resolve(["169.254.169.254"]));
-      dns.resolve6 = mock(() => Promise.reject(new Error("ENOTFOUND")));
+      spyDnsResolve4.mockResolvedValueOnce(["169.254.169.254"]);
+      spyDnsResolve6.mockRejectedValueOnce(new Error("ENOTFOUND"));
 
       const result = await isSafeUrlWithDNS("http://evil.nip.io");
       expect(result).toBe(false);
+
+      expect(spyDnsResolve4).toHaveBeenCalledTimes(1);
+      expect(spyDnsResolve4).toHaveBeenCalledWith("evil.nip.io");
+      expect(spyDnsResolve6).toHaveBeenCalledTimes(1);
+      expect(spyDnsResolve6).toHaveBeenCalledWith("evil.nip.io");
     });
   });
 
   describe("DNS resolution to public IPs", () => {
     it("should allow domain resolving to public IPv4", async () => {
-      dns.resolve4 = mock(() => Promise.resolve(["93.184.216.34"]));
-      dns.resolve6 = mock(() => Promise.reject(new Error("ENOTFOUND")));
+      spyDnsResolve4.mockResolvedValueOnce(["93.184.216.34"]);
+      spyDnsResolve6.mockRejectedValueOnce(new Error("ENOTFOUND"));
 
       const result = await isSafeUrlWithDNS("http://example.com");
       expect(result).toBe(true);
+
+      expect(spyDnsResolve4).toHaveBeenCalledTimes(1);
+      expect(spyDnsResolve4).toHaveBeenCalledWith("example.com");
+      expect(spyDnsResolve6).toHaveBeenCalledTimes(1);
+      expect(spyDnsResolve6).toHaveBeenCalledWith("example.com");
     });
 
     it("should allow domain resolving to multiple public IPs", async () => {
-      dns.resolve4 = mock(() =>
-        Promise.resolve(["93.184.216.34", "93.184.216.35"]),
-      );
-      dns.resolve6 = mock(() => Promise.reject(new Error("ENOTFOUND")));
+      spyDnsResolve4.mockResolvedValueOnce(["93.184.216.34", "93.184.216.35"]);
+      spyDnsResolve6.mockRejectedValueOnce(new Error("ENOTFOUND"));
 
       const result = await isSafeUrlWithDNS("http://example.com");
       expect(result).toBe(true);
+
+      expect(spyDnsResolve4).toHaveBeenCalledTimes(1);
+      expect(spyDnsResolve4).toHaveBeenCalledWith("example.com");
+      expect(spyDnsResolve6).toHaveBeenCalledTimes(1);
+      expect(spyDnsResolve6).toHaveBeenCalledWith("example.com");
     });
   });
 
   describe("Mixed public and private IPs", () => {
     it("should block if ANY resolved IP is private", async () => {
-      // Domain resolves to both public and private IPs
-      dns.resolve4 = mock(() =>
-        Promise.resolve(["93.184.216.34", "192.168.1.1"]),
-      );
-      dns.resolve6 = mock(() => Promise.reject(new Error("ENOTFOUND")));
+      spyDnsResolve4.mockResolvedValueOnce(["93.184.216.34", "192.168.1.1"]);
+      spyDnsResolve6.mockRejectedValueOnce(new Error("ENOTFOUND"));
 
       const result = await isSafeUrlWithDNS("http://mixed.example.com");
       expect(result).toBe(false);
+
+      expect(spyDnsResolve4).toHaveBeenCalledTimes(1);
+      expect(spyDnsResolve4).toHaveBeenCalledWith("mixed.example.com");
+      expect(spyDnsResolve6).toHaveBeenCalledTimes(1);
+      expect(spyDnsResolve6).toHaveBeenCalledWith("mixed.example.com");
     });
   });
 
   describe("IPv6 DNS resolution", () => {
     it("should block domain resolving to private IPv6", async () => {
-      dns.resolve4 = mock(() => Promise.reject(new Error("ENOTFOUND")));
-      dns.resolve6 = mock(() => Promise.resolve(["fe80::1"]));
+      spyDnsResolve4.mockRejectedValueOnce(new Error("ENOTFOUND"));
+      spyDnsResolve6.mockResolvedValueOnce(["fe80::1"]);
 
       const result = await isSafeUrlWithDNS("http://ipv6.example.com");
       expect(result).toBe(false);
+
+      expect(spyDnsResolve4).toHaveBeenCalledTimes(1);
+      expect(spyDnsResolve4).toHaveBeenCalledWith("ipv6.example.com");
+      expect(spyDnsResolve6).toHaveBeenCalledTimes(1);
+      expect(spyDnsResolve6).toHaveBeenCalledWith("ipv6.example.com");
     });
 
     it("should allow domain resolving to public IPv6", async () => {
-      dns.resolve4 = mock(() => Promise.reject(new Error("ENOTFOUND")));
-      dns.resolve6 = mock(() =>
-        Promise.resolve(["2606:2800:220:1:248:1893:25c8:1946"]),
-      );
+      spyDnsResolve4.mockRejectedValueOnce(new Error("ENOTFOUND"));
+      spyDnsResolve6.mockResolvedValueOnce([
+        "2606:2800:220:1:248:1893:25c8:1946",
+      ]);
 
       const result = await isSafeUrlWithDNS("http://example.com");
       expect(result).toBe(true);
+
+      expect(spyDnsResolve4).toHaveBeenCalledTimes(1);
+      expect(spyDnsResolve4).toHaveBeenCalledWith("example.com");
+      expect(spyDnsResolve6).toHaveBeenCalledTimes(1);
+      expect(spyDnsResolve6).toHaveBeenCalledWith("example.com");
     });
 
     it("should validate both IPv4 and IPv6 addresses", async () => {
-      dns.resolve4 = mock(() => Promise.resolve(["93.184.216.34"]));
-      dns.resolve6 = mock(() =>
-        Promise.resolve(["2606:2800:220:1:248:1893:25c8:1946"]),
-      );
+      spyDnsResolve4.mockResolvedValueOnce(["93.184.216.34"]);
+      spyDnsResolve6.mockResolvedValueOnce([
+        "2606:2800:220:1:248:1893:25c8:1946",
+      ]);
 
       const result = await isSafeUrlWithDNS("http://example.com");
       expect(result).toBe(true);
+
+      expect(spyDnsResolve4).toHaveBeenCalledTimes(1);
+      expect(spyDnsResolve4).toHaveBeenCalledWith("example.com");
+      expect(spyDnsResolve6).toHaveBeenCalledTimes(1);
+      expect(spyDnsResolve6).toHaveBeenCalledWith("example.com");
     });
   });
 
   describe("DNS lookup failures", () => {
-    it("should allow on NXDOMAIN (non-existent domain) by default", async () => {
-      dns.resolve4 = mock(() =>
-        Promise.reject(Object.assign(new Error("ENOTFOUND"), { code: "ENOTFOUND" })),
-      );
-      dns.resolve6 = mock(() =>
-        Promise.reject(Object.assign(new Error("ENOTFOUND"), { code: "ENOTFOUND" })),
-      );
+    it("should block on NXDOMAIN (non-existent domain)", async () => {
+      spyDnsResolve4.mockRejectedValueOnce(new Error("ENOTFOUND"));
+      spyDnsResolve6.mockRejectedValueOnce(new Error("ENOTFOUND"));
 
       const result = await isSafeUrlWithDNS("http://nonexistent.example.com");
-      expect(result).toBe(true); // Allow, let fetch fail naturally
-    });
-
-    it("should block on DNS error if blockOnDNSError=true", async () => {
-      dns.resolve4 = mock(() =>
-        Promise.reject(Object.assign(new Error("ENOTFOUND"), { code: "ENOTFOUND" })),
-      );
-      dns.resolve6 = mock(() =>
-        Promise.reject(Object.assign(new Error("ENOTFOUND"), { code: "ENOTFOUND" })),
-      );
-
-      const result = await isSafeUrlWithDNS("http://nonexistent.example.com", {
-        blockOnDNSError: true,
-      });
       expect(result).toBe(false);
     });
 
-    it("should handle DNS timeout gracefully", async () => {
-      dns.resolve4 = mock(
-        () => new Promise((resolve) => setTimeout(() => resolve([]), 10000)),
+    it("should block on DNS timeout", async () => {
+      jest.useFakeTimers();
+
+      spyDnsResolve4.mockReturnValueOnce(
+        new Promise((resolve) =>
+          setTimeout(() => resolve(["93.184.216.34"]), 6000),
+        ),
       );
-      dns.resolve6 = mock(() => Promise.reject(new Error("ENOTFOUND")));
+      spyDnsResolve6.mockRejectedValueOnce(new Error("ENOTFOUND"));
 
-      const result = await isSafeUrlWithDNS("http://slow.example.com", {
-        dnsTimeout: 100,
-      });
-      expect(result).toBe(true); // Timeout, allow by default
-    });
-  });
+      const promise = isSafeUrlWithDNS("http://slow.example.com");
 
-  describe("Configuration options", () => {
-    it("should skip DNS checks if enableDNS=false", async () => {
-      // Should not call DNS resolve functions
-      dns.resolve4 = mock(() => Promise.resolve(["169.254.169.254"]));
-      dns.resolve6 = mock(() => Promise.reject(new Error("ENOTFOUND")));
+      jest.advanceTimersByTime(10_000);
 
-      const result = await isSafeUrlWithDNS(
-        "http://metadata.google.internal",
-        { enableDNS: false },
-      );
+      const result = await promise;
 
-      // Should pass URL validation but skip DNS
-      expect(result).toBe(true);
+      expect(result).toBe(false); // Block on timeout
+
+      expect(spyDnsResolve4).toHaveBeenCalledTimes(1);
+      expect(spyDnsResolve4).toHaveBeenCalledWith("slow.example.com");
+      expect(spyDnsResolve6).toHaveBeenCalledTimes(1);
+      expect(spyDnsResolve6).toHaveBeenCalledWith("slow.example.com");
     });
 
-    it("should respect custom DNS timeout", async () => {
-      const startTime = Date.now();
-
-      dns.resolve4 = mock(
-        () => new Promise((resolve) => setTimeout(() => resolve([]), 5000)),
-      );
-      dns.resolve6 = mock(() => Promise.reject(new Error("ENOTFOUND")));
-
-      await isSafeUrlWithDNS("http://slow.example.com", {
-        dnsTimeout: 500,
-      });
-
-      const elapsed = Date.now() - startTime;
-      expect(elapsed).toBeLessThan(1000); // Should timeout quickly
+    afterEach(() => {
+      jest.useRealTimers();
     });
   });
 
   describe("Real-world attack scenarios", () => {
     it("should block nip.io DNS tricks", async () => {
-      // nip.io resolves to the IP in the subdomain
-      dns.resolve4 = mock(() => Promise.resolve(["169.254.169.254"]));
-      dns.resolve6 = mock(() => Promise.reject(new Error("ENOTFOUND")));
+      spyDnsResolve4.mockResolvedValueOnce(["169.254.169.254"]);
+      spyDnsResolve6.mockRejectedValueOnce(new Error("ENOTFOUND"));
 
       const result = await isSafeUrlWithDNS(
         "http://169.254.169.254.nip.io/latest/meta-data",
@@ -381,18 +371,16 @@ describe("isSafeUrlWithDNS - DNS-based SSRF Protection", () => {
     });
 
     it("should block GCP metadata endpoint", async () => {
-      dns.resolve4 = mock(() => Promise.resolve(["169.254.169.254"]));
-      dns.resolve6 = mock(() => Promise.reject(new Error("ENOTFOUND")));
+      spyDnsResolve4.mockResolvedValueOnce(["169.254.169.254"]);
+      spyDnsResolve6.mockRejectedValueOnce(new Error("ENOTFOUND"));
 
-      const result = await isSafeUrlWithDNS(
-        "http://metadata.google.internal/",
-      );
+      const result = await isSafeUrlWithDNS("http://metadata.google.internal/");
       expect(result).toBe(false);
     });
 
     it("should block custom domain pointing to internal network", async () => {
-      dns.resolve4 = mock(() => Promise.resolve(["10.0.0.1"]));
-      dns.resolve6 = mock(() => Promise.reject(new Error("ENOTFOUND")));
+      spyDnsResolve4.mockResolvedValueOnce(["10.0.0.1"]);
+      spyDnsResolve6.mockRejectedValueOnce(new Error("ENOTFOUND"));
 
       const result = await isSafeUrlWithDNS("http://internal.attacker.com");
       expect(result).toBe(false);

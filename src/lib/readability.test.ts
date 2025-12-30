@@ -1,13 +1,23 @@
-import { beforeEach, describe, expect, it, mock } from "bun:test";
+import {
+  afterEach,
+  beforeEach,
+  describe,
+  expect,
+  it,
+  mock,
+  spyOn,
+} from "bun:test";
+import dns from "node:dns/promises";
 import { extractCleanContent } from "./readability";
-
-// Store original fetch
-const originalFetch = global.fetch;
 
 describe("readability", () => {
   beforeEach(() => {
-    // Reset fetch mock before each test
-    global.fetch = originalFetch;
+    spyOn(dns, "resolve4").mockResolvedValueOnce(["93.184.216.34"]);
+    spyOn(dns, "resolve6").mockRejectedValueOnce(new Error("ENOTFOUND"));
+  });
+
+  afterEach(() => {
+    mock.clearAllMocks();
   });
 
   describe("extractCleanContent", () => {
@@ -33,13 +43,11 @@ describe("readability", () => {
       `;
 
       // @ts-expect-error Fetch override
-      global.fetch = mock(() =>
-        Promise.resolve({
-          ok: true,
-          status: 200,
-          text: () => Promise.resolve(mockHtml),
-        }),
-      );
+      spyOn(globalThis, "fetch").mockResolvedValueOnce({
+        ok: true,
+        status: 200,
+        text: () => Promise.resolve(mockHtml),
+      });
 
       const result = await extractCleanContent("https://example.com/article");
 
@@ -66,13 +74,11 @@ describe("readability", () => {
       `;
 
       // @ts-expect-error Fetch override
-      global.fetch = mock(() =>
-        Promise.resolve({
-          ok: true,
-          status: 200,
-          text: () => Promise.resolve(mockHtml),
-        }),
-      );
+      spyOn(globalThis, "fetch").mockResolvedValueOnce({
+        ok: true,
+        status: 200,
+        text: () => Promise.resolve(mockHtml),
+      });
 
       const result = await extractCleanContent("https://example.com/article");
 
@@ -94,13 +100,11 @@ describe("readability", () => {
       `;
 
       // @ts-expect-error Fetch override
-      global.fetch = mock(() =>
-        Promise.resolve({
-          ok: true,
-          status: 200,
-          text: () => Promise.resolve(mockHtml),
-        }),
-      );
+      spyOn(globalThis, "fetch").mockResolvedValueOnce({
+        ok: true,
+        status: 200,
+        text: () => Promise.resolve(mockHtml),
+      });
 
       const result = await extractCleanContent("https://example.com/article");
 
@@ -109,13 +113,11 @@ describe("readability", () => {
 
     it("should handle HTTP errors", async () => {
       // @ts-expect-error Fetch override
-      global.fetch = mock(() =>
-        Promise.resolve({
-          ok: false,
-          status: 404,
-          statusText: "Not Found",
-        }),
-      );
+      spyOn(globalThis, "fetch").mockResolvedValueOnce({
+        ok: false,
+        status: 404,
+        statusText: "Not Found",
+      });
 
       let error: unknown;
       try {
@@ -130,13 +132,11 @@ describe("readability", () => {
 
     it("should handle 500 errors", async () => {
       // @ts-expect-error Fetch override
-      global.fetch = mock(() =>
-        Promise.resolve({
-          ok: false,
-          status: 500,
-          statusText: "Internal Server Error",
-        }),
-      );
+      spyOn(globalThis, "fetch").mockResolvedValueOnce({
+        ok: false,
+        status: 500,
+        statusText: "Internal Server Error",
+      });
 
       let error: unknown;
       try {
@@ -150,9 +150,8 @@ describe("readability", () => {
     });
 
     it("should handle network errors", async () => {
-      // @ts-expect-error Fetch override
-      global.fetch = mock(() =>
-        Promise.reject(new Error("Network error: Connection refused")),
+      spyOn(globalThis, "fetch").mockRejectedValueOnce(
+        new Error("Network error: Connection refused"),
       );
 
       let error: unknown;
@@ -173,8 +172,7 @@ describe("readability", () => {
       const abortError = new Error("The operation was aborted");
       abortError.name = "AbortError";
 
-      // @ts-expect-error Fetch override
-      global.fetch = mock(() => Promise.reject(abortError));
+      spyOn(globalThis, "fetch").mockRejectedValueOnce(abortError);
 
       let error: unknown;
       try {
@@ -190,11 +188,11 @@ describe("readability", () => {
     });
 
     it("should set custom user agent", async () => {
-      let capturedHeaders: Record<string, string> | undefined;
+      let capturedHeaders: HeadersInit | undefined;
 
-      // @ts-expect-error Fetch override
-      global.fetch = mock((_url, options) => {
-        capturedHeaders = options.headers;
+      // @ts-expect-error Mock fetch
+      spyOn(globalThis, "fetch").mockImplementation((_url, options) => {
+        capturedHeaders = options?.headers;
         return Promise.resolve({
           ok: true,
           status: 200,
@@ -208,7 +206,9 @@ describe("readability", () => {
       await extractCleanContent("https://example.com/article");
 
       expect(capturedHeaders).toBeDefined();
-      expect(capturedHeaders?.["User-Agent"]).toContain("lateread");
+      const headers = capturedHeaders as Record<string, string>;
+      expect(headers["user-agent"]).toBeDefined();
+      expect(headers["user-agent"]).toContain("lateread");
     });
 
     it("should extract text content", async () => {
@@ -226,14 +226,12 @@ describe("readability", () => {
         </html>
       `;
 
-      // @ts-expect-error Fetch override
-      global.fetch = mock(() =>
-        Promise.resolve({
-          ok: true,
-          status: 200,
-          text: () => Promise.resolve(mockHtml),
-        }),
-      );
+      // @ts-expect-error Mock fetch
+      spyOn(globalThis, "fetch").mockResolvedValueOnce({
+        ok: true,
+        status: 200,
+        text: () => Promise.resolve(mockHtml),
+      });
 
       const result = await extractCleanContent("https://example.com/article");
 
@@ -258,13 +256,11 @@ describe("readability", () => {
       `;
 
       // @ts-expect-error Fetch override
-      global.fetch = mock(() =>
-        Promise.resolve({
-          ok: true,
-          status: 200,
-          text: () => Promise.resolve(mockHtml),
-        }),
-      );
+      spyOn(globalThis, "fetch").mockResolvedValueOnce({
+        ok: true,
+        status: 200,
+        text: () => Promise.resolve(mockHtml),
+      });
 
       // JSDOM can handle malformed HTML and Readability should extract content
       const result = await extractCleanContent("https://example.com/broken");
@@ -285,25 +281,22 @@ describe("readability", () => {
         ["file:///etc/passwd", "file protocol"],
         ["ftp://example.com", "FTP protocol"],
       ])("should block SSRF attempt: %s (%s)", async (url) => {
-        await expect(extractCleanContent(url)).rejects.toThrow(
-          "SSRF protection",
+        expect(extractCleanContent(url)).rejects.toThrow(
+          "URL is unsafe to fetch",
         );
       });
 
       it("should allow valid public URLs", async () => {
         // @ts-expect-error Fetch override
-        global.fetch = mock(() =>
-          Promise.resolve({
-            ok: true,
-            status: 200,
-            text: () =>
-              Promise.resolve(
-                "<html><body><article><p>Content</p></article></body></html>",
-              ),
-          }),
-        );
-
-        await expect(
+        spyOn(globalThis, "fetch").mockResolvedValueOnce({
+          ok: true,
+          status: 200,
+          text: () =>
+            Promise.resolve(
+              "<html><body><article><p>Content</p></article></body></html>",
+            ),
+        });
+        expect(
           extractCleanContent("https://example.com/article"),
         ).resolves.toBeDefined();
       });

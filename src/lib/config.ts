@@ -34,20 +34,6 @@ const configSchema = z.object({
   CACHE_DIR: z.string().default("./cache/articles"),
   CACHE_MAX_AGE_DAYS: z.coerce.number().default(30),
 
-  // SSRF Protection
-  SSRF_DNS_CHECKS_ENABLED: z
-    .string()
-    .optional()
-    .transform((val) => val !== "false")
-    .default("true"),
-  SSRF_DNS_TIMEOUT_MS: z.coerce.number().default(5000),
-  SSRF_BLOCK_ON_DNS_ERROR: z
-    .string()
-    .optional()
-    .transform((val) => val === "true")
-    .default("false"),
-  SSRF_MAX_REDIRECTS: z.coerce.number().default(5),
-
   // Admin Access
   ADMIN_TELEGRAM_ID: z.string().optional(),
 

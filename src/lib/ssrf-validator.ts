@@ -5,7 +5,6 @@
 
 import dns from "node:dns/promises";
 
-// Global Sets for O(1) lookup performance
 const BLOCKED_HOSTS = new Set([
   "localhost",
   "127.0.0.1",
@@ -17,6 +16,7 @@ const BLOCKED_HOSTS = new Set([
 ]);
 
 const ALLOWED_PROTOCOLS = new Set(["http:", "https:"]);
+const DNS_LOOKUP_TIMEOUT = 5000;
 
 /**
  * Private IPv4 ranges (CIDR notation):
@@ -51,24 +51,20 @@ export function isSafeUrl(url: string): boolean {
   try {
     const parsed = new URL(url);
 
-    // Check protocol is http/https only
     if (!ALLOWED_PROTOCOLS.has(parsed.protocol)) {
       return false;
     }
 
     const hostname = parsed.hostname.toLowerCase();
 
-    // Check against blocked hosts (localhost, etc.)
     if (BLOCKED_HOSTS.has(hostname)) {
       return false;
     }
 
-    // Check for private IPv4 addresses
     if (isPrivateIPv4(hostname)) {
       return false;
     }
 
-    // Check for IPv6 private/link-local addresses
     if (isPrivateIPv6(hostname)) {
       return false;
     }
@@ -145,12 +141,9 @@ export function isPrivateIPv6(hostname: string): boolean {
     lower = lower.slice(1, -1);
   }
 
-  // Check for loopback/any (already covered by BLOCKED_HOSTS, but defense in depth)
   if (lower === "::1" || lower === "::") {
     return true;
   }
-
-  // IPv6 addresses contain colons
   if (!lower.includes(":")) {
     return false;
   }
@@ -183,46 +176,10 @@ class DNSTimeoutError extends Error {
   }
 }
 
-/**
- * Options for DNS-based SSRF validation
- */
-export interface SafeUrlOptions {
-  enableDNS?: boolean;
-  dnsTimeout?: number;
-  blockOnDNSError?: boolean;
-}
-
-/**
- * Enhanced SSRF validator with DNS resolution
- * Validates both URL structure and DNS resolution to prevent DNS-based SSRF attacks
- *
- * @param url - URL to validate
- * @param options - Validation options
- * @returns Promise<boolean> - true if safe, false if dangerous
- *
- * @example
- * // Blocks metadata.google.internal → 169.254.169.254
- * const safe = await isSafeUrlWithDNS("http://metadata.google.internal");
- * // safe === false
- */
-export async function isSafeUrlWithDNS(
-  url: string,
-  options: SafeUrlOptions = {},
-): Promise<boolean> {
-  const {
-    enableDNS = true,
-    dnsTimeout = 5000,
-    blockOnDNSError = false,
-  } = options;
-
+export async function isSafeUrlWithDNS(url: string): Promise<boolean> {
   // Fast path: Use existing URL-based validation
   if (!isSafeUrl(url)) {
     return false;
-  }
-
-  // If DNS checks disabled, stop here
-  if (!enableDNS) {
-    return true;
   }
 
   // Extract hostname for DNS lookup
@@ -244,7 +201,7 @@ export async function isSafeUrlWithDNS(
   try {
     const resolvedIPs = await Promise.race([
       resolveDNS(hostname),
-      createTimeout(dnsTimeout),
+      createTimeout(DNS_LOOKUP_TIMEOUT),
     ]);
 
     // Validate ALL resolved IP addresses
@@ -260,16 +217,13 @@ export async function isSafeUrlWithDNS(
     // DNS lookup failed (NXDOMAIN, timeout, network error, etc.)
     if (error instanceof DNSTimeoutError) {
       console.warn(`SSRF: DNS timeout for ${hostname}`);
-      return blockOnDNSError ? false : true;
+      return false;
     }
 
     if (error instanceof Error) {
       console.warn(`SSRF: DNS error for ${hostname}: ${error.message}`);
     }
-
-    // Default: allow on DNS errors (let fetch fail naturally)
-    // unless configured to block
-    return blockOnDNSError ? false : true;
+    return false;
   }
 }
 

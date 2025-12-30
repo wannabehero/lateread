@@ -9,11 +9,17 @@ COPY package.json bun.lock ./
 # Install ALL dependencies (including devDependencies for pico/htmx)
 RUN bun install --frozen-lockfile
 
-# Copy asset copy script
+# Copy build and asset scripts
 COPY scripts ./scripts
 
-# Run asset copy script to populate public/ directory
+# Copy public directory with source files
+COPY public ./public
+
+# Copy vendor assets (htmx, pico) from node_modules
 RUN bun run scripts/copy-assets.ts
+
+# Build and minify custom scripts and styles
+RUN NODE_ENV=production bun run scripts/build-assets.ts
 
 # Stage 2: Runtime stage - production dependencies only
 FROM oven/bun:1 AS runtime

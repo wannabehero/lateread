@@ -24,6 +24,10 @@ public/htmx.min.js
 public/pico.min.css
 public/pico.colors.min.css
 
+# Built/minified custom assets
+public/scripts/*.min.js
+public/styles/*.min.css
+
 # IDE
 .vscode/
 .idea/

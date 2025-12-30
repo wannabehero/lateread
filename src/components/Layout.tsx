@@ -1,4 +1,5 @@
 import type { FC } from "hono/jsx";
+import { config } from "../lib/config";
 
 interface LayoutProps {
   title?: string;
@@ -9,6 +10,9 @@ interface LayoutProps {
   overrideControls?: any;
   collapsibleHeader?: boolean;
 }
+
+const isProduction = config.NODE_ENV === "production";
+const assetSuffix = isProduction ? ".min" : "";
 
 export const Layout: FC<LayoutProps> = ({
   title = "lateread",
@@ -66,11 +70,15 @@ export const Layout: FC<LayoutProps> = ({
         <link rel="stylesheet" href="/public/pico.colors.min.css" />
 
         {/* Custom styles */}
-        <link rel="stylesheet" href="/public/styles/app.css" />
+        <link rel="stylesheet" href={`/public/styles/app${assetSuffix}.css`} />
 
         {/* HTMX */}
         <script src="/public/htmx.min.js" defer></script>
-        <script src="/public/scripts/app.js" type="module" defer></script>
+        <script
+          src={`/public/scripts/app${assetSuffix}.js`}
+          type="module"
+          defer
+        ></script>
       </head>
       <body>
         <header

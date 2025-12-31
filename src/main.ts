@@ -18,23 +18,14 @@ import homeRoutes from "./routes/home";
 import searchRoutes from "./routes/search";
 import type { AppContext } from "./types/context";
 
-console.log("Starting lateread...");
-console.log(`Environment: ${config.NODE_ENV}`);
-console.log(`Port: ${config.PORT}`);
-
 // Run database migrations
 runMigrations();
 
 // Create Hono app with typed context
 const app = new Hono<AppContext>();
 
-// Context storage middleware (enables getContext() anywhere)
 app.use("*", contextStorage());
-
-// Request ID middleware (generates UUID per request)
 app.use("*", requestId());
-
-// Logger middleware (creates request-scoped logger with requestId)
 app.use("*", loggerMiddleware);
 
 // Serve static files from public directory
@@ -63,7 +54,7 @@ const server = Bun.serve({
   idleTimeout: 120, // 2 minutes for long-running LLM requests
 });
 
-console.log(`Server running at http://localhost:${config.PORT}`);
+console.log(`Server running at http://0.0.0.0:${config.PORT}`);
 console.log(`Telegram bot: @${config.BOT_USERNAME}`);
 
 // Start cron jobs

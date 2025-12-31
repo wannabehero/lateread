@@ -1,4 +1,8 @@
 import { getContext } from "hono/context-storage";
+import type { AppContext } from "../types/context";
+import { getServiceMetadata } from "./metadata";
+
+const isProd = process.env.NODE_ENV === "production";
 
 /**
  * Log levels in order of severity
@@ -51,54 +55,6 @@ function formatError(error: unknown): ErrorObject {
     type: typeof error,
     message: String(error),
   };
-}
-
-/**
- * Core logging function that formats and outputs log messages.
- *
- * @param level - Log level (debug, info, warn, error)
- * @param message - Static, non-templated message string
- * @param meta - Optional metadata object with additional context
- */
-function log(level: LogLevel, message: string, meta?: LogMeta): void {
-  const isProd = process.env.NODE_ENV === "production";
-
-  // Skip debug logs in production
-  if (level === "debug" && isProd) {
-    return;
-  }
-
-  // Build log object
-  const logObject: Record<string, unknown> = {
-    level,
-    message,
-    timestamp: new Date().toISOString(),
-  };
-
-  // Process metadata
-  if (meta) {
-    const { error, ...rest } = meta;
-
-    // Special handling for error property
-    if (error !== undefined) {
-      logObject.error = formatError(error);
-    }
-
-    // Spread remaining metadata
-    Object.assign(logObject, rest);
-  }
-
-  // Format output based on environment
-  const output = isProd
-    ? JSON.stringify(logObject) // Single-line JSON for production
-    : JSON.stringify(logObject, null, 2); // Pretty JSON for development
-
-  // Use appropriate console method
-  if (level === "error" || level === "warn") {
-    console.error(output);
-  } else {
-    console.log(output);
-  }
 }
 
 /**
@@ -170,6 +126,8 @@ export interface Logger {
 export function createLogger(
   baseContext: Record<string, unknown> = {},
 ): Logger {
+  const metadata = getServiceMetadata();
+
   /**
    * Internal log function that merges base context with per-call metadata.
    * Priority: call metadata > base context
@@ -179,9 +137,6 @@ export function createLogger(
     message: string,
     meta?: LogMeta,
   ): void => {
-    const isProd = process.env.NODE_ENV === "production";
-
-    // Skip debug logs in production
     if (level === "debug" && isProd) {
       return;
     }
@@ -194,7 +149,9 @@ export function createLogger(
     };
 
     // Merge base context first
-    Object.assign(logObject, baseContext);
+    Object.assign(logObject, baseContext, {
+      metadata,
+    });
 
     // Process and merge per-call metadata (overrides base context)
     if (meta) {
@@ -297,7 +254,7 @@ export function getLogger(c?: {
   // Try to get context from context storage
   // Note: This requires contextStorage middleware to be enabled
   try {
-    const ctx = getContext();
+    const ctx = getContext<AppContext>();
     return ctx.get("logger") ?? logger;
   } catch {
     // Context storage not available or outside request context

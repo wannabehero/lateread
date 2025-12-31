@@ -138,15 +138,12 @@ describe("isSafeUrl - SSRF Protection", () => {
     ])("should block %s (%s)", (url) => {
       expect(isSafeUrl(url)).toBe(false);
     });
-  });
 
-  describe("URL encoding/obfuscation attempts", () => {
-    // Note: These tests verify current behavior
-    // URL constructor normalizes these, so they're handled correctly
-    it("should normalize and block localhost variations", () => {
-      // URL constructor converts these to standard format
-      expect(isSafeUrl("http://LOCALHOST")).toBe(false);
-      expect(isSafeUrl("http://LocalHost")).toBe(false);
+    it.each([
+      ["http://LOCALHOST"],
+      ["http://LocalHost"],
+    ])("should normalize and block localhost variations", (url) => {
+      expect(isSafeUrl(url)).toBe(false);
     });
   });
 });
@@ -160,19 +157,22 @@ describe("isSafeUrlWithDNS - DNS-based SSRF Protection", () => {
   });
 
   describe("URL structure validation (pre-DNS checks)", () => {
-    it("should block invalid URLs before DNS lookup", async () => {
-      expect(await isSafeUrlWithDNS("http://localhost")).toBe(false);
-      expect(await isSafeUrlWithDNS("http://127.0.0.1")).toBe(false);
-      expect(await isSafeUrlWithDNS("http://10.0.0.1")).toBe(false);
-      expect(await isSafeUrlWithDNS("file:///etc/passwd")).toBe(false);
+    it.each([
+      ["http://localhost"],
+      ["http://127.0.0.1"],
+      ["file:///etc/passwd"],
+    ])("should block invalid URLs before DNS lookup", async (url) => {
+      expect(await isSafeUrlWithDNS(url)).toBe(false);
 
       expect(spyDnsResolve4).not.toHaveBeenCalled();
       expect(spyDnsResolve6).not.toHaveBeenCalled();
     });
 
-    it("should allow direct public IPs without DNS lookup", async () => {
-      expect(await isSafeUrlWithDNS("http://8.8.8.8")).toBe(true);
-      expect(await isSafeUrlWithDNS("http://1.1.1.1")).toBe(true);
+    it.each([
+      ["http://8.8.8.8"],
+      ["http://1.1.1.1"],
+    ])("should allow direct public IPs without DNS lookup", async (url) => {
+      expect(await isSafeUrlWithDNS(url)).toBe(true);
 
       expect(spyDnsResolve4).not.toHaveBeenCalled();
       expect(spyDnsResolve6).not.toHaveBeenCalled();
@@ -180,84 +180,54 @@ describe("isSafeUrlWithDNS - DNS-based SSRF Protection", () => {
   });
 
   describe("DNS resolution to private IPs", () => {
-    it("should block domain resolving to private IPv4", async () => {
-      spyDnsResolve4.mockResolvedValueOnce(["169.254.169.254"]);
+    it.each([
+      [
+        "169.254.169.254",
+        "http://metadata.google.internal",
+        "metadata.google.internal",
+      ],
+      ["127.0.0.1", "https://evil.com", "evil.com"],
+      ["10.8.8.1", "https://internal.attack.com", "internal.attack.com"],
+      ["192.168.10.5", "http://internal.example.com", "internal.example.com"],
+      ["169.254.169.254", "https://evil.nip.io", "evil.nip.io"],
+      [
+        "169.254.169.254",
+        "http://169.254.169.254.nip.io/latest/meta-data",
+        "169.254.169.254.nip.io",
+      ],
+    ])("should block domain resolving to bad IPv4 (%s, %s, %s)", async (ip, url, expectedHost) => {
+      spyDnsResolve4.mockResolvedValueOnce([ip]);
       spyDnsResolve6.mockRejectedValueOnce(new Error("ENOTFOUND"));
 
-      const result = await isSafeUrlWithDNS("http://metadata.google.internal");
+      const result = await isSafeUrlWithDNS(url);
       expect(result).toBe(false);
 
       expect(spyDnsResolve4).toHaveBeenCalledTimes(1);
-      expect(spyDnsResolve4).toHaveBeenCalledWith("metadata.google.internal");
+      expect(spyDnsResolve4).toHaveBeenCalledWith(expectedHost);
       expect(spyDnsResolve6).toHaveBeenCalledTimes(1);
-      expect(spyDnsResolve6).toHaveBeenCalledWith("metadata.google.internal");
-    });
-
-    it("should block domain resolving to localhost", async () => {
-      spyDnsResolve4.mockResolvedValueOnce(["127.0.0.1"]);
-      spyDnsResolve6.mockRejectedValueOnce(new Error("ENOTFOUND"));
-
-      const result = await isSafeUrlWithDNS("http://evil.com");
-      expect(result).toBe(false);
-
-      expect(spyDnsResolve4).toHaveBeenCalledTimes(1);
-      expect(spyDnsResolve4).toHaveBeenCalledWith("evil.com");
-      expect(spyDnsResolve6).toHaveBeenCalledTimes(1);
-      expect(spyDnsResolve6).toHaveBeenCalledWith("evil.com");
-    });
-
-    it("should block domain resolving to private network", async () => {
-      spyDnsResolve4.mockResolvedValueOnce(["192.168.1.1"]);
-      spyDnsResolve6.mockRejectedValueOnce(new Error("ENOTFOUND"));
-
-      const result = await isSafeUrlWithDNS("http://internal.example.com");
-      expect(result).toBe(false);
-
-      expect(spyDnsResolve4).toHaveBeenCalledTimes(1);
-      expect(spyDnsResolve4).toHaveBeenCalledWith("internal.example.com");
-      expect(spyDnsResolve6).toHaveBeenCalledTimes(1);
-      expect(spyDnsResolve6).toHaveBeenCalledWith("internal.example.com");
-    });
-
-    it("should block domain resolving to AWS metadata service", async () => {
-      spyDnsResolve4.mockResolvedValueOnce(["169.254.169.254"]);
-      spyDnsResolve6.mockRejectedValueOnce(new Error("ENOTFOUND"));
-
-      const result = await isSafeUrlWithDNS("http://evil.nip.io");
-      expect(result).toBe(false);
-
-      expect(spyDnsResolve4).toHaveBeenCalledTimes(1);
-      expect(spyDnsResolve4).toHaveBeenCalledWith("evil.nip.io");
-      expect(spyDnsResolve6).toHaveBeenCalledTimes(1);
-      expect(spyDnsResolve6).toHaveBeenCalledWith("evil.nip.io");
+      expect(spyDnsResolve6).toHaveBeenCalledWith(expectedHost);
     });
   });
 
   describe("DNS resolution to public IPs", () => {
-    it("should allow domain resolving to public IPv4", async () => {
-      spyDnsResolve4.mockResolvedValueOnce(["93.184.216.34"]);
+    it.each([
+      [["93.184.216.34"], "http://example.com", "example.com"],
+      [
+        ["93.184.216.34", "93.184.216.35"],
+        "https://example.com",
+        "example.com",
+      ],
+    ])("should allow domain resolving to public IPv4", async (ips, url, expectedHost) => {
+      spyDnsResolve4.mockResolvedValueOnce(ips);
       spyDnsResolve6.mockRejectedValueOnce(new Error("ENOTFOUND"));
 
-      const result = await isSafeUrlWithDNS("http://example.com");
+      const result = await isSafeUrlWithDNS(url);
       expect(result).toBe(true);
 
       expect(spyDnsResolve4).toHaveBeenCalledTimes(1);
-      expect(spyDnsResolve4).toHaveBeenCalledWith("example.com");
+      expect(spyDnsResolve4).toHaveBeenCalledWith(expectedHost);
       expect(spyDnsResolve6).toHaveBeenCalledTimes(1);
-      expect(spyDnsResolve6).toHaveBeenCalledWith("example.com");
-    });
-
-    it("should allow domain resolving to multiple public IPs", async () => {
-      spyDnsResolve4.mockResolvedValueOnce(["93.184.216.34", "93.184.216.35"]);
-      spyDnsResolve6.mockRejectedValueOnce(new Error("ENOTFOUND"));
-
-      const result = await isSafeUrlWithDNS("http://example.com");
-      expect(result).toBe(true);
-
-      expect(spyDnsResolve4).toHaveBeenCalledTimes(1);
-      expect(spyDnsResolve4).toHaveBeenCalledWith("example.com");
-      expect(spyDnsResolve6).toHaveBeenCalledTimes(1);
-      expect(spyDnsResolve6).toHaveBeenCalledWith("example.com");
+      expect(spyDnsResolve6).toHaveBeenCalledWith(expectedHost);
     });
   });
 
@@ -356,34 +326,6 @@ describe("isSafeUrlWithDNS - DNS-based SSRF Protection", () => {
 
     afterEach(() => {
       jest.useRealTimers();
-    });
-  });
-
-  describe("Real-world attack scenarios", () => {
-    it("should block nip.io DNS tricks", async () => {
-      spyDnsResolve4.mockResolvedValueOnce(["169.254.169.254"]);
-      spyDnsResolve6.mockRejectedValueOnce(new Error("ENOTFOUND"));
-
-      const result = await isSafeUrlWithDNS(
-        "http://169.254.169.254.nip.io/latest/meta-data",
-      );
-      expect(result).toBe(false);
-    });
-
-    it("should block GCP metadata endpoint", async () => {
-      spyDnsResolve4.mockResolvedValueOnce(["169.254.169.254"]);
-      spyDnsResolve6.mockRejectedValueOnce(new Error("ENOTFOUND"));
-
-      const result = await isSafeUrlWithDNS("http://metadata.google.internal/");
-      expect(result).toBe(false);
-    });
-
-    it("should block custom domain pointing to internal network", async () => {
-      spyDnsResolve4.mockResolvedValueOnce(["10.0.0.1"]);
-      spyDnsResolve6.mockRejectedValueOnce(new Error("ENOTFOUND"));
-
-      const result = await isSafeUrlWithDNS("http://internal.attacker.com");
-      expect(result).toBe(false);
     });
   });
 });

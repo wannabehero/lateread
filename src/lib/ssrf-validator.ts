@@ -4,6 +4,7 @@
  */
 
 import dns from "node:dns/promises";
+import { ExternalServiceError } from "./errors";
 
 const BLOCKED_HOSTS = new Set([
   "localhost",
@@ -166,16 +167,6 @@ export function isPrivateIPv6(hostname: string): boolean {
 // DNS-based SSRF Protection
 // =============================================================================
 
-/**
- * Timeout error for DNS lookups
- */
-class DNSTimeoutError extends Error {
-  constructor(ms: number) {
-    super(`DNS lookup timeout after ${ms}ms`);
-    this.name = "DNSTimeoutError";
-  }
-}
-
 export async function isSafeUrlWithDNS(url: string): Promise<boolean> {
   // Fast path: Use existing URL-based validation
   if (!isSafeUrl(url)) {
@@ -214,12 +205,6 @@ export async function isSafeUrlWithDNS(url: string): Promise<boolean> {
 
     return true;
   } catch (error) {
-    // DNS lookup failed (NXDOMAIN, timeout, network error, etc.)
-    if (error instanceof DNSTimeoutError) {
-      console.warn(`SSRF: DNS timeout for ${hostname}`);
-      return false;
-    }
-
     if (error instanceof Error) {
       console.warn(`SSRF: DNS error for ${hostname}: ${error.message}`);
     }
@@ -305,6 +290,6 @@ function isPrivateIP(ip: string): boolean {
  */
 function createTimeout(ms: number): Promise<never> {
   return new Promise((_, reject) => {
-    setTimeout(() => reject(new DNSTimeoutError(ms)), ms);
+    setTimeout(() => reject(new ExternalServiceError("DNS Timeout")), ms);
   });
 }

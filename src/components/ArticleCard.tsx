@@ -48,6 +48,20 @@ export const ArticleCard: FC<ArticleCardProps> = ({
           <div class="article-actions">
             <button
               type="button"
+              onclick="shareArticle(this)"
+              data-url={article.url}
+              data-title={article.title || ""}
+              class="share-button"
+              title="Share"
+            >
+              <img
+                src="/public/assets/share.svg"
+                alt="Share"
+                class="button-icon"
+              />
+            </button>
+            <button
+              type="button"
               hx-post={`/api/articles/${article.id}/archive`}
               hx-swap="delete"
               hx-target="closest .article-card"

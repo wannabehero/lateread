@@ -24,6 +24,18 @@ export const AuthPolling: FC<AuthPollingProps> = ({
       hx-swap="outerHTML"
     >
       <p aria-busy="true">{message}</p>
+      <p>
+        <button
+          type="button"
+          hx-get={`/auth/check/${token}`}
+          hx-target="#auth-polling"
+          hx-swap="outerHTML"
+        >
+          Click here if you completed the login
+        </button>
+        <br />
+        <small>Or wait for automatic verification</small>
+      </p>
     </div>
   );
 };

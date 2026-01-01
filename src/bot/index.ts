@@ -1,9 +1,12 @@
 import { Bot } from "grammy";
 import { config } from "../lib/config";
-import { logger } from "../lib/logger";
+import { defaultLogger } from "../lib/logger";
 import { registerHandlers } from "./handlers";
+import type { BotContext } from "./types";
 
-export const bot = new Bot(config.TELEGRAM_BOT_TOKEN);
+export const bot = new Bot<BotContext>(config.TELEGRAM_BOT_TOKEN);
+
+const logger = defaultLogger.child({ module: "bot" });
 
 /**
  * Start bot polling

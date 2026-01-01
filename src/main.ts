@@ -3,11 +3,11 @@ import { config } from "./lib/config";
 
 import { Hono } from "hono";
 import { serveStatic } from "hono/bun";
-import { contextStorage } from "hono/context-storage";
 import { requestId } from "hono/request-id";
 import { startBot, stopBot } from "./bot/index";
 import { startCrons } from "./cron";
 import { runMigrations } from "./lib/db";
+import { defaultLogger } from "./lib/logger";
 import { errorHandler } from "./middleware/errorHandler";
 import { loggerMiddleware } from "./middleware/logger";
 import apiRoutes from "./routes/api";
@@ -18,13 +18,14 @@ import homeRoutes from "./routes/home";
 import searchRoutes from "./routes/search";
 import type { AppContext } from "./types/context";
 
+const logger = defaultLogger.child({ module: "main" });
+
 // Run database migrations
 runMigrations();
 
 // Create Hono app with typed context
 const app = new Hono<AppContext>();
 
-app.use("*", contextStorage());
 app.use("*", requestId());
 app.use("*", loggerMiddleware);
 
@@ -43,7 +44,7 @@ app.onError(errorHandler);
 
 // Setup and start Telegram bot
 startBot().catch((error) => {
-  console.error("Failed to start bot:", error);
+  logger.error("Failed to start bot", { error });
   process.exit(1);
 });
 
@@ -54,15 +55,15 @@ const server = Bun.serve({
   idleTimeout: 120, // 2 minutes for long-running LLM requests
 });
 
-console.log(`Server running at http://0.0.0.0:${config.PORT}`);
-console.log(`Telegram bot: @${config.BOT_USERNAME}`);
+logger.info(`Server running at http://0.0.0.0:${config.PORT}`);
+logger.info(`Telegram bot: @${config.BOT_USERNAME}`);
 
 // Start cron jobs
 startCrons();
 
 // Graceful shutdown
 process.on("SIGINT", async () => {
-  console.log("\nShutting down...");
+  logger.info("Shutting down...");
   await stopBot();
   server.stop();
   process.exit(0);

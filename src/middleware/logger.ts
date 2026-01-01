@@ -1,5 +1,5 @@
 import type { Context, Next } from "hono";
-import { logger } from "../lib/logger";
+import { defaultLogger } from "../lib/logger";
 import type { AppContext } from "../types/context";
 
 /**
@@ -40,7 +40,7 @@ export async function loggerMiddleware(
   const reqId = c.get("requestId");
 
   // Create child logger with requestId
-  const requestLogger = logger.child({ reqId });
+  const requestLogger = defaultLogger.child({ module: "app", reqId });
 
   // Store in context for handlers to access via getLogger(c)
   c.set("logger", requestLogger);

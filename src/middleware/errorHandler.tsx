@@ -62,19 +62,18 @@ export const errorHandler: ErrorHandler = (
   // Log error with context
   const userId = c.get("userId");
   const logContext = {
-    error: error.name,
-    message: error.message,
     statusCode: error.statusCode,
     path: c.req.path,
     method: c.req.method,
     userId,
+    error,
     ...(error.context || {}),
   };
 
   if (error.statusCode >= 500) {
-    console.error("Unexpected error:", logContext, err);
+    c.var.logger.error("Unexpected error", logContext);
   } else {
-    console.warn("Operational error:", logContext);
+    c.var.logger.warn("Operational error", logContext);
   }
 
   // Return appropriate response based on request type

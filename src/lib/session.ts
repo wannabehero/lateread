@@ -3,6 +3,7 @@ import { deleteCookie, getCookie, setCookie } from "hono/cookie";
 import { z } from "zod";
 import { config } from "./config";
 import { UnauthorizedError } from "./errors";
+import type { AppContext } from "../types/context";
 
 const SESSION_COOKIE_NAME = "lateread_session";
 const SESSION_MAX_AGE = config.SESSION_MAX_AGE_DAYS * 24 * 60 * 60; // Convert to seconds
@@ -36,7 +37,7 @@ type SessionData = z.infer<typeof SessionDataSchema>;
  * Get session data from request
  * Returns null if session is invalid or expired
  */
-export function getSession(c: Context): SessionData | null {
+export function getSession(c: Context<AppContext>): SessionData | null {
   const sessionCookie = getCookie(c, SESSION_COOKIE_NAME);
 
   if (!sessionCookie) {
@@ -48,7 +49,7 @@ export function getSession(c: Context): SessionData | null {
     const data = verifyAndParse(sessionCookie);
     return data;
   } catch (error) {
-    console.error("Invalid session cookie:", error);
+    c.var.logger.error("Invalid session cookie", { error });
     return null;
   }
 }
@@ -58,7 +59,7 @@ export function getSession(c: Context): SessionData | null {
  * Automatically adds iat (issued at) and exp (expiration) timestamps
  */
 export function setSession(
-  c: Context,
+  c: Context<AppContext>,
   data: Omit<SessionData, "iat" | "exp">,
 ): void {
   const now = Math.floor(Date.now() / 1000);
@@ -82,7 +83,7 @@ export function setSession(
 /**
  * Clear session from response
  */
-export function clearSession(c: Context): void {
+export function clearSession(c: Context<AppContext>): void {
   deleteCookie(c, SESSION_COOKIE_NAME, {
     path: "/",
   });

@@ -34,7 +34,7 @@ healthRoutes.get("/health/db", async (c) => {
       timestamp: Date.now(),
     });
   } catch (error) {
-    console.error("Database health check failed:", error);
+    c.var.logger.error("Database health check failed", { error });
 
     return c.json(
       {
@@ -98,7 +98,7 @@ healthRoutes.get("/heapsnapshot", requireAuth("json-401"), async (c) => {
       },
     });
   } catch (error) {
-    console.error("Heap snapshot generation failed:", error);
+    c.var.logger.error("Heap snapshot generation failed", { error });
 
     return c.json(
       {

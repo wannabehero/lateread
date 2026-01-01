@@ -6,16 +6,26 @@ import { spawnArticleWorker } from "../lib/worker";
 import { createArticle } from "../services/articles.service";
 import { getTelegramUserByTelegramId } from "../services/telegram-users.service";
 import { extractMessageMetadata, extractUrl } from "./helpers";
+import type { BotContext } from "./types";
+import { defaultLogger } from "../lib/logger";
 
 /**
  * Register all bot command handlers
  */
-export function registerHandlers(bot: Bot) {
+export function registerHandlers(bot: Bot<BotContext>) {
+  bot.use(async (ctx, next) => {
+    ctx.logger = defaultLogger.child({
+      chat: ctx.chatId,
+      user: ctx.from?.id,
+      messageId: ctx.message?.message_id,
+      module: "bot",
+    });
+    await next();
+  });
+
   // /start command - welcome message or handle deep link login
   bot.command("start", async (ctx) => {
     const startPayload = ctx.match;
-
-    console.log("startPayload:", startPayload);
 
     // Check if this is a login deep link
     if (startPayload?.startsWith("login_")) {
@@ -92,15 +102,17 @@ export function registerHandlers(bot: Bot) {
     // Get text or caption from message
     const messageText = getMessageText(ctx);
 
-    console.log(
-      `[Bot] Received message from user ${ctx.from?.id}: "${messageText.substring(0, 100)}..."`,
-    );
+    ctx.logger.info("Received message", {
+      snippet: messageText.substring(0, 64),
+      user: telegramUser.userId,
+    });
 
     // Check if message is long enough to treat as article
     if (messageText.length >= config.LONG_MESSAGE_THRESHOLD) {
-      console.log(
-        `[Bot] Message length ${messageText.length} >= threshold ${config.LONG_MESSAGE_THRESHOLD}, treating as article`,
-      );
+      ctx.logger.info("Message length >= threshold treating as article", {
+        length: messageText.length,
+        threshold: config.LONG_MESSAGE_THRESHOLD,
+      });
       await handleLongMessage(ctx, telegramUser);
       return;
     }
@@ -108,44 +120,40 @@ export function registerHandlers(bot: Bot) {
     const url = extractUrl(messageText);
 
     if (!url) {
-      console.log("[Bot] No URL found in message, ignoring");
+      ctx.logger.info("No URL found in message, ignoring");
       return;
     }
 
-    console.log(`[Bot] Extracted URL: ${url}`);
-
-    // Create article record
-    console.log(`[Bot] Creating article record for URL: ${url}`);
+    ctx.logger.info("Creating article record for URL", {
+      url,
+    });
     const article = await createArticle({
       userId: telegramUser.userId,
       url: url,
     });
 
-    console.log(`[Bot] Article created with ID: ${article.id}`);
+    ctx.logger.info("Article created", { article: article.id });
 
-    // Process with worker
     await processArticleWithWorker(ctx, article.id);
   });
-
-  console.log("Bot handlers registered");
 }
 
 /**
  * Authenticate a Telegram user from context
  * Returns telegramUser if authenticated, null otherwise (sends error message to user)
  */
-async function authenticateTelegramUser(ctx: Context) {
+async function authenticateTelegramUser(ctx: BotContext) {
   const telegramId = ctx.from?.id.toString();
 
   if (!telegramId) {
-    console.log("[Bot] No telegram ID found, ignoring");
+    ctx.logger.info("No telegram ID found, ignoring");
     return null;
   }
 
   const telegramUser = await getTelegramUserByTelegramId(telegramId);
 
   if (!telegramUser) {
-    console.log(`[Bot] User ${telegramId} not authenticated`);
+    ctx.logger.info("User not authenticated", { telegramId });
     await ctx.reply(
       "Please log in first at the web app to start saving articles.\n\n" +
         "Once you're logged in, send me any URL or long message and I'll save it for you.\n\n" +
@@ -154,9 +162,10 @@ async function authenticateTelegramUser(ctx: Context) {
     return null;
   }
 
-  console.log(
-    `[Bot] User authenticated: ${telegramUser.userId} (telegram: ${telegramId})`,
-  );
+  ctx.logger.info("User authenticated", {
+    user: telegramUser.userId,
+    telegramId,
+  });
 
   return telegramUser;
 }
@@ -180,27 +189,25 @@ function getMessageText(ctx: Context): string {
  * Process article with worker and reaction callbacks
  */
 async function processArticleWithWorker(
-  ctx: Context,
+  ctx: BotContext,
   articleId: string,
 ): Promise<void> {
-  // React with eyes emoji
-  try {
-    await ctx.react("👀");
-    console.log(`[Bot] Added 👀 reaction to message`);
-  } catch (error) {
-    console.error("[Bot] Failed to add reaction:", error);
-  }
-
   // Spawn worker (non-blocking)
   if (!ctx.chat || !ctx.message) {
-    console.log("[Bot] No chat or message found for worker callbacks");
+    ctx.logger.info("No chat or message found for worker callbacks");
     return;
+  }
+
+  try {
+    await ctx.react("👀");
+  } catch (error) {
+    ctx.logger.error("Failed to add reaction", { error });
   }
 
   const chatId = ctx.chat.id;
   const messageId = ctx.message.message_id;
 
-  console.log(`[Bot] Spawning worker for article ${articleId}`);
+  ctx.logger.info("Spawning worker for article", { article: articleId });
   spawnArticleWorker({
     articleId,
     onSuccess: async () => {
@@ -208,8 +215,10 @@ async function processArticleWithWorker(
         await ctx.api.setMessageReaction(chatId, messageId, [
           { type: "emoji", emoji: "👍" },
         ]);
-      } catch (err) {
-        console.error("Failed to update Telegram reaction:", err);
+      } catch (error) {
+        ctx.logger.error("Failed to update Telegram reaction", {
+          error,
+        });
       }
     },
     onFailure: async () => {
@@ -217,8 +226,10 @@ async function processArticleWithWorker(
         await ctx.api.setMessageReaction(chatId, messageId, [
           { type: "emoji", emoji: "👎" },
         ]);
-      } catch (err) {
-        console.error("Failed to update Telegram reaction:", err);
+      } catch (error) {
+        ctx.logger.error("Failed to update Telegram reaction", {
+          error,
+        });
       }
     },
   });
@@ -228,23 +239,25 @@ async function processArticleWithWorker(
  * Handle long Telegram messages as articles
  */
 async function handleLongMessage(
-  ctx: Context,
+  ctx: BotContext,
   telegramUser: { userId: string },
 ) {
   // Extract metadata from message
   const metadata = await extractMessageMetadata(ctx);
 
   if (!metadata) {
-    console.log("[Bot] Failed to extract message metadata");
+    ctx.logger.error("Failed to extract message metadata");
     return;
   }
 
   const { title, description, url, siteName, htmlContent } = metadata;
 
-  console.log(`[Bot] Processing long message: title="${title}", url="${url}"`);
+  ctx.logger.info("Processing long message", {
+    title,
+    url,
+  });
 
-  // Create article record
-  console.log(`[Bot] Creating article record for long message`);
+  ctx.logger.info("Creating article record for long message");
   const article = await createArticle({
     userId: telegramUser.userId,
     url: url,
@@ -253,17 +266,17 @@ async function handleLongMessage(
     siteName: siteName,
   });
 
-  console.log(`[Bot] Article created with ID: ${article.id}`);
+  ctx.logger.info("Article created with ID", { article: article.id });
 
   // Cache HTML content immediately
   try {
     await contentCache.set(telegramUser.userId, article.id, htmlContent);
-    console.log(`[Bot] Content cached for article ${article.id}`);
+    ctx.logger.info("Content cached for article", { article: article.id });
   } catch (error) {
-    console.error(
-      `[Bot] Failed to cache content for article ${article.id}:`,
+    ctx.logger.error("Failed to cache content for article", {
       error,
-    );
+      article: article.id,
+    });
     // Continue anyway - worker will retry if needed
   }
 
@@ -274,7 +287,7 @@ async function handleLongMessage(
 /**
  * Handle login authentication flow
  */
-async function handleLogin(ctx: Context, token: string) {
+async function handleLogin(ctx: BotContext, token: string) {
   try {
     const telegramId = ctx.from?.id.toString();
     const username = ctx.from?.username || null;
@@ -318,7 +331,7 @@ async function handleLogin(ctx: Context, token: string) {
       },
     );
   } catch (error) {
-    console.error("Login error:", error);
+    ctx.logger.error("Login error", { error });
     await ctx.reply(
       "An error occurred during login. Please try again.\n\n" +
         "If the problem persists, please contact support at @quiker.",

@@ -4,6 +4,9 @@ import {
   SUMMARIZATION_SYSTEM_PROMPT,
   TAG_EXTRACTION_SYSTEM_PROMPT,
 } from "./llm-prompts";
+import { defaultLogger } from "./logger";
+
+const logger = defaultLogger.child({ module: "llm" });
 
 export interface TagExtractionResult {
   tags: string[];
@@ -33,14 +36,14 @@ export function extractJsonFromResponse<T>(
   const jsonMatch = responseText.match(/\{[\s\S]*\}/);
 
   if (!jsonMatch) {
-    console.error("No JSON found in LLM response:", responseText);
+    logger.warn("No JSON found in LLM response", { responseText });
     return fallback;
   }
 
   try {
     return JSON.parse(jsonMatch[0]) as T;
   } catch (error) {
-    console.error("Failed to parse JSON from LLM response:", error);
+    logger.error("Failed to parse JSON from LLM response", { error });
     return fallback;
   }
 }
@@ -89,7 +92,7 @@ ${truncatedContent}`;
       // Extract JSON from response
       const firstBlock = message.content[0];
       if (!firstBlock || firstBlock.type !== "text") {
-        console.error("Unexpected response format from LLM");
+        logger.error("Unexpected response format from LLM");
         return { tags: [], language: "en", confidence: 0 };
       }
 
@@ -106,7 +109,7 @@ ${truncatedContent}`;
         language: result.language.toLowerCase(),
       };
     } catch (error) {
-      console.error("Claude tag extraction failed:", error);
+      logger.error("Claude tag extraction failed", { error });
       return { tags: [], language: "en", confidence: 0 };
     }
   }
@@ -142,7 +145,7 @@ ${truncatedContent}`;
       // Extract JSON from response
       const firstBlock = message.content[0];
       if (!firstBlock || firstBlock.type !== "text") {
-        console.error("Unexpected response format from LLM");
+        logger.warn("Unexpected response format from LLM");
         throw new Error("Failed to generate summary");
       }
 
@@ -159,7 +162,7 @@ ${truncatedContent}`;
 
       return result;
     } catch (error) {
-      console.error("Claude summarization failed:", error);
+      logger.error("Claude summarization failed", { error });
       throw new Error("Failed to generate summary");
     }
   }

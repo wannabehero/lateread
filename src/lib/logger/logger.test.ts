@@ -1,5 +1,5 @@
 import { afterEach, describe, expect, it, mock, spyOn } from "bun:test";
-import { createLogger, getLogger, logger } from "./logger";
+import { createLogger, getLogger, defaultLogger as logger } from ".";
 
 describe("logger", () => {
   const spyLog = spyOn(console, "log").mockImplementation(() => {});
@@ -171,7 +171,7 @@ describe("logger", () => {
 
   describe("child loggers", () => {
     it("should create child logger with merged context", () => {
-      const parentLogger = createLogger({ service: "articles" });
+      const parentLogger = createLogger({ module: "articles" });
       const childLogger = parentLogger.child({ reqId: "req-123" });
 
       childLogger.info("Processing request");
@@ -179,7 +179,7 @@ describe("logger", () => {
       const output = spyLog.mock.calls[0]?.[0];
       const parsed = JSON.parse(output);
 
-      expect(parsed.service).toBe("articles");
+      expect(parsed.module).toBe("articles");
       expect(parsed.reqId).toBe("req-123");
       expect(parsed.message).toBe("Processing request");
     });
@@ -209,7 +209,7 @@ describe("logger", () => {
     });
 
     it("should support multiple levels of child loggers", () => {
-      const level1 = createLogger({ service: "api" });
+      const level1 = createLogger({ module: "api" });
       const level2 = level1.child({ reqId: "req-123" });
       const level3 = level2.child({ operation: "fetch" });
 
@@ -218,14 +218,14 @@ describe("logger", () => {
       const output = spyLog.mock.calls[0]?.[0];
       const parsed = JSON.parse(output);
 
-      expect(parsed.service).toBe("api");
+      expect(parsed.module).toBe("api");
       expect(parsed.reqId).toBe("req-123");
       expect(parsed.operation).toBe("fetch");
       expect(parsed.userId).toBe("user-789");
     });
 
     it("should isolate child logger contexts", () => {
-      const parent = createLogger({ service: "api" });
+      const parent = createLogger({ module: "api" });
       const child1 = parent.child({ reqId: "req-1" });
       const child2 = parent.child({ reqId: "req-2" });
 
@@ -239,12 +239,12 @@ describe("logger", () => {
 
       expect(parsed1.reqId).toBe("req-1");
       expect(parsed2.reqId).toBe("req-2");
-      expect(parsed1.service).toBe("api");
-      expect(parsed2.service).toBe("api");
+      expect(parsed1.module).toBe("api");
+      expect(parsed2.module).toBe("api");
     });
 
     it("should preserve parent context when child adds new fields", () => {
-      const parent = createLogger({ service: "api", version: "1.0" });
+      const parent = createLogger({ module: "api", version: "1.0" });
       const child = parent.child({ reqId: "req-123" });
 
       child.info("Test message");
@@ -252,7 +252,7 @@ describe("logger", () => {
       const output = spyLog.mock.calls[0]?.[0];
       const parsed = JSON.parse(output);
 
-      expect(parsed.service).toBe("api");
+      expect(parsed.module).toBe("api");
       expect(parsed.version).toBe("1.0");
       expect(parsed.reqId).toBe("req-123");
     });

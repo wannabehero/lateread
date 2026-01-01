@@ -5,6 +5,9 @@
 
 import dns from "node:dns/promises";
 import { ExternalServiceError } from "./errors";
+import { defaultLogger } from "./logger";
+
+const logger = defaultLogger.child({ module: "ssrf-validator" });
 
 const BLOCKED_HOSTS = new Set([
   "localhost",
@@ -198,7 +201,10 @@ export async function isSafeUrlWithDNS(url: string): Promise<boolean> {
     // Validate ALL resolved IP addresses
     for (const ip of resolvedIPs) {
       if (isPrivateIP(ip)) {
-        console.warn(`SSRF: Domain ${hostname} resolves to private IP ${ip}`);
+        logger.warn("Domain resolves to private IP", {
+          hostname,
+          ip,
+        });
         return false;
       }
     }
@@ -206,7 +212,10 @@ export async function isSafeUrlWithDNS(url: string): Promise<boolean> {
     return true;
   } catch (error) {
     if (error instanceof Error) {
-      console.warn(`SSRF: DNS error for ${hostname}: ${error.message}`);
+      logger.warn("DNS error", {
+        error,
+        hostname,
+      });
     }
     return false;
   }
@@ -223,6 +232,12 @@ async function resolveDNS(hostname: string): Promise<string[]> {
     dns.resolve4(hostname),
     dns.resolve6(hostname),
   ]);
+
+  logger.debug("Resolved DNS", {
+    hostname,
+    ipv4: ipv4Results,
+    ipv6: ipv6Results,
+  });
 
   // Collect IPv4 addresses
   if (ipv4Results.status === "fulfilled") {

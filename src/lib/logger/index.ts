@@ -1,110 +1,14 @@
 import { getContext } from "hono/context-storage";
-import type { AppContext } from "../types/context";
+import type { AppContext } from "../../types/context";
+import { formatConsoleLog } from "./console";
+import { formatError } from "./error";
 import { getServiceMetadata } from "./metadata";
+import type { BaseContext, Logger, LogLevel, LogMeta } from "./types";
+
+export type { Logger };
 
 const isProd = process.env.NODE_ENV === "production";
-
-/**
- * Log levels in order of severity
- */
-type LogLevel = "debug" | "info" | "warn" | "error";
-
-/**
- * Metadata object that can be passed to logger methods.
- * For warn/error levels, include an `error` property with the unknown error object.
- */
-interface LogMeta {
-  [key: string]: unknown;
-  error?: unknown;
-}
-
-/**
- * Formatted error object with extracted properties
- */
-interface ErrorObject {
-  type: string;
-  message: string;
-  stack?: string;
-}
-
-/**
- * Formats an unknown error into a structured error object.
- * Extracts type (constructor name), message, and stack trace if available.
- */
-function formatError(error: unknown): ErrorObject {
-  if (error instanceof Error) {
-    return {
-      type: error.constructor.name,
-      message: error.message,
-      stack: error.stack,
-    };
-  }
-
-  // Handle non-Error objects
-  if (typeof error === "object" && error !== null) {
-    const err = error as Record<string, unknown>;
-    return {
-      type: err.name ? String(err.name) : "Unknown",
-      message: err.message ? String(err.message) : JSON.stringify(error),
-      stack: err.stack ? String(err.stack) : undefined,
-    };
-  }
-
-  // Primitive or null
-  return {
-    type: typeof error,
-    message: String(error),
-  };
-}
-
-/**
- * Logger interface with support for child loggers.
- * Child loggers inherit context from parent and merge with per-call metadata.
- */
-export interface Logger {
-  /**
-   * Base context that is automatically included in all log messages.
-   * Merged with per-call metadata (call metadata takes priority).
-   */
-  readonly context: Record<string, unknown>;
-
-  /**
-   * Creates a child logger with additional context.
-   * Child context is merged with parent context and included in all logs.
-   *
-   * @param additionalContext - Context to add to child logger
-   * @returns New logger instance with merged context
-   *
-   * @example
-   * const rootLogger = createLogger();
-   * const reqLogger = rootLogger.child({ reqId: "abc-123" });
-   * reqLogger.info("Request received"); // Includes reqId in output
-   */
-  child(additionalContext: Record<string, unknown>): Logger;
-
-  /**
-   * Debug level - detailed information for diagnosing issues.
-   * Automatically filtered out in production.
-   */
-  debug(message: string, meta?: LogMeta): void;
-
-  /**
-   * Info level - general informational messages about application flow.
-   */
-  info(message: string, meta?: LogMeta): void;
-
-  /**
-   * Warn level - warning messages for potentially harmful situations.
-   * Consider including an `error` property in meta if applicable.
-   */
-  warn(message: string, meta?: LogMeta): void;
-
-  /**
-   * Error level - error events that might still allow the application to continue.
-   * Include an `error` property in meta with the error object.
-   */
-  error(message: string, meta?: LogMeta): void;
-}
+const isTest = process.env.NODE_ENV === "test";
 
 /**
  * Creates a logger instance with optional base context.
@@ -123,10 +27,8 @@ export interface Logger {
  * // Child logger with request context
  * const reqLogger = logger.child({ reqId: "abc-123" });
  */
-export function createLogger(
-  baseContext: Record<string, unknown> = {},
-): Logger {
-  const metadata = getServiceMetadata();
+export function createLogger(baseContext: BaseContext = {}): Logger {
+  const serviceMetadata = getServiceMetadata();
 
   /**
    * Internal log function that merges base context with per-call metadata.
@@ -146,12 +48,10 @@ export function createLogger(
       level,
       message,
       timestamp: new Date().toISOString(),
-    };
 
-    // Merge base context first
-    Object.assign(logObject, baseContext, {
-      metadata,
-    });
+      ...baseContext,
+      service: serviceMetadata,
+    };
 
     // Process and merge per-call metadata (overrides base context)
     if (meta) {
@@ -166,10 +66,10 @@ export function createLogger(
       Object.assign(logObject, rest);
     }
 
-    // Format output based on environment
-    const output = isProd
-      ? JSON.stringify(logObject) // Single-line JSON for production
-      : JSON.stringify(logObject, null, 2); // Pretty JSON for development
+    const output =
+      isProd || isTest
+        ? JSON.stringify(logObject) // Single-line JSON for production and test
+        : formatConsoleLog(logObject); // Colorful log for development
 
     // Use appropriate console method
     if (level === "error" || level === "warn") {
@@ -212,7 +112,7 @@ export function createLogger(
  * - For errors, pass the error object in meta: { error: err }
  * - Debug logs are automatically filtered out in production
  */
-export const logger = createLogger();
+export const defaultLogger = createLogger();
 
 /**
  * Gets the logger instance from Hono context.
@@ -248,16 +148,16 @@ export function getLogger(c?: {
 }): Logger {
   // If context provided, use it
   if (c) {
-    return c.get("logger") ?? logger;
+    return c.get("logger") ?? defaultLogger;
   }
 
   // Try to get context from context storage
   // Note: This requires contextStorage middleware to be enabled
   try {
     const ctx = getContext<AppContext>();
-    return ctx.get("logger") ?? logger;
+    return ctx.get("logger") ?? defaultLogger;
   } catch {
     // Context storage not available or outside request context
-    return logger;
+    return defaultLogger;
   }
 }

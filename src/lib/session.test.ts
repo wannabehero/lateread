@@ -10,6 +10,7 @@ import {
 } from "bun:test";
 import type { Context } from "hono";
 import { clearSession, getSession, setSession } from "./session";
+import { createNoopLogger } from "../../test/fixtures";
 
 let mockCookies: Record<
   string,
@@ -52,6 +53,9 @@ function createMockContext(): Context {
     },
     header: () => {},
     set: () => {},
+    var: {
+      logger: createNoopLogger(),
+    },
   } as unknown as Context;
 }
 

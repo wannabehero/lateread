@@ -1,6 +1,7 @@
 import { randomUUID } from "node:crypto";
 import type { drizzle } from "drizzle-orm/bun-sqlite";
 import * as schema from "../src/db/schema";
+import type { Logger } from "../src/lib/logger/types";
 
 type DB = ReturnType<typeof drizzle<typeof schema>>;
 /**
@@ -122,4 +123,15 @@ export async function addTagToArticle(
   tagId: string,
 ): Promise<void> {
   await db.insert(schema.articleTags).values({ articleId, tagId });
+}
+
+export function createNoopLogger(): Logger {
+  return {
+    debug: () => {},
+    info: () => {},
+    warn: () => {},
+    error: () => {},
+    child: () => createNoopLogger(),
+    context: {},
+  };
 }

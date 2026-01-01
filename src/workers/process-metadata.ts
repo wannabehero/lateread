@@ -1,80 +1,75 @@
-import { and, eq, sql } from "drizzle-orm";
-import { articles, articleTags, tags } from "../db/schema";
+import type { Article } from "../db/types";
 import { config } from "../lib/config";
 import { contentCache } from "../lib/content-cache";
-import { db } from "../lib/db";
 import { getLLMProvider } from "../lib/llm";
+import { defaultLogger, type Logger } from "../lib/logger";
 import { extractCleanContent } from "../lib/readability";
 import { withTimeout } from "../lib/timeout";
+import {
+  getArticleById,
+  updateArticleCompleted,
+  updateArticleProcessing,
+} from "../services/articles.service";
+import { getOrCreateTag, getUserTags } from "../services/tags.service";
 
 self.onmessage = async (event: MessageEvent) => {
   const { articleId } = event.data;
-  console.log(`[Worker ${articleId}] Started processing`);
+
+  const logger = defaultLogger.child({
+    module: "process-metadata",
+    article: articleId,
+  });
+
+  logger.info("Worker started processing");
 
   try {
     // Step 1: Fetch article from database
-    console.log(`[Worker ${articleId}] Fetching article from database`);
-    const [article] = await db
-      .select()
-      .from(articles)
-      .where(eq(articles.id, articleId))
-      .limit(1);
-
-    if (!article) {
-      throw new Error(`Article not found: ${articleId}`);
-    }
-
-    console.log(`[Worker ${articleId}] Article found: ${article.url}`);
+    logger.info("Fetching article from database");
+    const article = await getArticleById(articleId);
+    logger.info("Article found", { article: articleId, url: article.url });
 
     // Early exit if already completed
     if (article.status === "completed") {
-      console.log(`[Worker ${articleId}] Article already completed, exiting`);
+      logger.info("Article already completed, exiting");
       self.postMessage({ success: true, articleId });
       return;
     }
 
     // Step 2: Update status to 'processing', increment attempts
-    console.log(
-      `[Worker ${articleId}] Updating status to processing (attempt ${article.processingAttempts + 1})`,
-    );
-    await db
-      .update(articles)
-      .set({
-        status: "processing",
-        processingAttempts: article.processingAttempts + 1,
-        updatedAt: new Date(),
-      })
-      .where(eq(articles.id, articleId));
+    logger.info("Updating status to processing", {
+      attempt: article.processingAttempts + 1,
+    });
+    await updateArticleProcessing({
+      id: articleId,
+      status: "processing",
+      processingAttempts: article.processingAttempts + 1,
+    });
 
     // Process article with timeout
     const timeoutMs = config.PROCESSING_TIMEOUT_SECONDS * 1000;
-    console.log(
-      `[Worker ${articleId}] Starting article processing with ${timeoutMs}ms timeout`,
+    logger.info("Starting article processing with timeout", {
+      timeoutMs,
+    });
+    await withTimeout(
+      processArticle(article, logger),
+      timeoutMs,
+      "Processing timeout",
     );
-    await withTimeout(processArticle(article), timeoutMs, "Processing timeout");
 
     // Step 9: Post success message
-    console.log(`[Worker ${articleId}] Processing completed successfully`);
     self.postMessage({ success: true, articleId });
   } catch (error) {
     // Error handling
-    console.error(`[Worker ${articleId}] Processing failed:`, error);
+    logger.error("Processing failed", { error });
 
     const errorMessage =
       error instanceof Error ? error.message : "Unknown error";
 
-    try {
-      await db
-        .update(articles)
-        .set({
-          status: "failed",
-          lastError: errorMessage,
-          updatedAt: new Date(),
-        })
-        .where(eq(articles.id, articleId));
-    } catch (dbError) {
-      console.error("Failed to update article status:", dbError);
-    }
+    await updateArticleProcessing({
+      id: articleId,
+      status: "failed",
+      lastError: errorMessage,
+    });
 
     self.postMessage({
       success: false,
@@ -84,7 +79,7 @@ self.onmessage = async (event: MessageEvent) => {
   }
 };
 
-async function processArticle(article: typeof articles.$inferSelect) {
+async function processArticle(article: Article, logger: Logger) {
   // Step 3: Check if content is already cached (for Telegram long messages)
   let htmlContent = await contentCache.get(article.userId, article.id);
   let textContent: string;
@@ -96,16 +91,11 @@ async function processArticle(article: typeof articles.$inferSelect) {
   };
 
   if (htmlContent) {
-    // Content already cached (long Telegram message)
-    console.log(
-      `[Worker ${article.id}] Content already cached, skipping fetch`,
-    );
-
     // Extract text from cached HTML for LLM
     textContent = htmlContent.replace(/<[^>]*>/g, " ").replace(/\s+/g, " ");
-    console.log(
-      `[Worker ${article.id}] Extracted text from cached content: ${textContent.length} chars`,
-    );
+    logger.info("Extracted text from cached content", {
+      length: textContent.length,
+    });
 
     // Use existing metadata from article record
     metadata = {
@@ -115,25 +105,26 @@ async function processArticle(article: typeof articles.$inferSelect) {
       siteName: article.siteName,
     };
   } else {
-    // Fetch URL content (regular article)
-    console.log(`[Worker ${article.id}] Fetching content from: ${article.url}`);
+    logger.info("Fetching content", {
+      url: article.url,
+    });
     const extracted = await extractCleanContent(article.url);
 
     if (!extracted.textContent || !extracted.content) {
-      console.error(
-        `[Worker ${article.id}] Failed to extract content from ${article.url}`,
-      );
+      logger.warn("Failed to extract content", {
+        url: article.url,
+      });
       return;
     }
 
-    console.log(
-      `[Worker ${article.id}] Content extracted: ${extracted.textContent.length} chars`,
-    );
-
     // Step 4: Metadata already extracted by readability wrapper
-    console.log(
-      `[Worker ${article.id}] Metadata: title="${extracted.title}", description="${extracted.description?.substring(0, 50)}..."`,
-    );
+    logger.info("Content extracted", {
+      title: extracted.title,
+      description: extracted.description?.substring(0, 32),
+      imageUrl: extracted.imageUrl,
+      siteName: extracted.siteName,
+      length: extracted.textContent.length,
+    });
 
     htmlContent = extracted.content;
     textContent = extracted.textContent;
@@ -146,121 +137,45 @@ async function processArticle(article: typeof articles.$inferSelect) {
   }
 
   // Step 5: Generate tags using LLM
-  console.log(`[Worker ${article.id}] Loading LLM provider`);
   const llmProvider = getLLMProvider();
 
-  // Load user's existing tags
-  console.log(`[Worker ${article.id}] Loading user's existing tags`);
-  const existingTagRecords = await db
-    .select()
-    .from(tags)
-    .where(eq(tags.userId, article.userId));
+  const existingTags = (await getUserTags(article.userId)).map((t) => t.name);
+  logger.info("Found existing tags", {
+    count: existingTags.length,
+  });
 
-  const existingTagNames = existingTagRecords.map((t) => t.name);
-  console.log(
-    `[Worker ${article.id}] Found ${existingTagNames.length} existing tags`,
-  );
-
-  // Call LLM to extract tags and detect language
-  console.log(
-    `[Worker ${article.id}] Calling LLM for tag extraction and language detection`,
-  );
+  logger.info("Calling LLM for tag extraction and language detection");
   const { tags: extractedTags, language } = await llmProvider.extractTags(
     textContent,
-    existingTagNames,
+    existingTags,
   );
 
-  console.log(
-    `[Worker ${article.id}] LLM extracted ${extractedTags.length} tags: ${extractedTags.join(", ")}, language: ${language}`,
+  logger.info("LLM extracted tags and language", {
+    tags: extractedTags,
+    language,
+  });
+
+  const tagPromises = await Promise.allSettled(
+    extractedTags.map((tag) => getOrCreateTag(tag, article.userId)),
   );
-
-  // Process tags: create new ones or reuse existing
-  console.log(`[Worker ${article.id}] Processing tags`);
-  const tagIds: string[] = [];
-
-  for (const tagName of extractedTags) {
-    const normalizedTagName = tagName.toLowerCase();
-
-    // Check if tag exists (case-insensitive)
-    const [existingTag] = await db
-      .select()
-      .from(tags)
-      .where(
-        and(
-          eq(tags.userId, article.userId),
-          sql`lower(${tags.name}) = ${normalizedTagName}`,
-        ),
-      )
-      .limit(1);
-
-    if (existingTag) {
-      console.log(
-        `[Worker ${article.id}] Reusing existing tag: ${normalizedTagName}`,
-      );
-      tagIds.push(existingTag.id);
-    } else {
-      console.log(
-        `[Worker ${article.id}] Creating new tag: ${normalizedTagName}`,
-      );
-      // Create new tag
-      const [newTag] = await db
-        .insert(tags)
-        .values({
-          userId: article.userId,
-          name: normalizedTagName,
-          autoGenerated: true,
-        })
-        .returning();
-
-      if (newTag) {
-        tagIds.push(newTag.id);
-      }
-    }
-  }
-
-  console.log(`[Worker ${article.id}] Processed ${tagIds.length} tags`);
+  // Ignoring failed promises intentionally
+  const tags = tagPromises
+    .filter((p) => p.status === "fulfilled")
+    .map((p) => p.value);
 
   // Step 6: Cache clean HTML content (if not already cached)
   if (!(await contentCache.exists(article.userId, article.id))) {
-    console.log(`[Worker ${article.id}] Caching content to filesystem`);
     await contentCache.set(article.userId, article.id, htmlContent);
-    console.log(`[Worker ${article.id}] Content cached successfully`);
+    logger.info("Content cached successfully");
   } else {
-    console.log(`[Worker ${article.id}] Content already cached, skipping`);
+    logger.info("Content already cached, skipping");
   }
 
-  // Step 7: Update database in transaction
-  console.log(`[Worker ${article.id}] Updating database (transaction)`);
-  await db.transaction(async (tx) => {
-    // Update article metadata
-    await tx
-      .update(articles)
-      .set({
-        title: metadata.title,
-        description: metadata.description,
-        imageUrl: metadata.imageUrl,
-        siteName: metadata.siteName,
-        language: language,
-        status: "completed",
-        processedAt: new Date(),
-        updatedAt: new Date(),
-        lastError: null,
-      })
-      .where(eq(articles.id, article.id));
-
-    // Delete existing article-tag associations (in case of retry)
-    await tx.delete(articleTags).where(eq(articleTags.articleId, article.id));
-
-    // Insert new article-tag associations
-    if (tagIds.length > 0) {
-      await tx.insert(articleTags).values(
-        tagIds.map((tagId) => ({
-          articleId: article.id,
-          tagId,
-        })),
-      );
-    }
+  // Step 7: Update database
+  await updateArticleCompleted({
+    id: article.id,
+    tags,
+    metadata,
+    language,
   });
-
-  console.log(`[Worker ${article.id}] Database updated successfully`);
 }

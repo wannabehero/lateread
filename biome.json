@@ -17,6 +17,9 @@
     "enabled": true,
     "rules": {
       "recommended": true,
+      "style": {
+        "noUnusedTemplateLiteral": "warn"
+      },
       "a11y": {
         "useMediaCaption": "off"
       }

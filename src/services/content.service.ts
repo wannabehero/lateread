@@ -2,7 +2,10 @@ import { join } from "node:path";
 import { config } from "../lib/config";
 import { contentCache } from "../lib/content-cache";
 import { ExternalServiceError } from "../lib/errors";
+import { defaultLogger } from "../lib/logger";
 import { extractCleanContent } from "../lib/readability";
+
+const logger = defaultLogger.child({ module: "content-service" });
 
 /**
  * Get article content from cache or fetch if missing
@@ -21,7 +24,9 @@ export async function getArticleContent(
   }
 
   // Cache miss - fetch on-demand
-  console.log(`Cache miss for article ${articleId}, fetching on-demand...`);
+  logger.info("Cache miss for article, fetching on-demand...", {
+    article: articleId,
+  });
 
   const extracted = await extractCleanContent(articleUrl);
 
@@ -75,7 +80,7 @@ export async function searchCachedArticleIds(
 
     // Exit code 0 = matches found, 1 = no matches, >1 = error
     if (exitCode > 1) {
-      console.error("ripgrep search failed with exit code:", exitCode);
+      logger.warn("ripgrep search failed with exit code", { exitCode });
       return [];
     }
 
@@ -92,7 +97,7 @@ export async function searchCachedArticleIds(
 
     return articleIds;
   } catch (error) {
-    console.error("Error searching cached content:", error);
+    logger.error("Error searching cached content", { error });
     return [];
   }
 }

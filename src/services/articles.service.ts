@@ -10,7 +10,7 @@ import {
   sql,
 } from "drizzle-orm";
 import { articleSummaries, articles, articleTags, tags } from "../db/schema";
-import type { Article, Tag } from "../db/types";
+import type { Article, ArticleStatus, Tag } from "../db/types";
 import { db } from "../lib/db";
 import { InternalError, NotFoundError } from "../lib/errors";
 import { searchCachedArticleIds } from "./content.service";
@@ -143,12 +143,89 @@ export async function countArticles(
   return result?.count ?? 0;
 }
 
+export async function getArticleById(id: string) {
+  const [article] = await db
+    .select()
+    .from(articles)
+    .where(eq(articles.id, id))
+    .limit(1);
+
+  if (!article) {
+    throw new NotFoundError("Article", id);
+  }
+
+  return article;
+}
+
+export async function updateArticleProcessing({
+  id,
+  status,
+  lastError,
+  processingAttempts,
+}: {
+  id: string;
+  status: ArticleStatus;
+  lastError?: string;
+  processingAttempts?: number;
+}) {
+  await db
+    .update(articles)
+    .set({
+      status,
+      lastError,
+      processingAttempts,
+      updatedAt: new Date(),
+    })
+    .where(eq(articles.id, id));
+}
+
+export async function updateArticleCompleted({
+  id,
+  tags,
+  metadata,
+  language,
+}: {
+  id: string;
+  tags: Tag[];
+  metadata: Pick<Article, "title" | "description" | "imageUrl" | "siteName">;
+  language: string;
+}) {
+  await db.transaction(async (tx) => {
+    await tx
+      .update(articles)
+      .set({
+        title: metadata.title,
+        description: metadata.description,
+        imageUrl: metadata.imageUrl,
+        siteName: metadata.siteName,
+        language: language,
+        status: "completed",
+        processedAt: new Date(),
+        updatedAt: new Date(),
+        lastError: null,
+      })
+      .where(eq(articles.id, id));
+
+    // Delete existing article-tag associations (in case of retry)
+    await tx.delete(articleTags).where(eq(articleTags.articleId, id));
+
+    if (tags.length > 0) {
+      await tx.insert(articleTags).values(
+        tags.map((tag) => ({
+          articleId: id,
+          tagId: tag.id,
+        })),
+      );
+    }
+  });
+}
+
 /**
  * Get a single article by ID with tags
  * Throws error if not found
  */
-export async function getArticleById(
-  articleId: string,
+export async function getArticleWithTagsById(
+  id: string,
   userId: string,
 ): Promise<ArticleWithTags> {
   const [result] = await db
@@ -163,12 +240,12 @@ export async function getArticleById(
     .from(articles)
     .leftJoin(articleTags, eq(articles.id, articleTags.articleId))
     .leftJoin(tags, eq(articleTags.tagId, tags.id))
-    .where(and(eq(articles.id, articleId), eq(articles.userId, userId)))
+    .where(and(eq(articles.id, id), eq(articles.userId, userId)))
     .groupBy(articles.id)
     .limit(1);
 
   if (!result) {
-    throw new NotFoundError("Article", articleId);
+    throw new NotFoundError("Article", id);
   }
 
   return {

@@ -8,7 +8,7 @@ import {
 } from "../../test/fixtures";
 import * as schema from "../db/schema";
 import {
-  getArticleById,
+  getArticleWithTagsById,
   getArticlesWithTags,
   markArticleAsRead,
   toggleArticleArchive,
@@ -140,7 +140,7 @@ describe("articles.service", () => {
       const tag = await createTag(db, user.id, "test");
       await addTagToArticle(db, article.id, tag.id);
 
-      const result = await getArticleById(article.id, user.id);
+      const result = await getArticleWithTagsById(article.id, user.id);
 
       expect(result.id).toBe(article.id);
       expect(result.title).toBe("Test Article");
@@ -153,7 +153,7 @@ describe("articles.service", () => {
 
       let error: Error | null = null;
       try {
-        await getArticleById("non-existent-id", user.id);
+        await getArticleWithTagsById("non-existent-id", user.id);
       } catch (e) {
         error = e as Error;
       }
@@ -169,7 +169,7 @@ describe("articles.service", () => {
 
       let error: Error | null = null;
       try {
-        await getArticleById(article.id, user2.id);
+        await getArticleWithTagsById(article.id, user2.id);
       } catch (e) {
         error = e as Error;
       }
@@ -188,7 +188,7 @@ describe("articles.service", () => {
 
       await markArticleAsRead(article.id, user.id);
 
-      const updated = await getArticleById(article.id, user.id);
+      const updated = await getArticleWithTagsById(article.id, user.id);
       expect(updated.readAt).not.toBeNull();
       expect(updated.readAt).toBeInstanceOf(Date);
     });
@@ -218,7 +218,7 @@ describe("articles.service", () => {
       const newStatus = await toggleArticleArchive(article.id, user.id);
       expect(newStatus).toBe(true);
 
-      const updated = await getArticleById(article.id, user.id);
+      const updated = await getArticleWithTagsById(article.id, user.id);
       expect(updated.archived).toBe(true);
     });
 
@@ -234,7 +234,7 @@ describe("articles.service", () => {
       const unarchivedStatus = await toggleArticleArchive(article.id, user.id);
       expect(unarchivedStatus).toBe(false);
 
-      const updated = await getArticleById(article.id, user.id);
+      const updated = await getArticleWithTagsById(article.id, user.id);
       expect(updated.archived).toBe(false);
     });
 

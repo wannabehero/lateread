@@ -1,4 +1,5 @@
 import { config } from "../lib/config";
+import { defaultLogger } from "../lib/logger";
 import { spawnArticleWorker } from "../lib/worker";
 import {
   getExhaustedArticles,
@@ -6,26 +7,30 @@ import {
   markArticleAsError,
 } from "../services/retry.service";
 
+const logger = defaultLogger.child({ module: "retry" });
+
 /**
  * Retry failed articles that are stuck in pending, processing, or failed states
  * Called by cron every 5 minutes
  */
 export async function retryFailedArticles(): Promise<void> {
-  console.log("[Retry Worker] Starting retry job...");
+  logger.info("Starting retry job...");
 
   try {
     // 1. Get stuck articles that need retry
     const stuckArticles = await getStuckArticles();
 
-    console.log(
-      `[Retry Worker] Found ${stuckArticles.length} articles to retry`,
-    );
+    logger.info("Found articles to retry", {
+      count: stuckArticles.length,
+    });
 
     // 2. Spawn workers for each stuck article
     for (const article of stuckArticles) {
-      console.log(
-        `[Retry Worker] Retrying article ${article.id} (attempt ${article.processingAttempts + 1}/${config.MAX_RETRY_ATTEMPTS})`,
-      );
+      logger.info("Retrying article", {
+        article: article.id,
+        attempt: article.processingAttempts + 1,
+        maxAttempts: config.MAX_RETRY_ATTEMPTS,
+      });
 
       // Spawn worker without callbacks (fire and forget)
       spawnArticleWorker({
@@ -36,23 +41,26 @@ export async function retryFailedArticles(): Promise<void> {
     // 3. Get articles that have exhausted retry attempts
     const exhaustedArticles = await getExhaustedArticles();
 
-    console.log(
-      `[Retry Worker] Found ${exhaustedArticles.length} articles that exhausted retries`,
-    );
+    logger.info("Found articles that exhausted retries", {
+      count: exhaustedArticles.length,
+    });
 
     // 4. Mark exhausted articles as error
     for (const article of exhaustedArticles) {
       await markArticleAsError(article.id, "Max retry attempts exceeded");
 
-      console.log(
-        `[Retry Worker] Marked article ${article.id} as error (${article.processingAttempts} attempts)`,
-      );
+      logger.info("Marked article as error", {
+        article: article.id,
+        attempts: article.processingAttempts,
+        maxAttempts: config.MAX_RETRY_ATTEMPTS,
+      });
     }
 
-    console.log(
-      `[Retry Worker] Retry job complete: ${stuckArticles.length} retried, ${exhaustedArticles.length} marked as error`,
-    );
+    logger.info("Retry job complete", {
+      stuckArticles: stuckArticles.length,
+      exhaustedArticles: exhaustedArticles.length,
+    });
   } catch (error) {
-    console.error("[Retry Worker] Error during retry job:", error);
+    logger.error("Error during retry job", { error });
   }
 }

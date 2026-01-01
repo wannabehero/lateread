@@ -7,7 +7,7 @@ import { ReaderView } from "../components/ReaderView";
 import { requireAuth } from "../middleware/auth";
 import {
   countArticlesByStatus,
-  getArticleById,
+  getArticleWithTagsById,
   getArticlesWithTags,
 } from "../services/articles.service";
 import { getArticleContent } from "../services/content.service";
@@ -79,7 +79,7 @@ articlesRouter.get("/articles/:id", requireAuth("redirect"), async (c) => {
 
   // Get article with tags
   const [article, preferences] = await Promise.all([
-    getArticleById(articleId, userId),
+    getArticleWithTagsById(articleId, userId),
     getReaderPreferences(userId),
   ]);
 

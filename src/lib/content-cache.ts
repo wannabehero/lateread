@@ -1,6 +1,9 @@
 import { mkdir, readdir, stat, unlink } from "node:fs/promises";
 import { join } from "node:path";
 import { config } from "./config";
+import { defaultLogger } from "./logger";
+
+const logger = defaultLogger.child({ module: "content-cache" });
 
 export class ContentCache {
   private cacheDir: string;
@@ -18,8 +21,7 @@ export class ContentCache {
       const userCacheDir = join(this.cacheDir, userId);
       await mkdir(userCacheDir, { recursive: true });
     } catch (error) {
-      // Directory already exists or permission error
-      console.warn(`Failed to create cache directory: ${error}`);
+      logger.error("Failed to create cache directory", { error });
     }
   }
 
@@ -34,7 +36,7 @@ export class ContentCache {
 
       return file.text();
     } catch (error) {
-      console.error(`Failed to read cache for article ${articleId}:`, error);
+      logger.error("Failed to read cache for article", { articleId, error });
       return null;
     }
   }
@@ -46,7 +48,7 @@ export class ContentCache {
       const filePath = this.getFilePath(userId, articleId);
       await Bun.write(filePath, content);
     } catch (error) {
-      console.error(`Failed to write cache for article ${articleId}:`, error);
+      logger.error("Failed to write cache for article", { articleId, error });
       throw error;
     }
   }
@@ -58,10 +60,10 @@ export class ContentCache {
     } catch (error) {
       // Ignore if file doesn't exist
       if ((error as NodeJS.ErrnoException).code !== "ENOENT") {
-        console.error(
-          `Failed to delete cache for article ${articleId}:`,
+        logger.error("Failed to delete cache for article", {
+          articleId,
           error,
-        );
+        });
       }
     }
   }
@@ -123,16 +125,17 @@ export async function cleanupOldCache(): Promise<void> {
             deletedCount++;
           }
         } catch (error) {
-          console.warn(`Failed to process file ${file}:`, error);
+          logger.warn("Failed to process file", { file, error });
         }
       }
     }
 
-    console.log(
-      `Cache cleanup: scanned ${scannedCount} files, deleted ${deletedCount} old files`,
-    );
+    logger.info("Cache cleanup completed", {
+      scannedCount,
+      deletedCount,
+    });
   } catch (error) {
-    console.error("Failed to cleanup old cache:", error);
+    logger.error("Failed to cleanup old cache", { error });
   }
 }
 

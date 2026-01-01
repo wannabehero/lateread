@@ -1,5 +1,5 @@
-import type { Context } from "grammy";
 import { marked } from "marked";
+import type { BotContext } from "./types";
 
 export interface MessageMetadata {
   title: string;
@@ -15,7 +15,7 @@ export interface MessageMetadata {
  * Supports both text messages and media with captions
  */
 export async function extractMessageMetadata(
-  ctx: Context,
+  ctx: BotContext,
 ): Promise<MessageMetadata | null> {
   if (!ctx.message || !ctx.chat) {
     return null;
@@ -91,7 +91,7 @@ export async function extractMessageMetadata(
   try {
     htmlContent = await marked(messageText);
   } catch (error) {
-    console.error("Failed to convert markdown to HTML:", error);
+    ctx.logger.error("Failed to convert markdown to HTML", { error });
     // Fallback: wrap in <p> tags
     htmlContent = `<p>${messageText.replace(/\n/g, "<br>")}</p>`;
   }

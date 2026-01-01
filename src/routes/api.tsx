@@ -9,7 +9,7 @@ import { requireAuth } from "../middleware/auth";
 import {
   countArticles,
   countArticlesByStatus,
-  getArticleById,
+  getArticleWithTagsById,
   markArticleAsRead,
   toggleArticleArchive,
 } from "../services/articles.service";
@@ -39,6 +39,8 @@ api.post("/api/articles/:id/archive", requireAuth("json-401"), async (c) => {
   const userId = c.get("userId");
   const articleId = c.req.param("id");
   const shouldRedirect = c.req.query("redirect") === "true";
+
+  c.var.logger.info("Archiving article", { articleId, userId });
 
   const newStatus = await toggleArticleArchive(articleId, userId);
 
@@ -80,7 +82,7 @@ api.post("/api/articles/:id/summarize", requireAuth("json-401"), async (c) => {
   const articleId = c.req.param("id");
 
   // Verify article exists and belongs to user
-  const article = await getArticleById(articleId, userId);
+  const article = await getArticleWithTagsById(articleId, userId);
 
   // Get or generate summary in article's language
   const summary = await getOrGenerateSummary(
@@ -110,7 +112,7 @@ api.get(
       ]);
       return c.html(<ProcessingBanner count={count} />);
     } catch (error) {
-      console.error("Error getting processing count:", error);
+      c.var.logger.error("Error getting processing count", { error });
       return c.html(<ProcessingBanner count={0} />);
     }
   },
@@ -124,7 +126,7 @@ api.get("/api/articles/:id/tts", requireAuth("json-401"), async (c) => {
   const articleId = c.req.param("id");
 
   // Verify article exists and belongs to user
-  const article = await getArticleById(articleId, userId);
+  const article = await getArticleWithTagsById(articleId, userId);
 
   // Get article content from cache
   const htmlContent = await getArticleContent(userId, articleId, article.url);

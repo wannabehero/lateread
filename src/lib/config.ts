@@ -1,4 +1,7 @@
 import { z } from "zod";
+import { defaultLogger } from "./logger";
+
+const logger = defaultLogger.child({ module: "config" });
 
 const configSchema = z.object({
   // Server Configuration
@@ -48,8 +51,9 @@ const configSchema = z.object({
 const parseResult = configSchema.safeParse(process.env);
 
 if (!parseResult.success) {
-  console.error("Invalid environment variables:");
-  console.error(z.treeifyError(parseResult.error));
+  logger.error("Invalid environment variables", {
+    errors: z.treeifyError(parseResult.error),
+  });
   process.exit(1);
 }
 

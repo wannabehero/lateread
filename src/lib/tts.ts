@@ -1,18 +1,19 @@
 import { ElevenLabsClient } from "@elevenlabs/elevenlabs-js";
 import { config } from "./config";
+import { ExternalServiceError } from "./errors";
 
-/**
- * Global ElevenLabs client instance
- */
-export const elevenlabsClient = new ElevenLabsClient({
-  apiKey: config.ELEVENLABS_API_KEY,
-});
+interface TTSProvider {
+  generateStream(
+    text: string,
+    languageCode?: string | null,
+  ): Promise<ReadableStream<Uint8Array>>;
+}
 
 /**
  * Default TTS configuration
  * Using Flash v2.5 - fastest model with ~75ms latency
  */
-export const TTS_CONFIG = {
+const TTS_CONFIG = {
   modelId: "eleven_flash_v2_5", // Fastest model
   outputFormat: "mp3_44100_128" as const,
 } as const;
@@ -45,9 +46,7 @@ const DEFAULT_VOICE_ID = "21m00Tcm4TlvDq8ikWAM";
  * Get the best voice ID for the given language code
  * Returns a native voice for the language if available, otherwise defaults to Rachel (English)
  */
-export function getVoiceForLanguage(
-  languageCode: string | null | undefined,
-): string {
+function getVoiceForLanguage(languageCode: string | null | undefined): string {
   if (!languageCode) return DEFAULT_VOICE_ID;
   return VOICE_MAP[languageCode.toLowerCase()] ?? DEFAULT_VOICE_ID;
 }
@@ -79,20 +78,51 @@ export function htmlToPlainText(html: string): string {
   return text;
 }
 
-/**
- * Generate TTS audio stream for the given text
- * Returns a ReadableStream of audio chunks
- * Automatically selects the best voice based on the article's language
- */
-export async function generateTTSStream(
-  text: string,
-  languageCode?: string | null,
-): Promise<ReadableStream<Uint8Array>> {
-  const voiceId = getVoiceForLanguage(languageCode);
+class ElevenLabsTTSProvider implements TTSProvider {
+  private client: ElevenLabsClient;
 
-  return elevenlabsClient.textToSpeech.stream(voiceId, {
-    text: text.slice(0, 40_000), // 40k chars is the limit for streaming
-    modelId: TTS_CONFIG.modelId,
-    outputFormat: TTS_CONFIG.outputFormat,
-  });
+  constructor(apiKey: string) {
+    this.client = new ElevenLabsClient({
+      apiKey,
+    });
+  }
+
+  async generateStream(
+    text: string,
+    languageCode?: string | null,
+  ): Promise<ReadableStream<Uint8Array>> {
+    const voiceId = getVoiceForLanguage(languageCode);
+
+    return this.client.textToSpeech.stream(voiceId, {
+      text: text.slice(0, 40_000), // 40k chars is the limit for streaming
+      modelId: TTS_CONFIG.modelId,
+      outputFormat: TTS_CONFIG.outputFormat,
+    });
+  }
+}
+
+let ttsProvider: TTSProvider | null = null;
+
+export function getTTSProvider(): TTSProvider {
+  if (ttsProvider) {
+    return ttsProvider;
+  }
+
+  if (config.ELEVENLABS_API_KEY) {
+    ttsProvider = new ElevenLabsTTSProvider(config.ELEVENLABS_API_KEY);
+    return ttsProvider;
+  }
+
+  // Noop provider
+  ttsProvider = {
+    generateStream: (_text: string, _languageCode?: string | null) => {
+      throw new ExternalServiceError("TTS provider not configured");
+    },
+  };
+
+  return ttsProvider;
+}
+
+export function isTTSAvailable() {
+  return !!config.ELEVENLABS_API_KEY;
 }

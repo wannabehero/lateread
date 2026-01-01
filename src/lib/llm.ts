@@ -5,10 +5,11 @@ import {
   TAG_EXTRACTION_SYSTEM_PROMPT,
 } from "./llm-prompts";
 import { defaultLogger } from "./logger";
+import { ExternalServiceError } from "./errors";
 
 const logger = defaultLogger.child({ module: "llm" });
 
-export interface TagExtractionResult {
+interface TagExtractionResult {
   tags: string[];
   language: string;
   confidence: number;
@@ -18,6 +19,17 @@ export interface SummaryResult {
   oneSentence: string;
   oneParagraph: string;
   long: string;
+}
+
+interface LLMProvider {
+  extractTags(
+    content: string,
+    existingTags: string[],
+  ): Promise<TagExtractionResult>;
+  summarize(
+    content: string,
+    languageCode?: string | null,
+  ): Promise<SummaryResult>;
 }
 
 /**
@@ -48,7 +60,7 @@ export function extractJsonFromResponse<T>(
   }
 }
 
-class ClaudeProvider {
+class ClaudeProvider implements LLMProvider {
   private client: Anthropic;
   private taggingModel = "claude-haiku-4-5";
   private summaryModel = "claude-sonnet-4-5";
@@ -168,12 +180,34 @@ ${truncatedContent}`;
   }
 }
 
-// Singleton instance
-let llmProvider: ClaudeProvider | null = null;
+let llmProvider: LLMProvider | null = null;
 
-export function getLLMProvider(): ClaudeProvider {
-  if (!llmProvider) {
-    llmProvider = new ClaudeProvider(config.ANTHROPIC_API_KEY);
+export function getLLMProvider(): LLMProvider {
+  if (llmProvider) {
+    return llmProvider;
   }
+
+  if (config.ANTHROPIC_API_KEY) {
+    llmProvider = new ClaudeProvider(config.ANTHROPIC_API_KEY);
+    return llmProvider;
+  }
+
+  // Noop provider
+  llmProvider = {
+    extractTags: async (_content: string, _existingTags: string[]) => ({
+      tags: [],
+      language: "en",
+      confidence: 0,
+    }),
+
+    summarize: async (_content: string, _languageCode?: string | null) => {
+      throw new ExternalServiceError("LLM provider not configured");
+    },
+  };
+
   return llmProvider;
+}
+
+export function isLLMAvailable() {
+  return !!config.ANTHROPIC_API_KEY;
 }

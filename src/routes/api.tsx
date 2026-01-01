@@ -4,7 +4,7 @@ import { EmptyState } from "../components/EmptyState";
 import { ProcessingBanner } from "../components/ProcessingBanner";
 import { SummaryView } from "../components/SummaryView";
 import { ValidationError } from "../lib/errors";
-import { generateTTSStream, htmlToPlainText } from "../lib/tts";
+import { getTTSProvider, htmlToPlainText } from "../lib/tts";
 import { requireAuth } from "../middleware/auth";
 import {
   countArticles,
@@ -138,8 +138,11 @@ api.get("/api/articles/:id/tts", requireAuth("json-401"), async (c) => {
     return c.json({ error: "No content available for TTS" }, 400);
   }
 
-  // Generate TTS audio stream with language-appropriate voice
-  const audioStream = await generateTTSStream(plainText, article.language);
+  const ttsProvider = getTTSProvider();
+  const audioStream = await ttsProvider.generateStream(
+    plainText,
+    article.language,
+  );
 
   // Set appropriate headers for audio streaming
   c.header("Content-Type", "audio/mpeg");

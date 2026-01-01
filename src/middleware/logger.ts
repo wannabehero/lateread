@@ -39,11 +39,15 @@ export async function loggerMiddleware(
   // Get requestId from Hono's requestId middleware
   const reqId = c.get("requestId");
 
-  // Create child logger with requestId
-  const requestLogger = defaultLogger.child({ module: "app", reqId });
+  const logger = defaultLogger.child({ module: "app", reqId });
+  c.set("logger", logger);
 
-  // Store in context for handlers to access via getLogger(c)
-  c.set("logger", requestLogger);
+  const startTime = Date.now();
 
-  await next();
+  try {
+    await next();
+  } finally {
+    const duration = Date.now() - startTime;
+    logger.info(`${c.req.method} ${c.req.path} ${c.res.status} ${duration}ms`);
+  }
 }

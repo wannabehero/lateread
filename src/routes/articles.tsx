@@ -7,12 +7,15 @@ import { ReaderView } from "../components/ReaderView";
 import { requireAuth } from "../middleware/auth";
 import {
   countArticlesByStatus,
-  getArticleWithTagsById,
   getArticlesWithTags,
+  getArticleWithTagsById,
 } from "../services/articles.service";
 import { getArticleContent } from "../services/content.service";
 import { getReaderPreferences } from "../services/preferences.service";
+import { getAllowedFeaturesForUser } from "../services/subscription.service";
 import type { AppContext } from "../types/context";
+import { isLLMAvailable } from "../lib/llm";
+import { isTTSAvailable } from "../lib/tts";
 
 const articlesRouter = new Hono<AppContext>();
 
@@ -78,15 +81,24 @@ articlesRouter.get("/articles/:id", requireAuth("redirect"), async (c) => {
   const articleId = c.req.param("id");
 
   // Get article with tags
-  const [article, preferences] = await Promise.all([
+  const [article, preferences, features] = await Promise.all([
     getArticleWithTagsById(articleId, userId),
     getReaderPreferences(userId),
+    getAllowedFeaturesForUser(userId),
   ]);
 
-  // Get content from cache or fetch if missing
   const content = await getArticleContent(userId, articleId, article.url);
 
-  const readerContent = <ReaderView article={article} content={content} />;
+  const readerContent = (
+    <ReaderView
+      article={article}
+      content={content}
+      features={{
+        summary: features.summary && isLLMAvailable(),
+        tts: features.tts && isTTSAvailable(),
+      }}
+    />
+  );
 
   const readerControls = (
     <div class="nav-actions">

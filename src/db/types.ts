@@ -2,7 +2,9 @@ import type * as schema from "./schema";
 
 export type Article = typeof schema.articles.$inferSelect;
 export type Tag = typeof schema.tags.$inferSelect;
+export type Subscription = typeof schema.subscriptions.$inferSelect;
 export type ArticleStatus = (typeof schema.articleStatus)[number];
+export type SubscriptionType = (typeof schema.subscriptionType)[number];
 
 // User Preferences TypeScript interfaces
 export interface ReaderPreferences {

@@ -1,7 +1,6 @@
 import { sql } from "drizzle-orm";
 import { index, integer, sqliteTable, text } from "drizzle-orm/sqlite-core";
 
-// Users table - auth-agnostic user records
 export const users = sqliteTable("users", {
   id: text("id")
     .primaryKey()
@@ -12,7 +11,26 @@ export const users = sqliteTable("users", {
   preferences: text("preferences").notNull().default("{}"),
 });
 
-// Telegram users table - links Telegram accounts to users
+export const subscriptionType = ["full", "lite"] as const;
+
+export const subscriptions = sqliteTable(
+  "subscriptions",
+  {
+    id: text("id")
+      .primaryKey()
+      .$defaultFn(() => crypto.randomUUID()),
+    userId: text("user_id")
+      .notNull()
+      .references(() => users.id, { onDelete: "cascade" }),
+    type: text("type", { enum: subscriptionType }).notNull().default("lite"),
+    createdAt: integer("created_at", { mode: "timestamp" })
+      .notNull()
+      .default(sql`(unixepoch())`),
+    expiresAt: integer("expires_at", { mode: "timestamp" }).notNull(),
+  },
+  (table) => [index("subscriptions_user_id_idx").on(table.userId)],
+);
+
 export const telegramUsers = sqliteTable(
   "telegram_users",
   {
@@ -36,7 +54,6 @@ export const telegramUsers = sqliteTable(
   ],
 );
 
-// Article status enum
 export const articleStatus = [
   "pending",
   "processing",
@@ -45,7 +62,6 @@ export const articleStatus = [
   "error",
 ] as const;
 
-// Articles table - saved articles with metadata
 export const articles = sqliteTable(
   "articles",
   {
@@ -84,7 +100,6 @@ export const articles = sqliteTable(
   ],
 );
 
-// Tags table - user-specific tags
 export const tags = sqliteTable(
   "tags",
   {
@@ -108,7 +123,6 @@ export const tags = sqliteTable(
   ],
 );
 
-// Article-Tag junction table (many-to-many)
 export const articleTags = sqliteTable(
   "article_tags",
   {
@@ -128,7 +142,6 @@ export const articleTags = sqliteTable(
   ],
 );
 
-// Article summaries table - cached LLM-generated summaries
 export const articleSummaries = sqliteTable(
   "article_summaries",
   {
@@ -149,7 +162,6 @@ export const articleSummaries = sqliteTable(
   (table) => [index("article_summaries_article_id_idx").on(table.articleId)],
 );
 
-// Auth tokens table - for Telegram-based authentication
 export const authTokens = sqliteTable(
   "auth_tokens",
   {

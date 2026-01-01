@@ -22,6 +22,13 @@
       "when": 1766681467690,
       "tag": "0002_fat_ser_duncan",
       "breakpoints": true
+    },
+    {
+      "idx": 3,
+      "version": "6",
+      "when": 1767305026464,
+      "tag": "0003_colossal_reavers",
+      "breakpoints": true
     }
   ]
 }

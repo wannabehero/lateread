@@ -1,16 +1,23 @@
 import type { FC } from "hono/jsx";
 import type { Article, Tag } from "../db/types";
 import { formatRelativeTime } from "../lib/date";
-import { isLLMAvailable } from "../lib/llm";
-import { isTTSAvailable } from "../lib/tts";
 import { TagBadge } from "./TagBadge";
 
 interface ReaderViewProps {
   article: Article & { tags: Tag[] };
   content: string;
+
+  features: {
+    tts: boolean;
+    summary: boolean;
+  };
 }
 
-export const ReaderView: FC<ReaderViewProps> = ({ article, content }) => {
+export const ReaderView: FC<ReaderViewProps> = ({
+  article,
+  content,
+  features,
+}) => {
   const displayTitle = article.title || article.url;
 
   return (
@@ -44,7 +51,7 @@ export const ReaderView: FC<ReaderViewProps> = ({ article, content }) => {
         )}
       </header>
 
-      {isLLMAvailable() && (
+      {features.summary && (
         <section class="reader-summary">
           <details>
             <summary
@@ -65,7 +72,7 @@ export const ReaderView: FC<ReaderViewProps> = ({ article, content }) => {
         </section>
       )}
 
-      {isTTSAvailable() && (
+      {features.tts && (
         <section class="reader-audio">
           <audio
             id="article-audio"

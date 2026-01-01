@@ -25,7 +25,7 @@ export const ArticleCard: FC<ArticleCardProps> = ({
 
       <div class="article-content">
         <h3>
-          <a hx-boost="true" href={`/articles/${article.id}`}>
+          <a href={`/articles/${article.id}`}>
             {displayTitle}
           </a>
         </h3>

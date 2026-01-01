@@ -72,14 +72,14 @@ export const Layout: FC<LayoutProps> = ({
         <script src="/public/htmx.min.js" defer></script>
         <script src="/public/scripts/app.js" type="module" defer></script>
       </head>
-      <body>
+      <body hx-boost="true">
         <header
           class="fixed-nav"
           {...(collapsibleHeader && { "data-collapsible": "true" })}
         >
           <div class="nav-content">
             <div class="nav-brand">
-              <a href="/" hx-boost="true">
+              <a href="/">
                 <img
                   src="/public/icon-192.png"
                   alt="lateread logo"

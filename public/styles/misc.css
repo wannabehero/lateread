@@ -290,12 +290,12 @@ body {
   display: block;
 }
 
-:not(.contrast) > .button-icon {
+:not(.inverted) > .button-icon {
   filter: invert(1);
 }
 
 @media (prefers-color-scheme: dark) {
-  .contrast > .button-icon {
+  .inverted > .button-icon {
     filter: invert(1);
   }
 }

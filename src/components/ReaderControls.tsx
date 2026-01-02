@@ -62,7 +62,7 @@ export const ReaderControls: FC<ReaderControlsProps> = ({ preferences }) => {
         <div class="reader-controls-group reader-size-controls">
           <button
             type="button"
-            class="reader-control-btn"
+            class="reader-control-btn contrast"
             data-font-size-action="decrease"
             disabled={fontSize <= 14}
             title="Decrease font size"
@@ -78,7 +78,7 @@ export const ReaderControls: FC<ReaderControlsProps> = ({ preferences }) => {
           </span>
           <button
             type="button"
-            class="reader-control-btn"
+            class="reader-control-btn contrast"
             data-font-size-action="increase"
             disabled={fontSize >= 24}
             title="Increase font size"

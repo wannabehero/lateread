@@ -11,6 +11,30 @@ interface SearchPageProps {
   articles: ArticleWithTags[];
 }
 
+export const SearchResults: FC<SearchPageProps> = ({ query, articles }) => {
+  return (
+    <div id="search-results">
+      {query ? (
+        articles.length > 0 ? (
+          <div class="article-grid">
+            {articles.map((article) => (
+              <ArticleCard article={article} />
+            ))}
+          </div>
+        ) : (
+          <div class="empty-state">
+            <p>No articles found for "{query}"</p>
+          </div>
+        )
+      ) : (
+        <div class="empty-state">
+          <p>Enter a search query to find articles</p>
+        </div>
+      )}
+    </div>
+  );
+};
+
 export const SearchPage: FC<SearchPageProps> = ({ query, articles }) => {
   return (
     <div>
@@ -34,26 +58,7 @@ export const SearchPage: FC<SearchPageProps> = ({ query, articles }) => {
           autofocus
         />
       </form>
-
-      <div id="search-results">
-        {query ? (
-          articles.length > 0 ? (
-            <div class="article-grid">
-              {articles.map((article) => (
-                <ArticleCard article={article} />
-              ))}
-            </div>
-          ) : (
-            <div class="empty-state">
-              <p>No articles found for "{query}"</p>
-            </div>
-          )
-        ) : (
-          <div class="empty-state">
-            <p>Enter a search query to find articles</p>
-          </div>
-        )}
-      </div>
+      <SearchResults query={query} articles={articles} />
     </div>
   );
 };

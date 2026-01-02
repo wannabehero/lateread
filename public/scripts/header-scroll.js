@@ -1,6 +1,6 @@
 // Header Auto-hide on Scroll (only on pages with data-collapsible="true")
 (() => {
-  const header = document.querySelector(".fixed-nav");
+  let header = document.querySelector(".fixed-nav");
   if (!header) return;
 
   let lastScrollY = window.scrollY;
@@ -10,6 +10,9 @@
 
   // Check if header should be collapsible
   function checkCollapsible() {
+    header = document.querySelector(".fixed-nav");
+    if (!header) return;
+
     isCollapsible = header.hasAttribute("data-collapsible");
 
     // Reset header state when navigating away from collapsible page

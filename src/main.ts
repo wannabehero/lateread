@@ -10,6 +10,7 @@ import { runMigrations } from "./lib/db";
 import { defaultLogger } from "./lib/logger";
 import { errorHandler } from "./middleware/errorHandler";
 import { loggerMiddleware } from "./middleware/logger";
+import { corsMiddleware, securityHeaders } from "./middleware/security";
 import apiRoutes from "./routes/api";
 import articlesRoutes from "./routes/articles";
 import authRoutes from "./routes/auth";
@@ -26,6 +27,11 @@ runMigrations();
 // Create Hono app with typed context
 const app = new Hono<AppContext>();
 
+// Security middleware (must be before routes)
+app.use("*", corsMiddleware);
+app.use("*", securityHeaders);
+
+// Request tracking and logging
 app.use("*", requestId());
 app.use("*", loggerMiddleware);
 

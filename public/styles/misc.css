@@ -288,7 +288,12 @@ body {
   width: 20px;
   height: 20px;
   display: block;
-  filter: invert(1);
+}
+
+@media (prefers-color-scheme: dark) {
+  .button-icon {
+    filter: invert(1);
+  }
 }
 
 /* Tag Badge Styling */

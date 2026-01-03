@@ -33,9 +33,6 @@ const configSchema = z.object({
   CACHE_DIR: z.string().default("./cache/articles"),
   CACHE_MAX_AGE_DAYS: z.coerce.number().default(30),
 
-  // Admin Access
-  ADMIN_TELEGRAM_ID: z.string().optional(),
-
   // Processing Configuration
   PROCESSING_TIMEOUT_SECONDS: z.coerce.number().default(60),
   MAX_RETRY_ATTEMPTS: z.coerce.number().default(3),

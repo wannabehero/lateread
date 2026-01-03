@@ -52,6 +52,7 @@ async function buildArticleConditions(
 
   // If search query provided, search database, summaries, and cached content
   if (filters.query?.trim()) {
+    // TODO: this looks like injection, sanitize input
     const searchPattern = `%${filters.query.trim()}%`;
     const searchConditions: SQL[] = [];
 

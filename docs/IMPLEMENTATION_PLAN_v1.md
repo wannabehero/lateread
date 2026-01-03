@@ -964,7 +964,7 @@ During Phase 3, we implemented several architectural patterns beyond the origina
 ### Tasks
 
 #### 8.1 Dockerfile
-- [ ] Create `Dockerfile`:
+- [x] Create `Dockerfile`:
   - FROM oven/bun:1
   - Create non-root user (UID from env)
   - Copy package files, install dependencies
@@ -975,7 +975,7 @@ During Phase 3, we implemented several architectural patterns beyond the origina
   - Switch to non-root user
   - Expose port 3000
   - CMD: bun run src/main.ts
-- [ ] Create `.dockerignore`:
+- [x] Create `.dockerignore`:
   - node_modules
   - .env
   - data/
@@ -985,7 +985,7 @@ During Phase 3, we implemented several architectural patterns beyond the origina
 
 #### 8.2 Railway Configuration
 - [ ] Create Railway project from GitHub repo
-- [ ] Configure environment variables in Railway:
+- [x] Configure environment variables in Railway:
   - TELEGRAM_BOT_TOKEN
   - BOT_USERNAME
   - LLM_PROVIDER=claude
@@ -996,10 +996,10 @@ During Phase 3, we implemented several architectural patterns beyond the origina
   - NODE_ENV=production
   - SESSION_MAX_AGE_DAYS=180
   - UID=1000
-- [ ] Add persistent volume:
+- [x] Add persistent volume:
   - Mount point: /app/data
   - Size: 5GB (adjust as needed)
-- [ ] Configure health check endpoint: /health
+- [x] Configure health check endpoint: /health
 
 #### 8.3 GitHub Actions CI/CD
 - [ ] Create `.github/workflows/deploy.yml`:
@@ -1023,12 +1023,12 @@ During Phase 3, we implemented several architectural patterns beyond the origina
 - [ ] Test workflow with PR
 
 #### 8.4 Production Environment Setup
-- [ ] Generate SESSION_SECRET: `openssl rand -base64 32`
-- [ ] Create Telegram bot via BotFather
-- [ ] Get bot token and username
-- [ ] Get Claude API key from Anthropic
-- [ ] Set all environment variables in Railway
-- [ ] Verify volume mounted correctly
+- [x] Generate SESSION_SECRET: `openssl rand -base64 32`
+- [x] Create Telegram bot via BotFather
+- [x] Get bot token and username
+- [x] Get Claude API key from Anthropic
+- [x] Set all environment variables in Railway
+- [x] Verify volume mounted correctly
 
 #### 8.5 Deployment Scripts
 - [ ] Create `scripts/migrate.ts`:
@@ -1044,7 +1044,7 @@ During Phase 3, we implemented several architectural patterns beyond the origina
   - `copy-assets`: bun run scripts/copy-assets.ts
 
 #### 8.6 Documentation
-- [ ] Create README.md:
+- [x] Create README.md:
   - Project overview
   - Features list
   - Tech stack
@@ -1057,17 +1057,16 @@ During Phase 3, we implemented several architectural patterns beyond the origina
   - Environment variables
   - Deployment instructions
   - License
-- [ ] Update .env.example with all variables (including LLM_PROVIDER options)
-- [ ] Create CONTRIBUTING.md (if open source)
+- [x] Update .env.example with all variables (including LLM_PROVIDER options)
 
 #### 8.7 First Deployment
-- [ ] Push to main branch
+- [x] Push to main branch
 - [ ] Watch GitHub Actions workflow
-- [ ] Verify deployment in Railway
-- [ ] Check logs for startup errors
-- [ ] Test health endpoint: curl https://app.railway.app/health
-- [ ] Test Telegram bot: /start command
-- [ ] Test full flow: Send article URL
+- [x] Verify deployment in Railway
+- [x] Check logs for startup errors
+- [x] Test health endpoint: curl https://app.railway.app/health
+- [x] Test Telegram bot: /start command
+- [x] Test full flow: Send article URL
 
 #### 8.8 Post-Deployment Verification
 - [ ] Test authentication flow end-to-end

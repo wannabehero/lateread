@@ -4,6 +4,7 @@ function showToast(message, type = "info") {
   if (!container) {
     container = document.createElement("div");
     container.id = "toast-container";
+
     document.body.appendChild(container);
   }
 

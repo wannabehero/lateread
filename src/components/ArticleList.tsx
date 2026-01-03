@@ -19,7 +19,7 @@ export const ArticleList: FC<ArticleListProps> = ({
 }) => {
   return (
     <div id="article-container">
-      <ProcessingBanner count={processingCount} />
+      {!archived && <ProcessingBanner count={processingCount} />}
       {articles.length === 0 ? (
         <EmptyState archived={archived} tag={tag} />
       ) : (

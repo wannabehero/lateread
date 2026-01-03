@@ -1,5 +1,4 @@
 import type { Context, Next } from "hono";
-import { getSession } from "../lib/session";
 import type { AppContext } from "../types/context";
 
 type AuthStrategy = "redirect" | "json-401";
@@ -13,13 +12,13 @@ type AuthStrategy = "redirect" | "json-401";
  * - Page routes: app.get("/articles", requireAuth("redirect"), handler)
  * - API routes: app.post("/api/articles/:id", requireAuth("json-401"), handler)
  *
- * Sets c.get("userId") for use in route handlers (typed via AppContext)
+ * Expects `userId` to be set in the context, e.g. via session() middleware
  */
 export function requireAuth(strategy: AuthStrategy = "redirect") {
   return async (c: Context<AppContext>, next: Next) => {
-    const session = getSession(c);
+    const userId = c.get("userId");
 
-    if (!session?.userId) {
+    if (!userId) {
       if (strategy === "json-401") {
         return c.json({ error: "Unauthorized" }, 401);
       }
@@ -27,8 +26,6 @@ export function requireAuth(strategy: AuthStrategy = "redirect") {
       return c.redirect("/");
     }
 
-    // Make userId available to route handlers via context
-    c.set("userId", session.userId);
     await next();
   };
 }

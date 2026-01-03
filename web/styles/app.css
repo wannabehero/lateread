@@ -1,5 +1,5 @@
-/* Main application stylesheet */
-/* Imports all component stylesheets */
+@import "@picocss/pico/css/pico.min.css";
+@import "@picocss/pico/css/pico.colors.min.css";
 
 @import url("./error.css");
 @import url("./misc.css");

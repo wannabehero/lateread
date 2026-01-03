@@ -1,9 +1,9 @@
 import { Hono } from "hono";
-import { Layout } from "../components/Layout";
 import { SearchPage, SearchResults } from "../components/SearchPage";
 import { requireAuth } from "../middleware/auth";
 import { getArticlesWithTags } from "../services/articles.service";
 import type { AppContext } from "../types/context";
+import { renderWithLayout } from "./utils/render";
 
 const searchRouter = new Hono<AppContext>();
 /**
@@ -22,13 +22,10 @@ searchRouter.get("/search", requireAuth("redirect"), async (c) => {
     return c.html(<SearchResults articles={articles} query={query} />);
   }
 
-  // Full page render
-  const title = query ? `Search: "${query}"` : "Search";
-  return c.html(
-    <Layout title={title} isAuthenticated={true}>
-      <SearchPage query={query} articles={articles} />
-    </Layout>,
-  );
+  return renderWithLayout({
+    c,
+    content: <SearchPage query={query} articles={articles} />,
+  });
 });
 
 export default searchRouter;

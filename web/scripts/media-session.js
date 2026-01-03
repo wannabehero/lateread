@@ -20,7 +20,7 @@ window.setAudioMetadata = (audioElement) => {
     album: "lateread",
     artwork: [
       {
-        src: "/public/icon-512.png",
+        src: "/public/icons/icon-512.png",
         sizes: "512x512",
         type: "image/png",
       },

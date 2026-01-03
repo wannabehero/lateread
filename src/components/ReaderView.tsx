@@ -110,7 +110,7 @@ export const ReaderView: FC<ReaderViewProps> = ({
             >
               <span class="button-text">
                 <img
-                  src="/public/icons/archive.svg"
+                  src="/public/assets/archive.svg"
                   alt="Archive"
                   class="button-icon"
                 />

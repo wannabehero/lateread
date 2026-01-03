@@ -19,10 +19,9 @@ coverage/
 # Build output
 dist/
 
-# Public assets (generated from node_modules)
-public/htmx.min.js
-public/pico.min.css
-public/pico.colors.min.css
+# Public assets (generated during build)
+public/scripts/*
+public/styles/*
 
 # IDE
 .vscode/

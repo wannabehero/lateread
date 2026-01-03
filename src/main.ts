@@ -18,6 +18,7 @@ import healthRoutes from "./routes/health";
 import homeRoutes from "./routes/home";
 import searchRoutes from "./routes/search";
 import type { AppContext } from "./types/context";
+import { session } from "./middleware/session";
 
 const logger = defaultLogger.child({ module: "main" });
 
@@ -31,9 +32,10 @@ const app = new Hono<AppContext>();
 app.use("*", corsMiddleware);
 app.use("*", securityHeaders);
 
-// Request tracking and logging
 app.use("*", requestId());
 app.use("*", loggerMiddleware);
+
+app.use("*", session());
 
 // Serve static files from public directory
 app.use("/public/*", serveStatic({ root: "./" }));

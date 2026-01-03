@@ -4,6 +4,7 @@ import { ErrorPage } from "../components/errors/ErrorPage";
 import { ErrorPartial } from "../components/errors/ErrorPartial";
 import { AppError, InternalError } from "../lib/errors";
 import type { AppContext } from "../types/context";
+import { renderWithLayout } from "../routes/utils/render";
 
 function formatErrorResponse(error: AppError) {
   return {
@@ -97,10 +98,12 @@ export const errorHandler: ErrorHandler = (
       );
 
     case "html":
-      // Full HTML page
-      return c.html(
-        <ErrorPage statusCode={error.statusCode} message={error.message} />,
-        error.statusCode as ContentfulStatusCode,
-      );
+      return renderWithLayout({
+        c,
+        content: (
+          <ErrorPage statusCode={error.statusCode} message={error.message} />
+        ),
+        statusCode: error.statusCode as ContentfulStatusCode,
+      });
   }
 };

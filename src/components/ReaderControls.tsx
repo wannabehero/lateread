@@ -68,7 +68,7 @@ export const ReaderControls: FC<ReaderControlsProps> = ({ preferences }) => {
             title="Decrease font size"
           >
             <img
-              src="/public/icons/a-arrow-down.svg"
+              src="/public/assets/a-arrow-down.svg"
               alt="Decrease"
               class="button-icon"
             />
@@ -84,7 +84,7 @@ export const ReaderControls: FC<ReaderControlsProps> = ({ preferences }) => {
             title="Increase font size"
           >
             <img
-              src="/public/icons/a-arrow-up.svg"
+              src="/public/assets/a-arrow-up.svg"
               alt="Increase"
               class="button-icon"
             />

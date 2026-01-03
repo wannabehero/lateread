@@ -23,7 +23,7 @@ export const securityHeaders = secureHeaders({
 
   contentSecurityPolicy: {
     defaultSrc: ["'self'"],
-    scriptSrc: ["'self'"],
+    scriptSrc: ["'self'", "'unsafe-eval'", "'unsafe-inline'"], // TODO: remove all inlined scripts
     styleSrc: ["'self'", "'unsafe-inline'"], // We use inline styles
     imgSrc: ["'self'", "data:", "https:"], // Allow external article images
     connectSrc: ["'self'"], // HTMX fetch requests

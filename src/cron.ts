@@ -2,7 +2,7 @@ import { Cron } from "croner";
 import { cleanupExpiredTokens } from "./lib/auth";
 import { cleanupOldCache } from "./lib/content-cache";
 import { defaultLogger } from "./lib/logger";
-import { retryFailedArticles } from "./workers/retry";
+import { retryFailedArticles } from "./services/retry.service";
 
 const logger = defaultLogger.child({ module: "cron" });
 

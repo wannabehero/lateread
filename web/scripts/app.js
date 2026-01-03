@@ -1,3 +1,5 @@
+import "htmx.org";
+
 import "./header-scroll.js";
 import "./media-session.js";
 import "./nav-menu.js";

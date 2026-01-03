@@ -57,7 +57,7 @@ export const ArticleCard: FC<ArticleCardProps> = ({
             >
               <span class="button-text">
                 <img
-                  src={`/public/icons/${isArchived ? "archive-restore" : "archive"}.svg`}
+                  src={`/public/assets/${isArchived ? "archive-restore" : "archive"}.svg`}
                   alt={isArchived ? "Unarchive" : "Archive"}
                   class="button-icon"
                 />

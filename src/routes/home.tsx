@@ -1,9 +1,8 @@
 import { Hono } from "hono";
-import { ArticleList } from "../components/ArticleList";
-import { Layout } from "../components/Layout";
-import { getSession } from "../lib/session";
-import { getArticlesWithTags } from "../services/articles.service";
+import { Login } from "../components/auth/Login";
 import type { AppContext } from "../types/context";
+import { renderArticlesList } from "./articles";
+import { renderWithLayout } from "./utils/render";
 
 const home = new Hono<AppContext>();
 
@@ -11,44 +10,17 @@ const home = new Hono<AppContext>();
  * GET / - Home/Login page or article list if authenticated
  */
 home.get("/", async (c) => {
-  const session = getSession(c);
+  const userId = c.get("userId");
 
-  // If authenticated, show article list (all non-archived articles)
-  if (session?.userId) {
-    const articlesWithTags = await getArticlesWithTags(session.userId, {
-      archived: false,
-    });
-
-    return c.html(
-      <Layout isAuthenticated={true}>
-        <ArticleList articles={articlesWithTags} archived={false} />
-      </Layout>,
-    );
+  // If authenticated, show article list
+  if (userId) {
+    return renderArticlesList(c);
   }
 
-  // Show login page
-  return c.html(
-    <Layout>
-      <div class="auth-container">
-        <header>
-          <h1>Welcome to lateread</h1>
-          <p>Save articles via Telegram, read them anywhere.</p>
-        </header>
-
-        <div id="auth-content">
-          <button
-            class="contrast"
-            type="button"
-            hx-post="/auth/telegram"
-            hx-target="#auth-content"
-            hx-swap="outerHTML"
-          >
-            Login with Telegram
-          </button>
-        </div>
-      </div>
-    </Layout>,
-  );
+  return renderWithLayout({
+    c,
+    content: <Login />,
+  });
 });
 
 export default home;

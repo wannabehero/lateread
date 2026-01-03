@@ -1,15 +1,15 @@
-FROM oven/bun:1 AS builder
+FROM oven/bun:1 AS build
 
 WORKDIR /app
-COPY package.json bun.lock ./
-COPY scripts ./scripts
 
-# Post install we do the copy
+COPY package.json bun.lock ./
 RUN bun ci
 
-# Final image
+# Only bundling the frontend bits
+COPY ./web ./web
+RUN bun run build:web
 
-FROM oven/bun:1 AS runtime
+FROM oven/bun:1 AS final
 
 WORKDIR /app
 
@@ -20,11 +20,11 @@ RUN chown -R bun:bun /app
 USER bun
 
 COPY --chown=bun:bun package.json bun.lock ./
-RUN bun install --frozen-lockfile --production --ignore-scripts
+RUN bun install --frozen-lockfile --production
 
 COPY --chown=bun:bun . .
-COPY --chown=bun:bun --from=builder /app/public ./public
+COPY --chown=bun:bun --from=build /app/public ./public
 
 EXPOSE 3000
 
-CMD ["bun", "run", "src/main.ts"]
+CMD ["bun", "src/main.ts"]

@@ -4,8 +4,10 @@
   "type": "module",
   "private": true,
   "scripts": {
-    "dev": "bun --watch src/main.ts",
-    "start": "bun run src/main.ts",
+    "dev": "concurrently \"bun dev:web\" \"bun dev:server\"",
+    "dev:server": "bun --watch src/main.ts",
+    "dev:web": "bun build ./web/scripts/app.js ./web/styles/app.css --outdir public --target browser --watch",
+    "start": "bun src/main.ts",
     "test": "bun test",
     "test:watch": "bun test --watch",
     "test:coverage": "bun test --coverage",
@@ -13,8 +15,7 @@
     "db:migrate": "drizzle-kit migrate",
     "db:push": "drizzle-kit push",
     "db:studio": "drizzle-kit studio",
-    "copy-assets": "bun run scripts/copy-assets.ts",
-    "postinstall": "bun run copy-assets",
+    "build:web": "bun build ./web/scripts/app.js ./web/styles/app.css --outdir public --target browser --minify --entry-naming '[dir]/[name]-[hash].[ext]'",
     "format": "bunx @biomejs/biome format --write .",
     "lint": "bunx @biomejs/biome lint --write .",
     "check": "bunx @biomejs/biome check --write ."
@@ -25,6 +26,7 @@
     "@picocss/pico": "^2.1.1",
     "@types/bun": "latest",
     "@types/jsdom": "^27.0.0",
+    "concurrently": "^9.2.1",
     "drizzle-kit": "^0.31.8",
     "htmx.org": "^2.0.8",
     "lucide-static": "^0.562.0"

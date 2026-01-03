@@ -137,7 +137,11 @@
 
   initReaderControls();
 
-  document.body.addEventListener("htmx:afterSwap", () => {
+  document.body.addEventListener("htmx:afterSettle", (evt) => {
+    if (evt.target !== document.body) {
+      return;
+    }
+
     initReaderControls();
   });
 })();

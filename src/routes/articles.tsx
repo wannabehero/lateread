@@ -1,9 +1,9 @@
-import type { Context } from "hono";
-import { Hono } from "hono";
+import { type Context, Hono } from "hono";
 import { ArticleList } from "../components/ArticleList";
-import { Layout } from "../components/Layout";
 import { ReaderControls } from "../components/ReaderControls";
 import { ReaderView } from "../components/ReaderView";
+import { isLLMAvailable } from "../lib/llm";
+import { isTTSAvailable } from "../lib/tts";
 import { requireAuth } from "../middleware/auth";
 import {
   countArticlesByStatus,
@@ -14,40 +14,13 @@ import { getArticleContent } from "../services/content.service";
 import { getReaderPreferences } from "../services/preferences.service";
 import { getAllowedFeaturesForUser } from "../services/subscription.service";
 import type { AppContext } from "../types/context";
-import { isLLMAvailable } from "../lib/llm";
-import { isTTSAvailable } from "../lib/tts";
+import { renderWithLayout } from "./utils/render";
 
 const articlesRouter = new Hono<AppContext>();
 
-/**
- * Helper: Render with Layout or return partial
- */
-function renderWithLayout(
-  c: Context<AppContext>,
-  // biome-ignore lint/suspicious/noExplicitAny: can be any JSX content
-  content: any,
-  // biome-ignore lint/suspicious/noExplicitAny: can be any JSX content
-  overrideControls?: any,
-  collapsibleHeader = false,
-): Response | Promise<Response> {
-  return c.html(
-    <Layout
-      isAuthenticated={true}
-      overrideControls={overrideControls}
-      collapsibleHeader={collapsibleHeader}
-    >
-      {content}
-    </Layout>,
-  );
-}
-
-/**
- * GET /articles - List articles
- */
-articlesRouter.get("/articles", requireAuth("redirect"), async (c) => {
+export async function renderArticlesList(c: Context<AppContext>) {
   const userId = c.get("userId");
 
-  // Parse query params
   const status = c.req.query("status") || "all";
   const tag = c.req.query("tag");
 
@@ -70,7 +43,14 @@ articlesRouter.get("/articles", requireAuth("redirect"), async (c) => {
     />
   );
 
-  return renderWithLayout(c, content);
+  return renderWithLayout({ c, content });
+}
+
+/**
+ * GET /articles - List articles
+ */
+articlesRouter.get("/articles", requireAuth("redirect"), async (c) => {
+  return renderArticlesList(c);
 });
 
 /**
@@ -105,7 +85,7 @@ articlesRouter.get("/articles/:id", requireAuth("redirect"), async (c) => {
       <div class="nav-menu reader-settings-menu">
         <button type="button" class="nav-icon-button">
           <img
-            src="/public/icons/settings-2.svg"
+            src="/public/assets/settings-2.svg"
             alt="Settings"
             class="nav-icon"
           />
@@ -117,7 +97,12 @@ articlesRouter.get("/articles/:id", requireAuth("redirect"), async (c) => {
     </div>
   );
 
-  return renderWithLayout(c, readerContent, readerControls, true);
+  return renderWithLayout({
+    c,
+    content: readerContent,
+    overrideControls: readerControls,
+    collapsibleHeader: true,
+  });
 });
 
 export default articlesRouter;

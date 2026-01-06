@@ -13,10 +13,11 @@ export async function createUser(
 ): Promise<typeof schema.users.$inferSelect> {
   const id = overrides?.id ?? randomUUID();
   const createdAt = overrides?.createdAt ?? new Date();
+  const preferences = overrides?.preferences ?? "{}";
 
   const [user] = await db
     .insert(schema.users)
-    .values({ id, createdAt })
+    .values({ id, createdAt, preferences })
     .returning();
 
   if (!user) throw new Error("Failed to create user");
@@ -123,6 +124,65 @@ export async function addTagToArticle(
   tagId: string,
 ): Promise<void> {
   await db.insert(schema.articleTags).values({ articleId, tagId });
+}
+
+/**
+ * Create a test subscription
+ */
+export async function createSubscription(
+  db: DB,
+  userId: string,
+  overrides?: Partial<typeof schema.subscriptions.$inferInsert>,
+): Promise<typeof schema.subscriptions.$inferSelect> {
+  const id = overrides?.id ?? randomUUID();
+  const type = overrides?.type ?? "lite";
+  const createdAt = overrides?.createdAt ?? new Date();
+  // Default to 30 days in the future (use setSystemTime in tests for deterministic dates)
+  const expiresAt =
+    overrides?.expiresAt ?? new Date(Date.now() + 30 * 24 * 60 * 60 * 1000);
+
+  const [subscription] = await db
+    .insert(schema.subscriptions)
+    .values({
+      id,
+      userId,
+      type,
+      createdAt,
+      expiresAt,
+    })
+    .returning();
+
+  if (!subscription) throw new Error("Failed to create subscription");
+  return subscription;
+}
+
+/**
+ * Create a test telegram user
+ */
+export async function createTelegramUser(
+  db: DB,
+  userId: string,
+  telegramId: string,
+  overrides?: Partial<typeof schema.telegramUsers.$inferInsert>,
+): Promise<typeof schema.telegramUsers.$inferSelect> {
+  const id = overrides?.id ?? randomUUID();
+  const createdAt = overrides?.createdAt ?? new Date();
+
+  const [telegramUser] = await db
+    .insert(schema.telegramUsers)
+    .values({
+      id,
+      userId,
+      telegramId,
+      username: overrides?.username ?? null,
+      firstName: overrides?.firstName ?? null,
+      lastName: overrides?.lastName ?? null,
+      createdAt,
+    })
+    .returning();
+
+  if (!telegramUser) throw new Error("Failed to create telegram user");
+  return telegramUser;
 }
 
 export function createNoopLogger(): Logger {

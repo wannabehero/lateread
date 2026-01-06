@@ -403,6 +403,47 @@ describe("getArticleContent", () => {
 - **Mocking**: Use `mockResolvedValue()`, `mockRejectedValue()`, `mockImplementation()` as needed
 - **Assertions**: Verify calls with `toHaveBeenCalledWith()`, `toHaveBeenCalledTimes()`, `not.toHaveBeenCalled()`
 
+### Testing with Dates (setSystemTime)
+
+For date-based tests, always use `setSystemTime` from Bun to set a fixed system time. This eliminates flakiness and makes tests deterministic regardless of when they run or how slow the test environment is.
+
+```typescript
+import { beforeEach, describe, expect, it, setSystemTime } from "bun:test";
+import { createSubscription, createUser } from "../../test/fixtures";
+import { getAllowedFeaturesForUser } from "./subscription.service";
+
+describe("subscription.service", () => {
+  // Fix the current time to a known value for consistent testing
+  const NOW = new Date("2024-06-15T12:00:00Z");
+
+  beforeEach(() => {
+    setSystemTime(NOW);
+    resetDatabase();
+  });
+
+  it("should handle subscription expiring in 1 second", async () => {
+    const user = await createUser(db);
+    const oneSecondFromNow = new Date("2024-06-15T12:00:01Z");
+
+    await createSubscription(db, user.id, {
+      type: "full",
+      expiresAt: oneSecondFromNow,
+    });
+
+    const features = await getAllowedFeaturesForUser(user.id);
+
+    expect(features.summary).toBe(true);
+  });
+});
+```
+
+**Date testing best practices:**
+- **Always use `setSystemTime`** in `beforeEach` for tests involving dates, timestamps, or expiration logic
+- **Use static dates** - write dates as ISO strings (e.g., `"2024-06-15T12:00:00Z"`) instead of computing from `Date.now()`
+- **Never use relative dates** - avoid `new Date(Date.now() + 1000)` in favor of `new Date("2024-06-15T12:00:01Z")`
+- **Deterministic and readable** - static dates make tests easy to understand and debug
+- **No flakiness** - tests work the same regardless of execution speed or actual wall clock time
+
 ## TypeScript Configuration
 
 - **Strict mode** with `noUncheckedIndexedAccess`

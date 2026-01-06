@@ -28,9 +28,14 @@ describe("content.service", () => {
   });
 
   describe("getArticleContent", () => {
+    const spyGet = spyOn(contentCache, "get");
+    const spySet = spyOn(contentCache, "set");
+    const spyExtractCleanContent = spyOn(readability, "extractCleanContent");
+
     afterEach(() => {
-      // Restore all spies after each test
-      mock.restore();
+      spyGet.mockReset();
+      spySet.mockReset();
+      spyExtractCleanContent.mockReset();
     });
 
     it("should return cached content when available", async () => {
@@ -39,21 +44,15 @@ describe("content.service", () => {
       const articleUrl = "https://example.com/article";
       const cachedContent = "<p>Cached article content</p>";
 
-      // Spy on content cache methods
-      const getSpy = spyOn(contentCache, "get").mockResolvedValue(
-        cachedContent,
-      );
-      const setSpy = spyOn(contentCache, "set").mockResolvedValue();
-
-      // Spy on extractCleanContent to ensure it's NOT called on cache hit
-      const extractSpy = spyOn(readability, "extractCleanContent");
+      spyGet.mockResolvedValue(cachedContent);
+      spySet.mockResolvedValue();
 
       const result = await getArticleContent(userId, articleId, articleUrl);
 
       expect(result).toBe(cachedContent);
-      expect(getSpy).toHaveBeenCalledWith(userId, articleId);
-      expect(extractSpy).not.toHaveBeenCalled();
-      expect(setSpy).not.toHaveBeenCalled();
+      expect(spyGet).toHaveBeenCalledWith(userId, articleId);
+      expect(spyExtractCleanContent).not.toHaveBeenCalled();
+      expect(spySet).not.toHaveBeenCalled();
     });
 
     it("should fetch and cache content on cache miss", async () => {
@@ -62,15 +61,9 @@ describe("content.service", () => {
       const articleUrl = "https://example.com/article";
       const extractedContent = "<p>Extracted article content</p>";
 
-      // Spy on content cache to simulate cache miss
-      const getSpy = spyOn(contentCache, "get").mockResolvedValue(null);
-      const setSpy = spyOn(contentCache, "set").mockResolvedValue();
-
-      // Spy on extractCleanContent to return extracted content
-      const extractSpy = spyOn(
-        readability,
-        "extractCleanContent",
-      ).mockResolvedValue({
+      spyGet.mockResolvedValue(null);
+      spySet.mockResolvedValue();
+      spyExtractCleanContent.mockResolvedValue({
         title: "Test Article",
         content: extractedContent,
         textContent: "Extracted article content",
@@ -80,9 +73,9 @@ describe("content.service", () => {
       const result = await getArticleContent(userId, articleId, articleUrl);
 
       expect(result).toBe(extractedContent);
-      expect(getSpy).toHaveBeenCalledWith(userId, articleId);
-      expect(extractSpy).toHaveBeenCalledWith(articleUrl);
-      expect(setSpy).toHaveBeenCalledWith(userId, articleId, extractedContent);
+      expect(spyGet).toHaveBeenCalledWith(userId, articleId);
+      expect(spyExtractCleanContent).toHaveBeenCalledWith(articleUrl);
+      expect(spySet).toHaveBeenCalledWith(userId, articleId, extractedContent);
     });
 
     it("should throw ExternalServiceError when extraction returns no content", async () => {
@@ -90,15 +83,9 @@ describe("content.service", () => {
       const articleId = randomUUID();
       const articleUrl = "https://example.com/article";
 
-      // Spy on content cache to simulate cache miss
-      const getSpy = spyOn(contentCache, "get").mockResolvedValue(null);
-      const setSpy = spyOn(contentCache, "set").mockResolvedValue();
-
-      // Spy on extractCleanContent to return null content
-      const extractSpy = spyOn(
-        readability,
-        "extractCleanContent",
-      ).mockResolvedValue({
+      spyGet.mockResolvedValue(null);
+      spySet.mockResolvedValue();
+      spyExtractCleanContent.mockResolvedValue({
         title: "Test Article",
         content: null,
       });
@@ -107,9 +94,9 @@ describe("content.service", () => {
         getArticleContent(userId, articleId, articleUrl),
       ).rejects.toThrow(ExternalServiceError);
 
-      expect(getSpy).toHaveBeenCalledWith(userId, articleId);
-      expect(extractSpy).toHaveBeenCalledWith(articleUrl);
-      expect(setSpy).not.toHaveBeenCalled();
+      expect(spyGet).toHaveBeenCalledWith(userId, articleId);
+      expect(spyExtractCleanContent).toHaveBeenCalledWith(articleUrl);
+      expect(spySet).not.toHaveBeenCalled();
     });
 
     it("should throw ExternalServiceError when extraction returns undefined content", async () => {
@@ -117,15 +104,9 @@ describe("content.service", () => {
       const articleId = randomUUID();
       const articleUrl = "https://example.com/article";
 
-      // Spy on content cache to simulate cache miss
-      const getSpy = spyOn(contentCache, "get").mockResolvedValue(null);
-      const setSpy = spyOn(contentCache, "set").mockResolvedValue();
-
-      // Spy on extractCleanContent to return undefined content
-      const extractSpy = spyOn(
-        readability,
-        "extractCleanContent",
-      ).mockResolvedValue({
+      spyGet.mockResolvedValue(null);
+      spySet.mockResolvedValue();
+      spyExtractCleanContent.mockResolvedValue({
         title: "Test Article",
         content: undefined,
       });
@@ -134,9 +115,9 @@ describe("content.service", () => {
         getArticleContent(userId, articleId, articleUrl),
       ).rejects.toThrow(ExternalServiceError);
 
-      expect(getSpy).toHaveBeenCalledWith(userId, articleId);
-      expect(extractSpy).toHaveBeenCalledWith(articleUrl);
-      expect(setSpy).not.toHaveBeenCalled();
+      expect(spyGet).toHaveBeenCalledWith(userId, articleId);
+      expect(spyExtractCleanContent).toHaveBeenCalledWith(articleUrl);
+      expect(spySet).not.toHaveBeenCalled();
     });
 
     it("should propagate errors from extractCleanContent", async () => {
@@ -145,23 +126,17 @@ describe("content.service", () => {
       const articleUrl = "https://example.com/article";
       const extractionError = new Error("Failed to fetch article");
 
-      // Spy on content cache to simulate cache miss
-      const getSpy = spyOn(contentCache, "get").mockResolvedValue(null);
-      const setSpy = spyOn(contentCache, "set").mockResolvedValue();
-
-      // Spy on extractCleanContent to throw an error
-      const extractSpy = spyOn(
-        readability,
-        "extractCleanContent",
-      ).mockRejectedValue(extractionError);
+      spyGet.mockResolvedValue(null);
+      spySet.mockResolvedValue();
+      spyExtractCleanContent.mockRejectedValue(extractionError);
 
       await expect(
         getArticleContent(userId, articleId, articleUrl),
       ).rejects.toThrow(extractionError);
 
-      expect(getSpy).toHaveBeenCalledWith(userId, articleId);
-      expect(extractSpy).toHaveBeenCalledWith(articleUrl);
-      expect(setSpy).not.toHaveBeenCalled();
+      expect(spyGet).toHaveBeenCalledWith(userId, articleId);
+      expect(spyExtractCleanContent).toHaveBeenCalledWith(articleUrl);
+      expect(spySet).not.toHaveBeenCalled();
     });
 
     it("should throw ExternalServiceError when extraction returns empty string", async () => {
@@ -169,15 +144,9 @@ describe("content.service", () => {
       const articleId = randomUUID();
       const articleUrl = "https://example.com/article";
 
-      // Spy on content cache to simulate cache miss
-      const getSpy = spyOn(contentCache, "get").mockResolvedValue(null);
-      const setSpy = spyOn(contentCache, "set").mockResolvedValue();
-
-      // Spy on extractCleanContent to return empty string content
-      const extractSpy = spyOn(
-        readability,
-        "extractCleanContent",
-      ).mockResolvedValue({
+      spyGet.mockResolvedValue(null);
+      spySet.mockResolvedValue();
+      spyExtractCleanContent.mockResolvedValue({
         title: "Test Article",
         content: "", // Empty string is falsy
       });
@@ -186,9 +155,9 @@ describe("content.service", () => {
         getArticleContent(userId, articleId, articleUrl),
       ).rejects.toThrow(ExternalServiceError);
 
-      expect(getSpy).toHaveBeenCalledWith(userId, articleId);
-      expect(extractSpy).toHaveBeenCalledWith(articleUrl);
-      expect(setSpy).not.toHaveBeenCalled();
+      expect(spyGet).toHaveBeenCalledWith(userId, articleId);
+      expect(spyExtractCleanContent).toHaveBeenCalledWith(articleUrl);
+      expect(spySet).not.toHaveBeenCalled();
     });
   });
 

@@ -292,14 +292,21 @@ describe("articles.service", () => {
       const user = await createUser(db);
       const article1 = await createCompletedArticle(db, user.id);
       const article2 = await createCompletedArticle(db, user.id);
-      await createCompletedArticle(db, user.id);
+      const article3 = await createCompletedArticle(db, user.id);
+      await createCompletedArticle(db, user.id); // Untagged article
 
       const jsTag = await createTag(db, user.id, "javascript");
+      const pythonTag = await createTag(db, user.id, "python");
+
       await addTagToArticle(db, article1.id, jsTag.id);
       await addTagToArticle(db, article2.id, jsTag.id);
+      await addTagToArticle(db, article3.id, pythonTag.id);
 
       const jsCount = await countArticles(user.id, { tag: "javascript" });
-      expect(jsCount).toBe(2);
+      expect(jsCount).toBe(2); // Should only count javascript-tagged articles
+
+      const pythonCount = await countArticles(user.id, { tag: "python" });
+      expect(pythonCount).toBe(1); // Should only count python-tagged article
     });
 
     it("should return 0 for user with no articles", async () => {

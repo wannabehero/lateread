@@ -43,6 +43,7 @@ mock.module("./config", () => ({
   config: {
     SESSION_SECRET: "test-secret-key-for-hmac-sha256-signing",
     NODE_ENV: "test",
+    SESSION_MAX_AGE_DAYS: 180,
   },
 }));
 
@@ -96,6 +97,7 @@ describe("session", () => {
           config: {
             SESSION_SECRET: "test-secret-key-for-hmac-sha256-signing",
             NODE_ENV: env,
+            SESSION_MAX_AGE_DAYS: 180,
           },
         }));
       });
@@ -105,6 +107,7 @@ describe("session", () => {
           config: {
             SESSION_SECRET: "test-secret-key-for-hmac-sha256-signing",
             NODE_ENV: "test",
+            SESSION_MAX_AGE_DAYS: 180,
           },
         }));
       });

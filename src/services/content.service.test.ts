@@ -14,6 +14,9 @@ const TEST_USER_ID = "test-user-123";
 mock.module("../lib/config", () => ({
   config: {
     CACHE_DIR: TEST_CACHE_DIR,
+    SESSION_SECRET: "test-secret-key-for-hmac-sha256-signing",
+    NODE_ENV: "test",
+    SESSION_MAX_AGE_DAYS: 180,
   },
 }));
 

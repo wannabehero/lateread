@@ -1,4 +1,13 @@
-import { afterEach, describe, expect, it, jest, mock, spyOn } from "bun:test";
+import {
+  afterEach,
+  beforeEach,
+  describe,
+  expect,
+  it,
+  jest,
+  mock,
+  spyOn,
+} from "bun:test";
 import dns from "node:dns/promises";
 import { isSafeUrl, isSafeUrlWithDNS } from "./ssrf-validator";
 
@@ -153,7 +162,8 @@ describe("isSafeUrlWithDNS - DNS-based SSRF Protection", () => {
   const spyDnsResolve6 = spyOn(dns, "resolve6");
 
   afterEach(() => {
-    mock.clearAllMocks();
+    spyDnsResolve4.mockReset();
+    spyDnsResolve6.mockReset();
   });
 
   describe("URL structure validation (pre-DNS checks)", () => {

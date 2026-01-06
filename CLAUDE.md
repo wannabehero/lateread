@@ -4,6 +4,25 @@
 
 **lateread** is a self-hosted, privacy-focused read-later application. Users save articles via Telegram bot, articles are processed with AI for tagging/summarization, and consumed through a web interface with TTS support.
 
+## AI Assistant Guidelines
+
+**IMPORTANT: Always verify against official documentation before making architectural decisions.**
+
+When working with this codebase, consult the latest official documentation:
+- **Bun**: https://bun.com/docs - Runtime behavior, environment variables, testing
+- **Drizzle ORM**: https://orm.drizzle.team/docs - Query API, migrations, relations
+- **Hono**: https://hono.dev/docs - Routing, middleware, context, JSX
+- **Grammy**: https://grammy.dev/guide - Telegram bot API, handlers, context
+- **Zod**: https://zod.dev - Schema validation, type inference
+
+**Before implementing:**
+1. Check official docs for current best practices
+2. Verify feature availability and syntax
+3. Review framework-specific patterns and conventions
+4. Don't rely solely on general knowledge - frameworks evolve
+
+**Example:** Environment variable handling in Bun test mode - always check the docs for how `NODE_ENV` and `.env.*` files work together rather than assuming behavior.
+
 ## Quick Reference
 
 ```bash
@@ -313,6 +332,32 @@ describe("articles.service", () => {
 ```
 
 Test files are co-located: `src/lib/auth.test.ts` next to `auth.ts`.
+
+### Test Environment Configuration
+
+Bun automatically loads `.env.test` when running tests (since `bun test` sets `NODE_ENV=test`):
+
+```bash
+# .env.test - automatically loaded by Bun during test runs
+NODE_ENV=test
+DATABASE_URL=:memory:
+
+TELEGRAM_BOT_TOKEN=test_bot_token_12345
+BOT_USERNAME=test_bot
+SESSION_SECRET=test_session_secret_min_32_chars_long
+```
+
+**How it works:**
+1. `bun test` automatically sets `NODE_ENV=test`
+2. Bun loads `.env.test` based on the NODE_ENV value
+3. Config module validates environment variables on import
+4. Tests run with test-specific configuration
+
+**Best practices:**
+- Use `.env.test` for test-specific environment variables
+- Keep `.env.test` checked into git (it contains no secrets)
+- Mirror the structure of `.env.example` but with test values
+- Use `:memory:` for DATABASE_URL in tests
 
 ## TypeScript Configuration
 

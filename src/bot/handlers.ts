@@ -2,12 +2,12 @@ import type { Bot, Context } from "grammy";
 import { claimAuthToken } from "../lib/auth";
 import { config } from "../lib/config";
 import { contentCache } from "../lib/content-cache";
+import { defaultLogger } from "../lib/logger";
 import { spawnArticleWorker } from "../lib/worker";
 import { createArticle } from "../services/articles.service";
 import { getTelegramUserByTelegramId } from "../services/telegram-users.service";
 import { extractMessageMetadata, extractUrl } from "./helpers";
 import type { BotContext } from "./types";
-import { defaultLogger } from "../lib/logger";
 
 /**
  * Register all bot command handlers

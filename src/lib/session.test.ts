@@ -9,8 +9,8 @@ import {
   setSystemTime,
 } from "bun:test";
 import type { Context } from "hono";
-import { clearSession, getSession, setSession } from "./session";
 import { createNoopLogger } from "../../test/fixtures";
+import { clearSession, getSession, setSession } from "./session";
 
 let mockCookies: Record<
   string,

@@ -1,11 +1,11 @@
 import Anthropic from "@anthropic-ai/sdk";
 import { config } from "./config";
+import { ExternalServiceError } from "./errors";
 import {
   SUMMARIZATION_SYSTEM_PROMPT,
   TAG_EXTRACTION_SYSTEM_PROMPT,
 } from "./llm-prompts";
 import { defaultLogger } from "./logger";
-import { ExternalServiceError } from "./errors";
 
 const logger = defaultLogger.child({ module: "llm" });
 

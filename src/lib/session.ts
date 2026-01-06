@@ -1,9 +1,9 @@
 import type { Context } from "hono";
 import { deleteCookie, getCookie, setCookie } from "hono/cookie";
 import { z } from "zod";
+import type { AppContext } from "../types/context";
 import { config } from "./config";
 import { UnauthorizedError } from "./errors";
-import type { AppContext } from "../types/context";
 
 const SESSION_COOKIE_NAME = "lateread_session";
 const SESSION_MAX_AGE = config.SESSION_MAX_AGE_DAYS * 24 * 60 * 60; // Convert to seconds

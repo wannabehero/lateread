@@ -1,8 +1,9 @@
-import { afterEach, describe, expect, it, mock } from "bun:test";
+import { afterEach, describe, expect, it, mock, spyOn } from "bun:test";
 import { randomUUID } from "node:crypto";
 import { mkdir, rm } from "node:fs/promises";
 import { join } from "node:path";
-import { searchCachedArticleIds } from "./content.service";
+import { ExternalServiceError } from "../lib/errors";
+import { getArticleContent, searchCachedArticleIds } from "./content.service";
 
 const TEST_CACHE_DIR = `/tmp/${crypto.randomUUID()}`;
 const TEST_USER_ID = "test-user-123";
@@ -22,6 +23,211 @@ describe("content.service", () => {
     } catch {
       // Ignore if doesn't exist
     }
+  });
+
+  describe("getArticleContent", () => {
+    it("should return cached content when available", async () => {
+      const userId = randomUUID();
+      const articleId = randomUUID();
+      const articleUrl = "https://example.com/article";
+      const cachedContent = "<p>Cached article content</p>";
+
+      // Mock content cache to return cached content
+      const contentCacheMock = {
+        get: mock(() => Promise.resolve(cachedContent)),
+        set: mock(() => Promise.resolve()),
+      };
+      mock.module("../lib/content-cache", () => ({
+        contentCache: contentCacheMock,
+      }));
+
+      // Spy on extractCleanContent to ensure it's NOT called on cache hit
+      const extractCleanContentSpy = spyOn(
+        await import("../lib/readability"),
+        "extractCleanContent",
+      );
+
+      const result = await getArticleContent(userId, articleId, articleUrl);
+
+      expect(result).toBe(cachedContent);
+      expect(contentCacheMock.get).toHaveBeenCalledWith(userId, articleId);
+      expect(extractCleanContentSpy).not.toHaveBeenCalled();
+      expect(contentCacheMock.set).not.toHaveBeenCalled();
+    });
+
+    it("should fetch and cache content on cache miss", async () => {
+      const userId = randomUUID();
+      const articleId = randomUUID();
+      const articleUrl = "https://example.com/article";
+      const extractedContent = "<p>Extracted article content</p>";
+
+      // Mock content cache to simulate cache miss
+      const contentCacheMock = {
+        get: mock(() => Promise.resolve(null)),
+        set: mock(() => Promise.resolve()),
+      };
+      mock.module("../lib/content-cache", () => ({
+        contentCache: contentCacheMock,
+      }));
+
+      // Mock extractCleanContent to return extracted content
+      const extractCleanContentMock = mock(() =>
+        Promise.resolve({
+          title: "Test Article",
+          content: extractedContent,
+          textContent: "Extracted article content",
+          excerpt: "Test excerpt",
+        }),
+      );
+      mock.module("../lib/readability", () => ({
+        extractCleanContent: extractCleanContentMock,
+      }));
+
+      const result = await getArticleContent(userId, articleId, articleUrl);
+
+      expect(result).toBe(extractedContent);
+      expect(contentCacheMock.get).toHaveBeenCalledWith(userId, articleId);
+      expect(extractCleanContentMock).toHaveBeenCalledWith(articleUrl);
+      expect(contentCacheMock.set).toHaveBeenCalledWith(
+        userId,
+        articleId,
+        extractedContent,
+      );
+    });
+
+    it("should throw ExternalServiceError when extraction returns no content", async () => {
+      const userId = randomUUID();
+      const articleId = randomUUID();
+      const articleUrl = "https://example.com/article";
+
+      // Mock content cache to simulate cache miss
+      const contentCacheMock = {
+        get: mock(() => Promise.resolve(null)),
+        set: mock(() => Promise.resolve()),
+      };
+      mock.module("../lib/content-cache", () => ({
+        contentCache: contentCacheMock,
+      }));
+
+      // Mock extractCleanContent to return null content
+      const extractCleanContentMock = mock(() =>
+        Promise.resolve({
+          title: "Test Article",
+          content: null,
+        }),
+      );
+      mock.module("../lib/readability", () => ({
+        extractCleanContent: extractCleanContentMock,
+      }));
+
+      await expect(
+        getArticleContent(userId, articleId, articleUrl),
+      ).rejects.toThrow(ExternalServiceError);
+
+      expect(contentCacheMock.get).toHaveBeenCalledWith(userId, articleId);
+      expect(extractCleanContentMock).toHaveBeenCalledWith(articleUrl);
+      expect(contentCacheMock.set).not.toHaveBeenCalled();
+    });
+
+    it("should throw ExternalServiceError when extraction returns undefined content", async () => {
+      const userId = randomUUID();
+      const articleId = randomUUID();
+      const articleUrl = "https://example.com/article";
+
+      // Mock content cache to simulate cache miss
+      const contentCacheMock = {
+        get: mock(() => Promise.resolve(null)),
+        set: mock(() => Promise.resolve()),
+      };
+      mock.module("../lib/content-cache", () => ({
+        contentCache: contentCacheMock,
+      }));
+
+      // Mock extractCleanContent to return undefined content
+      const extractCleanContentMock = mock(() =>
+        Promise.resolve({
+          title: "Test Article",
+          content: undefined,
+        }),
+      );
+      mock.module("../lib/readability", () => ({
+        extractCleanContent: extractCleanContentMock,
+      }));
+
+      await expect(
+        getArticleContent(userId, articleId, articleUrl),
+      ).rejects.toThrow(ExternalServiceError);
+
+      expect(contentCacheMock.get).toHaveBeenCalledWith(userId, articleId);
+      expect(extractCleanContentMock).toHaveBeenCalledWith(articleUrl);
+      expect(contentCacheMock.set).not.toHaveBeenCalled();
+    });
+
+    it("should propagate errors from extractCleanContent", async () => {
+      const userId = randomUUID();
+      const articleId = randomUUID();
+      const articleUrl = "https://example.com/article";
+      const extractionError = new Error("Failed to fetch article");
+
+      // Mock content cache to simulate cache miss
+      const contentCacheMock = {
+        get: mock(() => Promise.resolve(null)),
+        set: mock(() => Promise.resolve()),
+      };
+      mock.module("../lib/content-cache", () => ({
+        contentCache: contentCacheMock,
+      }));
+
+      // Mock extractCleanContent to throw an error
+      const extractCleanContentMock = mock(() =>
+        Promise.reject(extractionError),
+      );
+      mock.module("../lib/readability", () => ({
+        extractCleanContent: extractCleanContentMock,
+      }));
+
+      await expect(
+        getArticleContent(userId, articleId, articleUrl),
+      ).rejects.toThrow(extractionError);
+
+      expect(contentCacheMock.get).toHaveBeenCalledWith(userId, articleId);
+      expect(extractCleanContentMock).toHaveBeenCalledWith(articleUrl);
+      expect(contentCacheMock.set).not.toHaveBeenCalled();
+    });
+
+    it("should throw ExternalServiceError when extraction returns empty string", async () => {
+      const userId = randomUUID();
+      const articleId = randomUUID();
+      const articleUrl = "https://example.com/article";
+
+      // Mock content cache to simulate cache miss
+      const contentCacheMock = {
+        get: mock(() => Promise.resolve(null)),
+        set: mock(() => Promise.resolve()),
+      };
+      mock.module("../lib/content-cache", () => ({
+        contentCache: contentCacheMock,
+      }));
+
+      // Mock extractCleanContent to return empty string content
+      const extractCleanContentMock = mock(() =>
+        Promise.resolve({
+          title: "Test Article",
+          content: "", // Empty string is falsy
+        }),
+      );
+      mock.module("../lib/readability", () => ({
+        extractCleanContent: extractCleanContentMock,
+      }));
+
+      await expect(
+        getArticleContent(userId, articleId, articleUrl),
+      ).rejects.toThrow(ExternalServiceError);
+
+      expect(contentCacheMock.get).toHaveBeenCalledWith(userId, articleId);
+      expect(extractCleanContentMock).toHaveBeenCalledWith(articleUrl);
+      expect(contentCacheMock.set).not.toHaveBeenCalled();
+    });
   });
 
   describe("searchCachedArticleIds", () => {

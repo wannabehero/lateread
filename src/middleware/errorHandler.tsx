@@ -3,8 +3,8 @@ import type { ContentfulStatusCode } from "hono/utils/http-status";
 import { ErrorPage } from "../components/errors/ErrorPage";
 import { ErrorPartial } from "../components/errors/ErrorPartial";
 import { AppError, InternalError } from "../lib/errors";
-import type { AppContext } from "../types/context";
 import { renderWithLayout } from "../routes/utils/render";
+import type { AppContext } from "../types/context";
 
 function formatErrorResponse(error: AppError) {
   return {

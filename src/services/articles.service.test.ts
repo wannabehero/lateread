@@ -1,5 +1,4 @@
 import { beforeEach, describe, expect, it } from "bun:test";
-import { eq } from "drizzle-orm";
 import { db, resetDatabase } from "../../test/bootstrap";
 import {
   addTagToArticle,

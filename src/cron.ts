@@ -1,5 +1,5 @@
 import { Cron } from "croner";
-import { cleanupExpiredTokens } from "./lib/auth";
+import { cleanupExpiredTokens } from "./services/auth.service";
 import { cleanupOldCache } from "./lib/content-cache";
 import { defaultLogger } from "./lib/logger";
 import { retryFailedArticles } from "./services/retry.service";

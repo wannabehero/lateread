@@ -137,7 +137,7 @@ export async function createSubscription(
   const id = overrides?.id ?? randomUUID();
   const type = overrides?.type ?? "lite";
   const createdAt = overrides?.createdAt ?? new Date();
-  // Default to 30 days from now
+  // Default to 30 days in the future (use setSystemTime in tests for deterministic dates)
   const expiresAt =
     overrides?.expiresAt ?? new Date(Date.now() + 30 * 24 * 60 * 60 * 1000);
 

@@ -1,7 +1,7 @@
 import { eq, lt } from "drizzle-orm";
 import { authTokens, telegramUsers, users } from "../db/schema";
-import { config } from "./config";
-import { db } from "./db";
+import { config } from "../lib/config";
+import { db } from "../lib/db";
 
 export const TOKEN_EXPIRATION_MINUTES = 5;
 

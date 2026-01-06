@@ -5,7 +5,7 @@ import {
   createAuthToken,
   getAuthTokenStatus,
   TOKEN_EXPIRATION_MINUTES,
-} from "../lib/auth";
+} from "../services/auth.service";
 import { config } from "../lib/config";
 import { clearSession, setSession } from "../lib/session";
 import type { AppContext } from "../types/context";

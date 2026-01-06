@@ -1,5 +1,5 @@
 import type { Bot, Context } from "grammy";
-import { claimAuthToken } from "../lib/auth";
+import { claimAuthToken } from "../services/auth.service";
 import { config } from "../lib/config";
 import { contentCache } from "../lib/content-cache";
 import { defaultLogger } from "../lib/logger";

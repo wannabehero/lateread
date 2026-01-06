@@ -1,15 +1,15 @@
 import { beforeEach, describe, expect, it } from "bun:test";
 import { eq } from "drizzle-orm";
 import { db, resetDatabase } from "../../test/bootstrap";
-import { authTokens } from "../db/schema";
+import { authTokens, telegramUsers, users } from "../db/schema";
+import { config } from "../lib/config";
 import {
   claimAuthToken,
   cleanupExpiredTokens,
   createAuthToken,
   getAuthTokenStatus,
   TOKEN_EXPIRATION_MINUTES,
-} from "./auth";
-import { config } from "./config";
+} from "./auth.service";
 
 describe("auth", () => {
   beforeEach(() => {
@@ -148,6 +148,92 @@ describe("auth", () => {
       if (status.status === "success") {
         expect(status.userId).toBeDefined();
       }
+    });
+
+    it("should create user and telegram user records in database", async () => {
+      const { token } = await createAuthToken();
+
+      const result = await claimAuthToken(
+        token,
+        "123456789",
+        "testuser",
+        "Test",
+        "User",
+      );
+
+      expect(result).not.toBeNull();
+
+      // Verify user record exists
+      const [user] = await db
+        .select()
+        .from(users)
+        .where(eq(users.id, result!.userId))
+        .limit(1);
+
+      expect(user).toBeDefined();
+      expect(user?.id).toBe(result!.userId);
+
+      // Verify telegram user record exists with correct data
+      const [telegramUser] = await db
+        .select()
+        .from(telegramUsers)
+        .where(eq(telegramUsers.telegramId, "123456789"))
+        .limit(1);
+
+      expect(telegramUser).toBeDefined();
+      expect(telegramUser?.userId).toBe(result!.userId);
+      expect(telegramUser?.telegramId).toBe("123456789");
+      expect(telegramUser?.username).toBe("testuser");
+      expect(telegramUser?.firstName).toBe("Test");
+      expect(telegramUser?.lastName).toBe("User");
+    });
+
+    it("should handle null username correctly", async () => {
+      const { token } = await createAuthToken();
+
+      const result = await claimAuthToken(
+        token,
+        "999999999",
+        null,
+        "John",
+        "Doe",
+      );
+
+      expect(result).not.toBeNull();
+      expect(result?.username).toBeNull();
+
+      // Verify telegram user record has null username
+      const [telegramUser] = await db
+        .select()
+        .from(telegramUsers)
+        .where(eq(telegramUsers.telegramId, "999999999"))
+        .limit(1);
+
+      expect(telegramUser).toBeDefined();
+      expect(telegramUser?.username).toBeNull();
+      expect(telegramUser?.firstName).toBe("John");
+      expect(telegramUser?.lastName).toBe("Doe");
+    });
+
+    it("should not create duplicate users for same telegram ID", async () => {
+      const { token: token1 } = await createAuthToken();
+      await claimAuthToken(token1, "123456789", "testuser", "Test", "User");
+
+      // Count users before second claim
+      const usersBefore = await db.select().from(users);
+      const telegramUsersBefore = await db.select().from(telegramUsers);
+
+      // Claim second token with same telegram ID
+      const { token: token2 } = await createAuthToken();
+      await claimAuthToken(token2, "123456789", "testuser", "Test", "User");
+
+      // Count users after second claim
+      const usersAfter = await db.select().from(users);
+      const telegramUsersAfter = await db.select().from(telegramUsers);
+
+      // Should have same number of users and telegram users
+      expect(usersAfter).toHaveLength(usersBefore.length);
+      expect(telegramUsersAfter).toHaveLength(telegramUsersBefore.length);
     });
   });
 

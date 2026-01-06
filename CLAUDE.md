@@ -359,6 +359,50 @@ SESSION_SECRET=test_session_secret_min_32_chars_long
 - Mirror the structure of `.env.example` but with test values
 - Use `:memory:` for DATABASE_URL in tests
 
+### Testing with Spies and Mocks
+
+When testing code that depends on external modules or services, use spies:
+
+```typescript
+import { afterEach, describe, expect, it, mock, spyOn } from "bun:test";
+import { contentCache } from "../lib/content-cache";
+import * as readability from "../lib/readability";
+import { getArticleContent } from "./content.service";
+
+describe("getArticleContent", () => {
+  // Declare spies at describe level
+  const spyGet = spyOn(contentCache, "get");
+  const spySet = spyOn(contentCache, "set");
+  const spyExtractCleanContent = spyOn(readability, "extractCleanContent");
+
+  afterEach(() => {
+    // Clear all mocks after each test
+    mock.clearAllMocks();
+  });
+
+  it("should return cached content when available", async () => {
+    spyGet.mockResolvedValue("<p>Cached content</p>");
+    spySet.mockResolvedValue();
+
+    const result = await getArticleContent("userId", "articleId", "url");
+
+    expect(result).toBe("<p>Cached content</p>");
+    expect(spyGet).toHaveBeenCalledWith("userId", "articleId");
+    expect(spyExtractCleanContent).not.toHaveBeenCalled();
+    expect(spySet).not.toHaveBeenCalled();
+  });
+});
+```
+
+**Spy patterns:**
+- **Naming**: Use `spyFunctionName` (e.g., `spyGet`, not `getSpy`)
+- **Declaration**: Declare spies at describe level, before tests
+- **Cleanup**: Use `mock.clearAllMocks()` in `afterEach` to clear all spies globally
+  - For complex tests with many spies or edge cases, you can use individual `spy.mockReset()` calls
+  - `clearAllMocks()` is preferred for simplicity and maintainability
+- **Mocking**: Use `mockResolvedValue()`, `mockRejectedValue()`, `mockImplementation()` as needed
+- **Assertions**: Verify calls with `toHaveBeenCalledWith()`, `toHaveBeenCalledTimes()`, `not.toHaveBeenCalled()`
+
 ## TypeScript Configuration
 
 - **Strict mode** with `noUncheckedIndexedAccess`

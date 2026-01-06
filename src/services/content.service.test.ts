@@ -33,9 +33,7 @@ describe("content.service", () => {
     const spyExtractCleanContent = spyOn(readability, "extractCleanContent");
 
     afterEach(() => {
-      spyGet.mockReset();
-      spySet.mockReset();
-      spyExtractCleanContent.mockReset();
+      mock.clearAllMocks();
     });
 
     it("should return cached content when available", async () => {

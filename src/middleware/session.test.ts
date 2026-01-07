@@ -1,0 +1,138 @@
+import { afterEach, beforeEach, describe, expect, it, mock } from "bun:test";
+import type { Context, Next } from "hono";
+import type { AppContext } from "../types/context";
+import { session } from "./session";
+
+// Mock the session module
+const mockGetSession = mock(
+  (_c: Context<AppContext>) => null as { userId: string } | null,
+);
+
+mock.module("../lib/session", () => ({
+  getSession: mockGetSession,
+}));
+
+function createMockContext(): Context<AppContext> {
+  return {
+    set: mock(() => {}),
+  } as unknown as Context<AppContext>;
+}
+
+describe("middleware/session", () => {
+  let mockNext: ReturnType<typeof mock>;
+
+  beforeEach(() => {
+    mockNext = mock(async () => {});
+  });
+
+  afterEach(() => {
+    mock.clearAllMocks();
+  });
+
+  describe("session extraction", () => {
+    it("should set userId in context when session exists", async () => {
+      const c = createMockContext();
+      mockGetSession.mockReturnValue({ userId: "user123" });
+
+      const middleware = session();
+      await middleware(c, mockNext);
+
+      expect(mockGetSession).toHaveBeenCalledWith(c);
+      expect(c.set).toHaveBeenCalledWith("userId", "user123");
+      expect(mockNext).toHaveBeenCalledTimes(1);
+    });
+
+    it("should not set userId when session is null", async () => {
+      const c = createMockContext();
+      mockGetSession.mockReturnValue(null);
+
+      const middleware = session();
+      await middleware(c, mockNext);
+
+      expect(mockGetSession).toHaveBeenCalledWith(c);
+      expect(c.set).not.toHaveBeenCalled();
+      expect(mockNext).toHaveBeenCalledTimes(1);
+    });
+
+    it("should not set userId when session exists but has no userId", async () => {
+      const c = createMockContext();
+      // Session object without userId (edge case)
+      mockGetSession.mockReturnValue({} as { userId: string });
+
+      const middleware = session();
+      await middleware(c, mockNext);
+
+      expect(c.set).not.toHaveBeenCalled();
+      expect(mockNext).toHaveBeenCalledTimes(1);
+    });
+  });
+
+  describe("next() handling", () => {
+    it("should call next() when session exists", async () => {
+      const c = createMockContext();
+      mockGetSession.mockReturnValue({ userId: "user123" });
+
+      const middleware = session();
+      await middleware(c, mockNext);
+
+      expect(mockNext).toHaveBeenCalledTimes(1);
+    });
+
+    it("should call next() when session is null", async () => {
+      const c = createMockContext();
+      mockGetSession.mockReturnValue(null);
+
+      const middleware = session();
+      await middleware(c, mockNext);
+
+      expect(mockNext).toHaveBeenCalledTimes(1);
+    });
+
+    it("should propagate errors from next()", async () => {
+      const c = createMockContext();
+      mockGetSession.mockReturnValue({ userId: "user123" });
+
+      const errorNext = mock(async () => {
+        throw new Error("Handler error");
+      });
+
+      const middleware = session();
+
+      await expect(middleware(c, errorNext)).rejects.toThrow("Handler error");
+    });
+  });
+
+  describe("session data handling", () => {
+    it("should handle different userId values", async () => {
+      const testCases = [
+        "user123",
+        "12345",
+        "uuid-abc-def",
+        "a".repeat(100), // Long userId
+      ];
+
+      for (const userId of testCases) {
+        const c = createMockContext();
+        mockGetSession.mockReturnValue({ userId });
+
+        const middleware = session();
+        await middleware(c, mockNext);
+
+        expect(c.set).toHaveBeenCalledWith("userId", userId);
+        mock.clearAllMocks();
+      }
+    });
+
+    it("should call getSession with correct context", async () => {
+      const c = createMockContext();
+      mockGetSession.mockReturnValue({ userId: "user123" });
+
+      const middleware = session();
+      await middleware(c, mockNext);
+
+      // Verify getSession was called with the context object
+      expect(mockGetSession).toHaveBeenCalledWith(c);
+      expect(mockGetSession).toHaveBeenCalledTimes(1);
+    });
+  });
+});

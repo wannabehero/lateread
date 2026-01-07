@@ -245,4 +245,65 @@ describe("database schema", () => {
       expect(updated?.userId).toBe(user.id);
     });
   });
+
+  describe("subscriptions table", () => {
+    it("should default type to lite", async () => {
+      const user = await createUser(db);
+      const [subscription] = await db
+        .insert(schema.subscriptions)
+        .values({
+          userId: user.id,
+          expiresAt: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000), // 30 days
+        })
+        .returning();
+
+      expect(subscription?.type).toBe("lite");
+    });
+
+    it("should cascade delete when user is deleted", async () => {
+      const user = await createUser(db);
+      await db.insert(schema.subscriptions).values({
+        userId: user.id,
+        type: "full",
+        expiresAt: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000),
+      });
+
+      // Delete user
+      await db.delete(schema.users).where(eq(schema.users.id, user.id));
+
+      // Subscription should be deleted too
+      const subscriptions = await db
+        .select()
+        .from(schema.subscriptions)
+        .where(eq(schema.subscriptions.userId, user.id));
+
+      expect(subscriptions).toHaveLength(0);
+    });
+
+    it("should accept both full and lite subscription types", async () => {
+      const user1 = await createUser(db);
+      const user2 = await createUser(db);
+
+      const [fullSub] = await db
+        .insert(schema.subscriptions)
+        .values({
+          userId: user1.id,
+          type: "full",
+          expiresAt: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000),
+        })
+        .returning();
+
+      const [liteSub] = await db
+        .insert(schema.subscriptions)
+        .values({
+          userId: user2.id,
+          type: "lite",
+          expiresAt: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000),
+        })
+        .returning();
+
+      expect(fullSub?.type).toBe("full");
+      expect(liteSub?.type).toBe("lite");
+    });
+  });
 });

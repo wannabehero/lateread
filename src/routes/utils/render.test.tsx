@@ -1,17 +1,9 @@
 import { describe, expect, it } from "bun:test";
-import { Window } from "happy-dom";
 import { Hono } from "hono";
 import type { FC } from "hono/jsx";
+import { parseHtml } from "../../../test/fixtures";
 import type { AppContext } from "../../types/context";
 import { renderWithLayout } from "./render";
-
-// Helper to parse HTML string into DOM using happy-dom
-// Using Window directly (not GlobalRegistrator) to avoid parallel test conflicts
-function parseHtml(html: string): Document {
-  const window = new Window();
-  window.document.write(html);
-  return window.document as unknown as Document;
-}
 
 // Helper to create a test app with renderWithLayout
 function createTestApp() {

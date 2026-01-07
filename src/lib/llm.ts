@@ -60,7 +60,7 @@ export function extractJsonFromResponse<T>(
   }
 }
 
-class ClaudeProvider implements LLMProvider {
+export class ClaudeProvider implements LLMProvider {
   private client: Anthropic;
   private taggingModel = "claude-haiku-4-5";
   private summaryModel = "claude-sonnet-4-5";
@@ -210,12 +210,4 @@ export function getLLMProvider(): LLMProvider {
 
 export function isLLMAvailable() {
   return !!config.ANTHROPIC_API_KEY;
-}
-
-/**
- * Reset the LLM provider singleton (for testing only)
- * @internal
- */
-export function _resetLLMProvider() {
-  llmProvider = null;
 }

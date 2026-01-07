@@ -1,4 +1,4 @@
-import { afterEach, beforeEach, describe, expect, it, mock } from "bun:test";
+import { beforeEach, describe, expect, it, mock } from "bun:test";
 import type Anthropic from "@anthropic-ai/sdk";
 
 // Mock Anthropic SDK globally
@@ -16,7 +16,7 @@ mock.module("@anthropic-ai/sdk", () => {
 
 // Import after mocking
 import {
-  _resetLLMProvider,
+  ClaudeProvider,
   extractJsonFromResponse,
   getLLMProvider,
   isLLMAvailable,
@@ -125,23 +125,11 @@ describe("extractJsonFromResponse", () => {
 });
 
 describe("ClaudeProvider", () => {
-  beforeEach(() => {
-    // Reset the provider singleton and mock before each test
-    _resetLLMProvider();
-    mock.module("./config", () => {
-      const actual = require("./config");
-      return {
-        config: {
-          ...actual.config,
-          ANTHROPIC_API_KEY: "test-api-key-12345",
-        },
-      };
-    });
-  });
+  // Create a new provider instance for each test
+  const createProvider = () => new ClaudeProvider("test-api-key");
 
-  afterEach(() => {
+  beforeEach(() => {
     mockAnthropicCreate.mockReset();
-    _resetLLMProvider();
   });
 
   describe("extractTags", () => {
@@ -164,7 +152,7 @@ describe("ClaudeProvider", () => {
 
       mockAnthropicCreate.mockResolvedValue(mockResponse);
 
-      const provider = getLLMProvider();
+      const provider = createProvider();
       const result = await provider.extractTags(
         "Test content about AI and ML",
         [],
@@ -199,7 +187,7 @@ describe("ClaudeProvider", () => {
 
       mockAnthropicCreate.mockResolvedValue(mockResponse);
 
-      const provider = getLLMProvider();
+      const provider = createProvider();
       const existingTags = ["programming", "javascript", "typescript"];
       await provider.extractTags("Content about JS", existingTags);
 
@@ -228,7 +216,7 @@ describe("ClaudeProvider", () => {
 
       mockAnthropicCreate.mockResolvedValue(mockResponse);
 
-      const provider = getLLMProvider();
+      const provider = createProvider();
       const longContent = "a".repeat(50000);
       await provider.extractTags(longContent, []);
 
@@ -242,7 +230,7 @@ describe("ClaudeProvider", () => {
     it("should return fallback on API errors", async () => {
       mockAnthropicCreate.mockRejectedValue(new Error("API error"));
 
-      const provider = getLLMProvider();
+      const provider = createProvider();
       const result = await provider.extractTags("Test content", []);
 
       expect(result).toEqual({
@@ -266,7 +254,7 @@ describe("ClaudeProvider", () => {
 
       mockAnthropicCreate.mockResolvedValue(mockResponse);
 
-      const provider = getLLMProvider();
+      const provider = createProvider();
       const result = await provider.extractTags("Test content", []);
 
       expect(result).toEqual({
@@ -295,7 +283,7 @@ describe("ClaudeProvider", () => {
 
       mockAnthropicCreate.mockResolvedValue(mockResponse);
 
-      const provider = getLLMProvider();
+      const provider = createProvider();
       const result = await provider.extractTags("Test content", []);
 
       expect(result).toEqual({
@@ -331,7 +319,7 @@ describe("ClaudeProvider", () => {
 
       mockAnthropicCreate.mockResolvedValue(mockResponse);
 
-      const provider = getLLMProvider();
+      const provider = createProvider();
       const result = await provider.summarize("Article content here");
 
       expect(result.oneSentence).toBe("This is a one sentence summary.");
@@ -371,7 +359,7 @@ describe("ClaudeProvider", () => {
 
       mockAnthropicCreate.mockResolvedValue(mockResponse);
 
-      const provider = getLLMProvider();
+      const provider = createProvider();
       await provider.summarize("Статья на русском", "ru");
 
       const callArgs = mockAnthropicCreate.mock.calls[0]?.[0];
@@ -403,7 +391,7 @@ describe("ClaudeProvider", () => {
 
       mockAnthropicCreate.mockResolvedValue(mockResponse);
 
-      const provider = getLLMProvider();
+      const provider = createProvider();
       await provider.summarize("Article content", null);
 
       const callArgs = mockAnthropicCreate.mock.calls[0]?.[0];
@@ -434,7 +422,7 @@ describe("ClaudeProvider", () => {
 
       mockAnthropicCreate.mockResolvedValue(mockResponse);
 
-      const provider = getLLMProvider();
+      const provider = createProvider();
       const longContent = "a".repeat(500000);
       await provider.summarize(longContent);
 
@@ -447,7 +435,7 @@ describe("ClaudeProvider", () => {
     it("should throw error on API errors", async () => {
       mockAnthropicCreate.mockRejectedValue(new Error("API error"));
 
-      const provider = getLLMProvider();
+      const provider = createProvider();
 
       await expect(provider.summarize("Test content")).rejects.toThrow(
         "Failed to generate summary",
@@ -468,7 +456,7 @@ describe("ClaudeProvider", () => {
 
       mockAnthropicCreate.mockResolvedValue(mockResponse);
 
-      const provider = getLLMProvider();
+      const provider = createProvider();
 
       await expect(provider.summarize("Test content")).rejects.toThrow(
         "Failed to generate summary",
@@ -498,7 +486,7 @@ describe("ClaudeProvider", () => {
 
       mockAnthropicCreate.mockResolvedValue(mockResponse);
 
-      const provider = getLLMProvider();
+      const provider = createProvider();
 
       await expect(provider.summarize("Test content")).rejects.toThrow(
         "Failed to generate summary",
@@ -528,7 +516,7 @@ describe("ClaudeProvider", () => {
 
       mockAnthropicCreate.mockResolvedValue(mockResponse);
 
-      const provider = getLLMProvider();
+      const provider = createProvider();
 
       await expect(provider.summarize("Test content")).rejects.toThrow(
         "Failed to generate summary",
@@ -558,7 +546,7 @@ describe("ClaudeProvider", () => {
 
       mockAnthropicCreate.mockResolvedValue(mockResponse);
 
-      const provider = getLLMProvider();
+      const provider = createProvider();
 
       await expect(provider.summarize("Test content")).rejects.toThrow(
         "Failed to generate summary",
@@ -568,67 +556,18 @@ describe("ClaudeProvider", () => {
 });
 
 describe("getLLMProvider and isLLMAvailable", () => {
-  beforeEach(() => {
-    // Reset provider and explicitly mock config with no API key
-    _resetLLMProvider();
-    mock.module("./config", () => {
-      const actual = require("./config");
-      return {
-        config: {
-          ...actual.config,
-          ANTHROPIC_API_KEY: undefined, // Explicitly no API key
-        },
-      };
-    });
-  });
-
-  afterEach(() => {
-    _resetLLMProvider();
-    mock.restore();
-  });
-
-  it("isLLMAvailable should return false when no API key", () => {
-    // .env.test doesn't have ANTHROPIC_API_KEY set by default
-    const result = isLLMAvailable();
-    expect(result).toBe(false);
-  });
-
   it("isLLMAvailable should return true when API key is set", () => {
-    // Override the beforeEach mock for this test only
-    _resetLLMProvider();
-    mock.module("./config", () => {
-      const actual = require("./config");
-      return {
-        config: {
-          ...actual.config,
-          ANTHROPIC_API_KEY: "test-api-key",
-        },
-      };
-    });
-
+    // .env.test has ANTHROPIC_API_KEY set
     const result = isLLMAvailable();
     expect(result).toBe(true);
   });
 
-  it("getLLMProvider should return noop provider when no API key", async () => {
-    // Ensure we're using default config (no API key) - already done in beforeEach
+  it("getLLMProvider should return ClaudeProvider when API key is set", () => {
+    // .env.test has ANTHROPIC_API_KEY set
     const provider = getLLMProvider();
 
     expect(provider).toBeDefined();
     expect(typeof provider.extractTags).toBe("function");
     expect(typeof provider.summarize).toBe("function");
-
-    // Test noop provider behavior
-    const tagResult = await provider.extractTags("content", []);
-    expect(tagResult).toEqual({
-      tags: [],
-      language: "en",
-      confidence: 0,
-    });
-
-    // Summarize should throw error with noop provider
-    await expect(provider.summarize("content")).rejects.toThrow(
-      "LLM provider not configured",
-    );
   });
 });

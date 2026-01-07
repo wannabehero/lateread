@@ -22,7 +22,6 @@
   },
   "devDependencies": {
     "@biomejs/biome": "^2.3.10",
-    "@happy-dom/global-registrator": "^20.1.0",
     "@libsql/client": "^0.15.15",
     "@picocss/pico": "^2.1.1",
     "@types/bun": "latest",

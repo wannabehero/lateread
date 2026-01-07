@@ -511,17 +511,20 @@ describe("myTest", () => {
 
 ### Testing JSX/Hono Routes
 
-For testing routes that render JSX, use Hono's built-in request testing with JSDOM for DOM assertions:
+For testing routes that render JSX, use Hono's built-in request testing with happy-dom for DOM assertions:
 
 ```typescript
 import { describe, expect, it } from "bun:test";
+import { Window } from "happy-dom";
 import { Hono } from "hono";
-import { JSDOM } from "jsdom";  // Already a dependency
 import type { AppContext } from "../../types/context";
 
-// Parse HTML for DOM assertions
+// Parse HTML for DOM assertions using happy-dom
+// Use Window directly (not GlobalRegistrator) to avoid parallel test conflicts
 function parseHtml(html: string): Document {
-  return new JSDOM(html).window.document;
+  const window = new Window();
+  window.document.write(html);
+  return window.document as unknown as Document;
 }
 
 describe("myRoute", () => {
@@ -550,9 +553,9 @@ describe("myRoute", () => {
 
 **Route testing best practices:**
 - Use `app.request()` instead of making real HTTP calls
-- Use JSDOM directly (not global registration) to avoid parallel test conflicts
+- Use happy-dom's `Window` directly (not GlobalRegistrator) to avoid parallel test conflicts
 - Set context variables via middleware in tests
-- Parse HTML with JSDOM for DOM assertions
+- Parse HTML with happy-dom for DOM assertions (faster and lighter than jsdom)
 
 ### Testing with Dates (setSystemTime)
 

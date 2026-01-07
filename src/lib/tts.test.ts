@@ -1,4 +1,5 @@
 import { beforeEach, describe, expect, it, mock } from "bun:test";
+import { getTTSProvider, htmlToPlainText, isTTSAvailable } from "./tts";
 
 // Mock ElevenLabs SDK globally
 const mockStream = mock(() => Promise.resolve());
@@ -12,9 +13,6 @@ mock.module("@elevenlabs/elevenlabs-js", () => {
     },
   };
 });
-
-// Import after mocking
-import { getTTSProvider, htmlToPlainText, isTTSAvailable } from "./tts";
 
 describe("htmlToPlainText", () => {
   it("should remove basic HTML tags", () => {

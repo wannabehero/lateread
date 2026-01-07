@@ -8,17 +8,15 @@ import {
   spyOn,
 } from "bun:test";
 import { eq } from "drizzle-orm";
-import { Hono } from "hono";
+import type { Hono } from "hono";
 import { db, resetDatabase } from "../../test/bootstrap";
 import {
-  addTagToArticle,
   createArticle,
   createCompletedArticle,
-  createNoopLogger,
-  createTag,
   createUser,
   parseHtml,
 } from "../../test/fixtures";
+import { createApp } from "../app";
 import { articles } from "../db/schema";
 import type { SummaryResult } from "../lib/llm";
 import * as llm from "../lib/llm";
@@ -27,7 +25,6 @@ import * as tts from "../lib/tts";
 import * as contentService from "../services/content.service";
 import * as summariesService from "../services/summaries.service";
 import type { AppContext } from "../types/context";
-import api from "./api";
 
 describe("routes/api", () => {
   let app: Hono<AppContext>;
@@ -36,32 +33,26 @@ describe("routes/api", () => {
   beforeEach(async () => {
     resetDatabase();
 
-    // Create a fresh Hono app with API routes
-    app = new Hono<AppContext>();
-
-    // Add middleware to set userId and logger for authenticated tests
-    app.use("*", async (c, next) => {
-      c.set("userId", testUserId);
-      c.set("logger", createNoopLogger());
-      return next();
-    });
-
-    // Mount API routes
-    app.route("/", api);
-
-    // Add error handler at the end to catch NotFoundError and other errors
-    app.onError((err, c) => {
-      // Check if error has statusCode property (custom errors)
-      if ("statusCode" in err && typeof err.statusCode === "number") {
-        return c.json({ error: err.message }, err.statusCode);
-      }
-      // Default to 500 for unexpected errors
-      return c.json({ error: err.message }, 500);
-    });
-
     // Create test user
     const user = await createUser(db);
     testUserId = user.id;
+
+    // Mock the session middleware to return our test userId
+    // This simulates an authenticated user session
+    mock.module("../lib/session", () => ({
+      getSession: () => ({ userId: testUserId }),
+      setSession: () => {},
+      clearSession: () => {},
+    }));
+
+    // Create the actual production app with all middleware
+    // The mocked session will make this user authenticated
+    app = createApp();
+  });
+
+  afterEach(() => {
+    // Clean up mocks after each test
+    mock.restore();
   });
 
   describe("POST /api/articles/:id/read", () => {
@@ -769,22 +760,20 @@ describe("routes/api", () => {
   describe("Authentication", () => {
     let unauthenticatedApp: Hono<AppContext>;
 
-    beforeEach(async () => {
-      // Create an app without authentication middleware
-      unauthenticatedApp = new Hono<AppContext>();
+    beforeEach(() => {
+      // Clear the mock from parent beforeEach and restore real session behavior
+      mock.restore();
 
-      // Add middleware that does NOT set userId
-      unauthenticatedApp.use("*", async (c, next) => {
-        c.set("logger", createNoopLogger());
-        return next();
-      });
+      // Mock session to return no userId (unauthenticated)
+      mock.module("../lib/session", () => ({
+        getSession: () => null,
+        setSession: () => {},
+        clearSession: () => {},
+      }));
 
-      // Add requireAuth middleware
-      const { requireAuth } = await import("../middleware/auth");
-      unauthenticatedApp.use("*", requireAuth("json-401"));
-
-      // Mount API routes
-      unauthenticatedApp.route("/", api);
+      // Create the actual production app WITHOUT authenticated session
+      // This tests the real authentication behavior
+      unauthenticatedApp = createApp();
     });
 
     it("should return 401 for /api/articles/:id/read without auth", async () => {

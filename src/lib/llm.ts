@@ -211,3 +211,11 @@ export function getLLMProvider(): LLMProvider {
 export function isLLMAvailable() {
   return !!config.ANTHROPIC_API_KEY;
 }
+
+/**
+ * Reset the LLM provider singleton (for testing only)
+ * @internal
+ */
+export function _resetLLMProvider() {
+  llmProvider = null;
+}

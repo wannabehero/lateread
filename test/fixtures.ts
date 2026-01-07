@@ -35,7 +35,12 @@ export async function createArticle(
   const id = overrides?.id ?? randomUUID();
   const url = overrides?.url ?? `https://example.com/article-${id.slice(0, 8)}`;
   const title = overrides?.title ?? null;
+  const description = overrides?.description ?? null;
+  const siteName = overrides?.siteName ?? null;
+  const imageUrl = overrides?.imageUrl ?? null;
+  const language = overrides?.language ?? null;
   const status = overrides?.status ?? "pending";
+  const lastError = overrides?.lastError ?? null;
   const createdAt = overrides?.createdAt ?? new Date();
 
   const [article] = await db
@@ -45,7 +50,12 @@ export async function createArticle(
       userId,
       url,
       title,
+      description,
+      siteName,
+      imageUrl,
+      language,
       status,
+      lastError,
       createdAt,
     })
     .returning();

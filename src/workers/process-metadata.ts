@@ -79,7 +79,7 @@ self.onmessage = async (event: MessageEvent) => {
   }
 };
 
-async function processArticle(article: Article, logger: Logger) {
+export async function processArticle(article: Article, logger: Logger) {
   // Step 3: Check if content is already cached (for Telegram long messages)
   let htmlContent = await contentCache.get(article.userId, article.id);
   let textContent: string;
@@ -156,7 +156,7 @@ async function processArticle(article: Article, logger: Logger) {
   });
 
   const tagPromises = await Promise.allSettled(
-    extractedTags.map((tag) => getOrCreateTag(tag, article.userId)),
+    extractedTags.map((tag) => getOrCreateTag(article.userId, tag)),
   );
   // Ignoring failed promises intentionally
   const tags = tagPromises

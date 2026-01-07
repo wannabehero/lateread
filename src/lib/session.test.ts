@@ -10,6 +10,7 @@ import {
 } from "bun:test";
 import type { Context } from "hono";
 import { createNoopLogger } from "../../test/fixtures";
+import { config } from "./config";
 import { clearSession, getSession, setSession } from "./session";
 
 let mockCookies: Record<
@@ -36,24 +37,6 @@ mock.module("hono/cookie", () => ({
   },
   deleteCookie: (_c: Context, name: string) => {
     delete mockCookies[name];
-  },
-}));
-
-mock.module("./config", () => ({
-  config: {
-    PORT: 3000,
-    NODE_ENV: "test",
-    DATABASE_URL: ":memory:",
-    TELEGRAM_BOT_TOKEN: "test_token",
-    BOT_USERNAME: "test_bot",
-    SESSION_SECRET: "test-secret-key-for-hmac-sha256-signing",
-    SESSION_MAX_AGE_DAYS: 180,
-    CACHE_DIR: "./cache/articles",
-    CACHE_MAX_AGE_DAYS: 30,
-    PROCESSING_TIMEOUT_SECONDS: 60,
-    MAX_RETRY_ATTEMPTS: 3,
-    RETRY_DELAY_MINUTES: 5,
-    LONG_MESSAGE_THRESHOLD: 1000,
   },
 }));
 
@@ -105,19 +88,8 @@ describe("session", () => {
       beforeEach(() => {
         mock.module("./config", () => ({
           config: {
-            PORT: 3000,
+            ...config,
             NODE_ENV: env,
-            DATABASE_URL: ":memory:",
-            TELEGRAM_BOT_TOKEN: "test_token",
-            BOT_USERNAME: "test_bot",
-            SESSION_SECRET: "test-secret-key-for-hmac-sha256-signing",
-            SESSION_MAX_AGE_DAYS: 180,
-            CACHE_DIR: "./cache/articles",
-            CACHE_MAX_AGE_DAYS: 30,
-            PROCESSING_TIMEOUT_SECONDS: 60,
-            MAX_RETRY_ATTEMPTS: 3,
-            RETRY_DELAY_MINUTES: 5,
-            LONG_MESSAGE_THRESHOLD: 1000,
           },
         }));
       });
@@ -125,19 +97,8 @@ describe("session", () => {
       afterAll(() => {
         mock.module("./config", () => ({
           config: {
-            PORT: 3000,
+            ...config,
             NODE_ENV: "test",
-            DATABASE_URL: ":memory:",
-            TELEGRAM_BOT_TOKEN: "test_token",
-            BOT_USERNAME: "test_bot",
-            SESSION_SECRET: "test-secret-key-for-hmac-sha256-signing",
-            SESSION_MAX_AGE_DAYS: 180,
-            CACHE_DIR: "./cache/articles",
-            CACHE_MAX_AGE_DAYS: 30,
-            PROCESSING_TIMEOUT_SECONDS: 60,
-            MAX_RETRY_ATTEMPTS: 3,
-            RETRY_DELAY_MINUTES: 5,
-            LONG_MESSAGE_THRESHOLD: 1000,
           },
         }));
       });
@@ -377,7 +338,8 @@ describe("session", () => {
 
       const [, sig1] = cookieValue.value.split(".");
 
-      expect(sig1).toBe("X4aFQWw4okGaTEgZyNTChD2FJo53lDZhR3qFiVR9MRM");
+      // Expected signature for SESSION_SECRET from .env.test
+      expect(sig1).toBe("GmTWXHKBioNS9X5T_SV_M1xqH14O_De2cEpbpF3rht0");
     });
   });
 });

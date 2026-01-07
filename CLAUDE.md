@@ -361,6 +361,29 @@ SESSION_SECRET=test_session_secret_min_32_chars_long
 - Mirror the structure of `.env.example` but with test values
 - Use `:memory:` for DATABASE_URL in tests
 
+### Mocking Config Values
+
+Most tests should use the config from `.env.test` without mocking. Only mock config when you need to override specific values for a test.
+
+**When you need to override config values:**
+```typescript
+import { config } from "../lib/config";
+
+// Mock only the specific config values you need to override
+mock.module("../lib/config", () => ({
+  config: {
+    ...config,  // Spread the real config from .env.test
+    CACHE_DIR: TEST_CACHE_DIR,  // Override only what you need
+  },
+}));
+```
+
+**Best practices:**
+- **DON'T mock config unnecessarily** - use `.env.test` values by default
+- **DO spread the real config** when mocking - `...config`
+- **DO override only specific values** you need to change for the test
+- **NEVER hardcode all config values** in mocks - it's brittle and causes test failures
+
 ### Testing with Spies and Mocks
 
 When testing code that depends on external modules or services, use spies:

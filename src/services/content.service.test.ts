@@ -2,6 +2,7 @@ import { afterEach, describe, expect, it, mock, spyOn } from "bun:test";
 import { randomUUID } from "node:crypto";
 import { mkdir, rm } from "node:fs/promises";
 import { join } from "node:path";
+import { config } from "../lib/config";
 import { contentCache } from "../lib/content-cache";
 import { ExternalServiceError } from "../lib/errors";
 import * as readability from "../lib/readability";
@@ -10,22 +11,11 @@ import { getArticleContent, searchCachedArticleIds } from "./content.service";
 const TEST_CACHE_DIR = `/tmp/${crypto.randomUUID()}`;
 const TEST_USER_ID = "test-user-123";
 
-// Mock config to use test cache directory
+// Mock config to use test cache directory (override only CACHE_DIR)
 mock.module("../lib/config", () => ({
   config: {
-    PORT: 3000,
-    NODE_ENV: "test",
-    DATABASE_URL: ":memory:",
-    TELEGRAM_BOT_TOKEN: "test_token",
-    BOT_USERNAME: "test_bot",
-    SESSION_SECRET: "test-secret-key-for-hmac-sha256-signing",
-    SESSION_MAX_AGE_DAYS: 180,
+    ...config,
     CACHE_DIR: TEST_CACHE_DIR,
-    CACHE_MAX_AGE_DAYS: 30,
-    PROCESSING_TIMEOUT_SECONDS: 60,
-    MAX_RETRY_ATTEMPTS: 3,
-    RETRY_DELAY_MINUTES: 5,
-    LONG_MESSAGE_THRESHOLD: 1000,
   },
 }));
 

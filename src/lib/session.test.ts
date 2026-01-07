@@ -10,6 +10,7 @@ import {
 } from "bun:test";
 import type { Context } from "hono";
 import { createNoopLogger } from "../../test/fixtures";
+import { config } from "./config";
 import { clearSession, getSession, setSession } from "./session";
 
 let mockCookies: Record<
@@ -36,14 +37,6 @@ mock.module("hono/cookie", () => ({
   },
   deleteCookie: (_c: Context, name: string) => {
     delete mockCookies[name];
-  },
-}));
-
-mock.module("./config", () => ({
-  config: {
-    SESSION_SECRET: "test-secret-key-for-hmac-sha256-signing",
-    NODE_ENV: "test",
-    SESSION_MAX_AGE_DAYS: 180,
   },
 }));
 
@@ -95,9 +88,8 @@ describe("session", () => {
       beforeEach(() => {
         mock.module("./config", () => ({
           config: {
-            SESSION_SECRET: "test-secret-key-for-hmac-sha256-signing",
+            ...config,
             NODE_ENV: env,
-            SESSION_MAX_AGE_DAYS: 180,
           },
         }));
       });
@@ -105,9 +97,8 @@ describe("session", () => {
       afterAll(() => {
         mock.module("./config", () => ({
           config: {
-            SESSION_SECRET: "test-secret-key-for-hmac-sha256-signing",
+            ...config,
             NODE_ENV: "test",
-            SESSION_MAX_AGE_DAYS: 180,
           },
         }));
       });
@@ -347,7 +338,8 @@ describe("session", () => {
 
       const [, sig1] = cookieValue.value.split(".");
 
-      expect(sig1).toBe("X4aFQWw4okGaTEgZyNTChD2FJo53lDZhR3qFiVR9MRM");
+      // Expected signature for SESSION_SECRET from .env.test
+      expect(sig1).toBe("GmTWXHKBioNS9X5T_SV_M1xqH14O_De2cEpbpF3rht0");
     });
   });
 });

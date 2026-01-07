@@ -307,6 +307,8 @@ await db.transaction(async (tx) => {
 
 ## Testing
 
+**IMPORTANT:** Always run `bun install` before running tests. This is a common pitfall - tests will fail with module resolution errors if dependencies are not installed.
+
 Using Bun's test runner with in-memory SQLite:
 
 ```typescript
@@ -359,6 +361,29 @@ SESSION_SECRET=test_session_secret_min_32_chars_long
 - Mirror the structure of `.env.example` but with test values
 - Use `:memory:` for DATABASE_URL in tests
 
+### Mocking Config Values
+
+Most tests should use the config from `.env.test` without mocking. Only mock config when you need to override specific values for a test.
+
+**When you need to override config values:**
+```typescript
+import { config } from "../lib/config";
+
+// Mock only the specific config values you need to override
+mock.module("../lib/config", () => ({
+  config: {
+    ...config,  // Spread the real config from .env.test
+    CACHE_DIR: TEST_CACHE_DIR,  // Override only what you need
+  },
+}));
+```
+
+**Best practices:**
+- **DON'T mock config unnecessarily** - use `.env.test` values by default
+- **DO spread the real config** when mocking - `...config`
+- **DO override only specific values** you need to change for the test
+- **NEVER hardcode all config values** in mocks - it's brittle and causes test failures
+
 ### Testing with Spies and Mocks
 
 When testing code that depends on external modules or services, use spies:
@@ -396,10 +421,19 @@ describe("getArticleContent", () => {
 
 **Spy patterns:**
 - **Naming**: Use `spyFunctionName` (e.g., `spyGet`, not `getSpy`)
-- **Declaration**: Declare spies at describe level, before tests
-- **Cleanup**: Use `mock.clearAllMocks()` in `afterEach` to clear all spies globally
-  - For complex tests with many spies or edge cases, you can use individual `spy.mockReset()` calls
-  - `clearAllMocks()` is preferred for simplicity and maintainability
+- **Declaration & Cleanup**: Choose one of two approaches:
+
+  **Approach 1: Spy per test (recommended for most cases)**
+  - Declare spy inside each test with `const spy = spyOn(...)`
+  - Use `mock.clearAllMocks()` in `afterEach` for global cleanup
+  - Simplest and safest - spy is recreated fresh for each test
+
+  **Approach 2: Spy at describe level (for shared setup)**
+  - Declare spy once at describe level with `const spy = spyOn(...)`
+  - Use `spy.mockRestore()` in `afterEach` or individual `spy.mockReset()` calls
+  - NEVER use `clearAllMocks()` with describe-level spies - it won't properly restore
+  - Use only when spy setup is complex and truly shared across all tests
+
 - **Mocking**: Use `mockResolvedValue()`, `mockRejectedValue()`, `mockImplementation()` as needed
 - **Assertions**: Verify calls with `toHaveBeenCalledWith()`, `toHaveBeenCalledTimes()`, `not.toHaveBeenCalled()`
 

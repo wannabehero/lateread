@@ -1,16 +1,16 @@
-import { afterEach, beforeEach, describe, expect, it, mock } from "bun:test";
+import {
+  afterEach,
+  beforeEach,
+  describe,
+  expect,
+  it,
+  mock,
+  spyOn,
+} from "bun:test";
 import type { Context, Next } from "hono";
+import * as sessionLib from "../lib/session";
 import type { AppContext } from "../types/context";
 import { session } from "./session";
-
-// Mock the session module
-const mockGetSession = mock(
-  (_c: Context<AppContext>) => null as { userId: string } | null,
-);
-
-mock.module("../lib/session", () => ({
-  getSession: mockGetSession,
-}));
 
 function createMockContext(): Context<AppContext> {
   return {
@@ -20,36 +20,38 @@ function createMockContext(): Context<AppContext> {
 
 describe("middleware/session", () => {
   let mockNext: ReturnType<typeof mock>;
+  let spyGetSession: ReturnType<typeof spyOn<typeof sessionLib, "getSession">>;
 
   beforeEach(() => {
     mockNext = mock(async () => {});
+    spyGetSession = spyOn(sessionLib, "getSession");
   });
 
   afterEach(() => {
-    mock.clearAllMocks();
+    spyGetSession.mockRestore();
   });
 
   describe("session extraction", () => {
     it("should set userId in context when session exists", async () => {
       const c = createMockContext();
-      mockGetSession.mockReturnValue({ userId: "user123" });
+      spyGetSession.mockReturnValue({ userId: "user123" });
 
       const middleware = session();
       await middleware(c, mockNext);
 
-      expect(mockGetSession).toHaveBeenCalledWith(c);
+      expect(spyGetSession).toHaveBeenCalledWith(c);
       expect(c.set).toHaveBeenCalledWith("userId", "user123");
       expect(mockNext).toHaveBeenCalledTimes(1);
     });
 
     it("should not set userId when session is null", async () => {
       const c = createMockContext();
-      mockGetSession.mockReturnValue(null);
+      spyGetSession.mockReturnValue(null);
 
       const middleware = session();
       await middleware(c, mockNext);
 
-      expect(mockGetSession).toHaveBeenCalledWith(c);
+      expect(spyGetSession).toHaveBeenCalledWith(c);
       expect(c.set).not.toHaveBeenCalled();
       expect(mockNext).toHaveBeenCalledTimes(1);
     });
@@ -57,7 +59,7 @@ describe("middleware/session", () => {
     it("should not set userId when session exists but has no userId", async () => {
       const c = createMockContext();
       // Session object without userId (edge case)
-      mockGetSession.mockReturnValue({} as { userId: string });
+      spyGetSession.mockReturnValue({} as { userId: string });
 
       const middleware = session();
       await middleware(c, mockNext);
@@ -70,7 +72,7 @@ describe("middleware/session", () => {
   describe("next() handling", () => {
     it("should call next() when session exists", async () => {
       const c = createMockContext();
-      mockGetSession.mockReturnValue({ userId: "user123" });
+      spyGetSession.mockReturnValue({ userId: "user123" });
 
       const middleware = session();
       await middleware(c, mockNext);
@@ -80,7 +82,7 @@ describe("middleware/session", () => {
 
     it("should call next() when session is null", async () => {
       const c = createMockContext();
-      mockGetSession.mockReturnValue(null);
+      spyGetSession.mockReturnValue(null);
 
       const middleware = session();
       await middleware(c, mockNext);
@@ -90,7 +92,7 @@ describe("middleware/session", () => {
 
     it("should propagate errors from next()", async () => {
       const c = createMockContext();
-      mockGetSession.mockReturnValue({ userId: "user123" });
+      spyGetSession.mockReturnValue({ userId: "user123" });
 
       const errorNext = mock(async () => {
         throw new Error("Handler error");
@@ -113,26 +115,26 @@ describe("middleware/session", () => {
 
       for (const userId of testCases) {
         const c = createMockContext();
-        mockGetSession.mockReturnValue({ userId });
+        spyGetSession.mockReturnValue({ userId });
 
         const middleware = session();
         await middleware(c, mockNext);
 
         expect(c.set).toHaveBeenCalledWith("userId", userId);
-        mock.clearAllMocks();
+        spyGetSession.mockClear();
       }
     });
 
     it("should call getSession with correct context", async () => {
       const c = createMockContext();
-      mockGetSession.mockReturnValue({ userId: "user123" });
+      spyGetSession.mockReturnValue({ userId: "user123" });
 
       const middleware = session();
       await middleware(c, mockNext);
 
       // Verify getSession was called with the context object
-      expect(mockGetSession).toHaveBeenCalledWith(c);
-      expect(mockGetSession).toHaveBeenCalledTimes(1);
+      expect(spyGetSession).toHaveBeenCalledWith(c);
+      expect(spyGetSession).toHaveBeenCalledTimes(1);
     });
   });
 });

@@ -22,12 +22,16 @@ import * as readability from "../lib/readability";
 import { processArticle } from "./process-metadata";
 
 describe("process-metadata worker", () => {
-  // Spies for external dependencies
-  const spyContentCacheGet = spyOn(contentCache, "get");
-  const spyContentCacheSet = spyOn(contentCache, "set");
-  const spyContentCacheExists = spyOn(contentCache, "exists");
-  const spyExtractCleanContent = spyOn(readability, "extractCleanContent");
-  const spyGetLLMProvider = spyOn(llm, "getLLMProvider");
+  // Spies for external dependencies - declared at describe level, created in beforeEach
+  let spyContentCacheGet: ReturnType<typeof spyOn<typeof contentCache, "get">>;
+  let spyContentCacheSet: ReturnType<typeof spyOn<typeof contentCache, "set">>;
+  let spyContentCacheExists: ReturnType<
+    typeof spyOn<typeof contentCache, "exists">
+  >;
+  let spyExtractCleanContent: ReturnType<
+    typeof spyOn<typeof readability, "extractCleanContent">
+  >;
+  let spyGetLLMProvider: ReturnType<typeof spyOn<typeof llm, "getLLMProvider">>;
 
   // Mock LLM provider
   const mockExtractTags = mock(() =>
@@ -45,6 +49,13 @@ describe("process-metadata worker", () => {
 
   beforeEach(() => {
     resetDatabase();
+
+    // Create fresh spies for each test
+    spyContentCacheGet = spyOn(contentCache, "get");
+    spyContentCacheSet = spyOn(contentCache, "set");
+    spyContentCacheExists = spyOn(contentCache, "exists");
+    spyExtractCleanContent = spyOn(readability, "extractCleanContent");
+    spyGetLLMProvider = spyOn(llm, "getLLMProvider");
 
     // Default mock implementations
     spyContentCacheGet.mockResolvedValue(null);
@@ -67,11 +78,12 @@ describe("process-metadata worker", () => {
   });
 
   afterEach(() => {
-    spyContentCacheGet.mockReset();
-    spyContentCacheSet.mockReset();
-    spyContentCacheExists.mockReset();
-    spyExtractCleanContent.mockReset();
-    spyGetLLMProvider.mockReset();
+    // Properly restore all spies to avoid polluting other test files
+    spyContentCacheGet.mockRestore();
+    spyContentCacheSet.mockRestore();
+    spyContentCacheExists.mockRestore();
+    spyExtractCleanContent.mockRestore();
+    spyGetLLMProvider.mockRestore();
     mockExtractTags.mockReset();
   });
 

@@ -115,7 +115,7 @@ export function getTTSProvider(): TTSProvider {
 
   // Noop provider
   ttsProvider = {
-    generateStream: (_text: string, _languageCode?: string | null) => {
+    generateStream: async (_text: string, _languageCode?: string | null) => {
       throw new ExternalServiceError("TTS provider not configured");
     },
   };

@@ -1,4 +1,13 @@
-import { afterEach, describe, expect, it, mock, spyOn } from "bun:test";
+import {
+  afterAll,
+  afterEach,
+  beforeEach,
+  describe,
+  expect,
+  it,
+  mock,
+  spyOn,
+} from "bun:test";
 import { defaultLogger } from "./logger";
 import { spawnArticleWorker } from "./worker";
 
@@ -7,12 +16,22 @@ describe("worker", () => {
   const spyWorker = spyOn(globalThis, "Worker");
   const spyLoggerChild = spyOn(defaultLogger, "child");
 
-  // Mock logger
-  const mockLogger = {
-    info: mock(() => {}),
-    error: mock(() => {}),
-    warn: mock(() => {}),
+  // Mock logger - will be set up in each test
+  let mockLogger: {
+    info: ReturnType<typeof mock>;
+    error: ReturnType<typeof mock>;
+    warn: ReturnType<typeof mock>;
   };
+
+  beforeEach(() => {
+    // Create fresh mock logger for each test
+    mockLogger = {
+      info: mock(() => {}),
+      error: mock(() => {}),
+      warn: mock(() => {}),
+    };
+    spyLoggerChild.mockReturnValue(mockLogger);
+  });
 
   afterEach(() => {
     // Reset spies between tests
@@ -21,8 +40,13 @@ describe("worker", () => {
     mock.clearAllMocks();
   });
 
+  afterAll(() => {
+    // Restore logger spy after all tests to avoid affecting other test files
+    spyLoggerChild.mockRestore();
+  });
+
   describe("successful processing", () => {
-    it("should create worker with correct URL", async () => {
+    it("should create worker, post message, call onSuccess, terminate, and log", async () => {
       const mockWorkerInstance = {
         postMessage: mock(() => {}),
         terminate: mock(() => {}),
@@ -31,72 +55,6 @@ describe("worker", () => {
       };
 
       spyWorker.mockImplementation(() => mockWorkerInstance);
-      spyLoggerChild.mockReturnValue(mockLogger);
-
-      const promise = spawnArticleWorker({
-        articleId: "test-123",
-      });
-
-      // Simulate worker success
-      if (mockWorkerInstance.onmessage) {
-        mockWorkerInstance.onmessage(
-          new MessageEvent("message", {
-            data: { success: true, articleId: "test-123" },
-          }),
-        );
-      }
-
-      await promise;
-
-      // Verify worker was created with correct URL
-      expect(spyWorker).toHaveBeenCalledTimes(1);
-      const workerUrl = spyWorker.mock.calls[0]?.[0];
-      expect(workerUrl).toBeDefined();
-      expect(workerUrl.toString()).toContain("process-metadata.ts");
-    });
-
-    it("should post message with articleId", async () => {
-      const mockWorkerInstance = {
-        postMessage: mock(() => {}),
-        terminate: mock(() => {}),
-        onmessage: null as ((event: MessageEvent) => void) | null,
-        onerror: null as ((event: ErrorEvent) => void) | null,
-      };
-
-      spyWorker.mockImplementation(() => mockWorkerInstance);
-      spyLoggerChild.mockReturnValue(mockLogger);
-
-      const promise = spawnArticleWorker({
-        articleId: "article-456",
-      });
-
-      // Simulate worker success
-      if (mockWorkerInstance.onmessage) {
-        mockWorkerInstance.onmessage(
-          new MessageEvent("message", {
-            data: { success: true, articleId: "article-456" },
-          }),
-        );
-      }
-
-      await promise;
-
-      expect(mockWorkerInstance.postMessage).toHaveBeenCalledTimes(1);
-      expect(mockWorkerInstance.postMessage).toHaveBeenCalledWith({
-        articleId: "article-456",
-      });
-    });
-
-    it("should call onSuccess callback when worker succeeds", async () => {
-      const mockWorkerInstance = {
-        postMessage: mock(() => {}),
-        terminate: mock(() => {}),
-        onmessage: null as ((event: MessageEvent) => void) | null,
-        onerror: null as ((event: ErrorEvent) => void) | null,
-      };
-
-      spyWorker.mockImplementation(() => mockWorkerInstance);
-      spyLoggerChild.mockReturnValue(mockLogger);
 
       const mockOnSuccess = mock((articleId: string) => {});
 
@@ -105,76 +63,19 @@ describe("worker", () => {
         onSuccess: mockOnSuccess,
       });
 
-      // Simulate worker success
-      if (mockWorkerInstance.onmessage) {
-        mockWorkerInstance.onmessage(
-          new MessageEvent("message", {
-            data: { success: true, articleId: "test-123" },
-          }),
-        );
-      }
-
       await promise;
 
-      expect(mockOnSuccess).toHaveBeenCalledTimes(1);
-      expect(mockOnSuccess).toHaveBeenCalledWith("test-123");
-    });
+      // Verify worker was created with correct URL
+      expect(spyWorker).toHaveBeenCalledTimes(1);
+      const workerUrl = spyWorker.mock.calls[0]?.[0];
+      expect(workerUrl).toBeDefined();
+      expect(workerUrl.toString()).toContain("process-metadata.ts");
 
-    it("should terminate worker after successful processing", async () => {
-      const mockWorkerInstance = {
-        postMessage: mock(() => {}),
-        terminate: mock(() => {}),
-        onmessage: null as ((event: MessageEvent) => void) | null,
-        onerror: null as ((event: ErrorEvent) => void) | null,
-      };
-
-      spyWorker.mockImplementation(() => mockWorkerInstance);
-      spyLoggerChild.mockReturnValue(mockLogger);
-
-      const promise = spawnArticleWorker({
+      // Verify message was posted with articleId
+      expect(mockWorkerInstance.postMessage).toHaveBeenCalledTimes(1);
+      expect(mockWorkerInstance.postMessage).toHaveBeenCalledWith({
         articleId: "test-123",
       });
-
-      // Simulate worker success
-      if (mockWorkerInstance.onmessage) {
-        mockWorkerInstance.onmessage(
-          new MessageEvent("message", {
-            data: { success: true, articleId: "test-123" },
-          }),
-        );
-      }
-
-      await promise;
-
-      expect(mockWorkerInstance.terminate).toHaveBeenCalledTimes(1);
-    });
-
-    it("should log appropriate info messages", async () => {
-      const mockWorkerInstance = {
-        postMessage: mock(() => {}),
-        terminate: mock(() => {}),
-        onmessage: null as ((event: MessageEvent) => void) | null,
-        onerror: null as ((event: ErrorEvent) => void) | null,
-      };
-
-      spyWorker.mockImplementation(() => mockWorkerInstance);
-      spyLoggerChild.mockReturnValue(mockLogger);
-
-      const promise = spawnArticleWorker({
-        articleId: "test-123",
-        onSuccess: () => {},
-      });
-
-      // Simulate worker success
-      if (mockWorkerInstance.onmessage) {
-        mockWorkerInstance.onmessage(
-          new MessageEvent("message", {
-            data: { success: true, articleId: "test-123" },
-          }),
-        );
-      }
-
-      await promise;
 
       // Verify child logger was created with correct context
       expect(spyLoggerChild).toHaveBeenCalledWith({
@@ -182,13 +83,32 @@ describe("worker", () => {
         article: "test-123",
       });
 
+      // Simulate worker success
+      if (mockWorkerInstance.onmessage) {
+        mockWorkerInstance.onmessage(
+          new MessageEvent("message", {
+            data: { success: true, articleId: "test-123" },
+          }),
+        );
+      }
+
+      // Wait for async event handler to complete
+      await new Promise((resolve) => setTimeout(resolve, 0));
+
+      // Verify onSuccess callback was called
+      expect(mockOnSuccess).toHaveBeenCalledTimes(1);
+      expect(mockOnSuccess).toHaveBeenCalledWith("test-123");
+
+      // Verify worker was terminated
+      expect(mockWorkerInstance.terminate).toHaveBeenCalledTimes(1);
+
       // Verify info logs were called
       expect(mockLogger.info).toHaveBeenCalled();
     });
   });
 
   describe("failed processing (via onmessage)", () => {
-    it("should call onFailure when worker returns success: false", async () => {
+    it("should call onFailure with error, terminate worker, and log error", async () => {
       const mockWorkerInstance = {
         postMessage: mock(() => {}),
         terminate: mock(() => {}),
@@ -197,7 +117,6 @@ describe("worker", () => {
       };
 
       spyWorker.mockImplementation(() => mockWorkerInstance);
-      spyLoggerChild.mockReturnValue(mockLogger);
 
       const mockOnFailure = mock((articleId: string, error?: unknown) => {});
 
@@ -205,6 +124,8 @@ describe("worker", () => {
         articleId: "test-123",
         onFailure: mockOnFailure,
       });
+
+      await promise;
 
       // Simulate worker failure
       if (mockWorkerInstance.onmessage) {
@@ -219,116 +140,26 @@ describe("worker", () => {
         );
       }
 
-      await promise;
+      // Wait for async event handler to complete
+      await new Promise((resolve) => setTimeout(resolve, 0));
 
+      // Verify onFailure was called with error message
       expect(mockOnFailure).toHaveBeenCalledTimes(1);
       expect(mockOnFailure).toHaveBeenCalledWith(
         "test-123",
         "Processing failed",
       );
-    });
 
-    it("should pass error message from worker to onFailure", async () => {
-      const mockWorkerInstance = {
-        postMessage: mock(() => {}),
-        terminate: mock(() => {}),
-        onmessage: null as ((event: MessageEvent) => void) | null,
-        onerror: null as ((event: ErrorEvent) => void) | null,
-      };
-
-      spyWorker.mockImplementation(() => mockWorkerInstance);
-      spyLoggerChild.mockReturnValue(mockLogger);
-
-      const mockOnFailure = mock((articleId: string, error?: unknown) => {});
-
-      const promise = spawnArticleWorker({
-        articleId: "test-123",
-        onFailure: mockOnFailure,
-      });
-
-      // Simulate worker failure with specific error
-      if (mockWorkerInstance.onmessage) {
-        mockWorkerInstance.onmessage(
-          new MessageEvent("message", {
-            data: {
-              success: false,
-              articleId: "test-123",
-              error: "Network timeout",
-            },
-          }),
-        );
-      }
-
-      await promise;
-
-      expect(mockOnFailure).toHaveBeenCalledWith("test-123", "Network timeout");
-    });
-
-    it("should terminate worker after failed processing", async () => {
-      const mockWorkerInstance = {
-        postMessage: mock(() => {}),
-        terminate: mock(() => {}),
-        onmessage: null as ((event: MessageEvent) => void) | null,
-        onerror: null as ((event: ErrorEvent) => void) | null,
-      };
-
-      spyWorker.mockImplementation(() => mockWorkerInstance);
-      spyLoggerChild.mockReturnValue(mockLogger);
-
-      const promise = spawnArticleWorker({
-        articleId: "test-123",
-      });
-
-      // Simulate worker failure
-      if (mockWorkerInstance.onmessage) {
-        mockWorkerInstance.onmessage(
-          new MessageEvent("message", {
-            data: { success: false, articleId: "test-123", error: "Error" },
-          }),
-        );
-      }
-
-      await promise;
-
+      // Verify worker was terminated
       expect(mockWorkerInstance.terminate).toHaveBeenCalledTimes(1);
-    });
 
-    it("should log error messages", async () => {
-      const mockWorkerInstance = {
-        postMessage: mock(() => {}),
-        terminate: mock(() => {}),
-        onmessage: null as ((event: MessageEvent) => void) | null,
-        onerror: null as ((event: ErrorEvent) => void) | null,
-      };
-
-      spyWorker.mockImplementation(() => mockWorkerInstance);
-      spyLoggerChild.mockReturnValue(mockLogger);
-
-      const promise = spawnArticleWorker({
-        articleId: "test-123",
-      });
-
-      // Simulate worker failure
-      if (mockWorkerInstance.onmessage) {
-        mockWorkerInstance.onmessage(
-          new MessageEvent("message", {
-            data: {
-              success: false,
-              articleId: "test-123",
-              error: "Processing error",
-            },
-          }),
-        );
-      }
-
-      await promise;
-
+      // Verify error was logged
       expect(mockLogger.error).toHaveBeenCalled();
     });
   });
 
   describe("worker error event (onerror)", () => {
-    it("should call onFailure when worker.onerror is triggered", async () => {
+    it("should call onFailure with error, terminate worker, and log error", async () => {
       const mockWorkerInstance = {
         postMessage: mock(() => {}),
         terminate: mock(() => {}),
@@ -337,7 +168,6 @@ describe("worker", () => {
       };
 
       spyWorker.mockImplementation(() => mockWorkerInstance);
-      spyLoggerChild.mockReturnValue(mockLogger);
 
       const mockOnFailure = mock((articleId: string, error?: unknown) => {});
 
@@ -345,41 +175,8 @@ describe("worker", () => {
         articleId: "test-123",
         onFailure: mockOnFailure,
       });
-
-      // Simulate worker error
-      if (mockWorkerInstance.onerror) {
-        const error = new Error("Worker crashed");
-        mockWorkerInstance.onerror(
-          new ErrorEvent("error", {
-            error,
-            message: "Worker crashed",
-          }),
-        );
-      }
 
       await promise;
-
-      expect(mockOnFailure).toHaveBeenCalledTimes(1);
-      expect(mockOnFailure).toHaveBeenCalledWith("test-123", expect.anything());
-    });
-
-    it("should pass error from onerror event to callback", async () => {
-      const mockWorkerInstance = {
-        postMessage: mock(() => {}),
-        terminate: mock(() => {}),
-        onmessage: null as ((event: MessageEvent) => void) | null,
-        onerror: null as ((event: ErrorEvent) => void) | null,
-      };
-
-      spyWorker.mockImplementation(() => mockWorkerInstance);
-      spyLoggerChild.mockReturnValue(mockLogger);
-
-      const mockOnFailure = mock((articleId: string, error?: unknown) => {});
-
-      const promise = spawnArticleWorker({
-        articleId: "test-123",
-        onFailure: mockOnFailure,
-      });
 
       // Simulate worker error with specific error object
       if (mockWorkerInstance.onerror) {
@@ -392,79 +189,29 @@ describe("worker", () => {
         );
       }
 
-      await promise;
+      // Wait for async event handler to complete
+      await new Promise((resolve) => setTimeout(resolve, 0));
 
+      // Verify onFailure was called with error
+      expect(mockOnFailure).toHaveBeenCalledTimes(1);
       const callArgs = mockOnFailure.mock.calls[0];
       expect(callArgs?.[0]).toBe("test-123");
       expect(callArgs?.[1]).toBeInstanceOf(Error);
       expect((callArgs?.[1] as Error).message).toBe("Out of memory");
-    });
 
-    it("should terminate worker after error", async () => {
-      const mockWorkerInstance = {
-        postMessage: mock(() => {}),
-        terminate: mock(() => {}),
-        onmessage: null as ((event: MessageEvent) => void) | null,
-        onerror: null as ((event: ErrorEvent) => void) | null,
-      };
-
-      spyWorker.mockImplementation(() => mockWorkerInstance);
-      spyLoggerChild.mockReturnValue(mockLogger);
-
-      const promise = spawnArticleWorker({
-        articleId: "test-123",
-      });
-
-      // Simulate worker error
-      if (mockWorkerInstance.onerror) {
-        mockWorkerInstance.onerror(
-          new ErrorEvent("error", {
-            error: new Error("Worker error"),
-          }),
-        );
-      }
-
-      await promise;
-
+      // Verify worker was terminated
       expect(mockWorkerInstance.terminate).toHaveBeenCalledTimes(1);
-    });
 
-    it("should log error messages", async () => {
-      const mockWorkerInstance = {
-        postMessage: mock(() => {}),
-        terminate: mock(() => {}),
-        onmessage: null as ((event: MessageEvent) => void) | null,
-        onerror: null as ((event: ErrorEvent) => void) | null,
-      };
-
-      spyWorker.mockImplementation(() => mockWorkerInstance);
-      spyLoggerChild.mockReturnValue(mockLogger);
-
-      const promise = spawnArticleWorker({
-        articleId: "test-123",
-      });
-
-      // Simulate worker error
-      if (mockWorkerInstance.onerror) {
-        mockWorkerInstance.onerror(
-          new ErrorEvent("error", {
-            error: new Error("Worker error"),
-          }),
-        );
-      }
-
-      await promise;
-
+      // Verify error was logged
       expect(mockLogger.error).toHaveBeenCalled();
     });
   });
 
   describe("worker creation failure", () => {
-    it("should catch Worker constructor errors", async () => {
+    it("should catch errors, call onFailure, and log without terminating", async () => {
       spyWorker.mockImplementation(() => {
         throw new Error("Failed to create worker");
       });
-      spyLoggerChild.mockReturnValue(mockLogger);
 
       const mockOnFailure = mock((articleId: string, error?: unknown) => {});
 
@@ -473,6 +220,7 @@ describe("worker", () => {
         onFailure: mockOnFailure,
       });
 
+      // Verify onFailure was called with error
       expect(mockOnFailure).toHaveBeenCalledTimes(1);
       expect(mockOnFailure).toHaveBeenCalledWith(
         "test-123",
@@ -480,40 +228,14 @@ describe("worker", () => {
           message: "Failed to create worker",
         }),
       );
-    });
 
-    it("should log failure to spawn worker", async () => {
-      spyWorker.mockImplementation(() => {
-        throw new Error("Worker creation failed");
-      });
-      spyLoggerChild.mockReturnValue(mockLogger);
-
-      await spawnArticleWorker({
-        articleId: "test-123",
-      });
-
+      // Verify error was logged
       expect(mockLogger.error).toHaveBeenCalled();
-    });
-
-    it("should not attempt to terminate worker that was never created", async () => {
-      const mockTerminate = mock(() => {});
-
-      spyWorker.mockImplementation(() => {
-        throw new Error("Failed to create worker");
-      });
-      spyLoggerChild.mockReturnValue(mockLogger);
-
-      await spawnArticleWorker({
-        articleId: "test-123",
-      });
-
-      // terminate should never be called since worker was never created
-      expect(mockTerminate).not.toHaveBeenCalled();
     });
   });
 
   describe("callback error handling", () => {
-    it("should catch errors thrown by onSuccess callback", async () => {
+    it("should catch onSuccess errors and log warning without throwing", async () => {
       const mockWorkerInstance = {
         postMessage: mock(() => {}),
         terminate: mock(() => {}),
@@ -522,7 +244,6 @@ describe("worker", () => {
       };
 
       spyWorker.mockImplementation(() => mockWorkerInstance);
-      spyLoggerChild.mockReturnValue(mockLogger);
 
       const mockOnSuccess = mock(() => {
         throw new Error("Callback error");
@@ -544,43 +265,12 @@ describe("worker", () => {
 
       // Should not throw
       await expect(promise).resolves.toBeUndefined();
-    });
 
-    it("should log warning when onSuccess callback fails", async () => {
-      const mockWorkerInstance = {
-        postMessage: mock(() => {}),
-        terminate: mock(() => {}),
-        onmessage: null as ((event: MessageEvent) => void) | null,
-        onerror: null as ((event: ErrorEvent) => void) | null,
-      };
-
-      spyWorker.mockImplementation(() => mockWorkerInstance);
-      spyLoggerChild.mockReturnValue(mockLogger);
-
-      const mockOnSuccess = mock(() => {
-        throw new Error("Callback error");
-      });
-
-      const promise = spawnArticleWorker({
-        articleId: "test-123",
-        onSuccess: mockOnSuccess,
-      });
-
-      // Simulate worker success
-      if (mockWorkerInstance.onmessage) {
-        mockWorkerInstance.onmessage(
-          new MessageEvent("message", {
-            data: { success: true, articleId: "test-123" },
-          }),
-        );
-      }
-
-      await promise;
-
+      // Verify warning was logged
       expect(mockLogger.warn).toHaveBeenCalled();
     });
 
-    it("should catch errors thrown by onFailure callback", async () => {
+    it("should catch onFailure errors and log warning without throwing", async () => {
       const mockWorkerInstance = {
         postMessage: mock(() => {}),
         terminate: mock(() => {}),
@@ -589,7 +279,6 @@ describe("worker", () => {
       };
 
       spyWorker.mockImplementation(() => mockWorkerInstance);
-      spyLoggerChild.mockReturnValue(mockLogger);
 
       const mockOnFailure = mock(() => {
         throw new Error("Callback error");
@@ -611,39 +300,8 @@ describe("worker", () => {
 
       // Should not throw
       await expect(promise).resolves.toBeUndefined();
-    });
 
-    it("should log warning when onFailure callback fails", async () => {
-      const mockWorkerInstance = {
-        postMessage: mock(() => {}),
-        terminate: mock(() => {}),
-        onmessage: null as ((event: MessageEvent) => void) | null,
-        onerror: null as ((event: ErrorEvent) => void) | null,
-      };
-
-      spyWorker.mockImplementation(() => mockWorkerInstance);
-      spyLoggerChild.mockReturnValue(mockLogger);
-
-      const mockOnFailure = mock(() => {
-        throw new Error("Callback error");
-      });
-
-      const promise = spawnArticleWorker({
-        articleId: "test-123",
-        onFailure: mockOnFailure,
-      });
-
-      // Simulate worker failure
-      if (mockWorkerInstance.onmessage) {
-        mockWorkerInstance.onmessage(
-          new MessageEvent("message", {
-            data: { success: false, articleId: "test-123", error: "Error" },
-          }),
-        );
-      }
-
-      await promise;
-
+      // Verify warning was logged
       expect(mockLogger.warn).toHaveBeenCalled();
     });
   });
@@ -658,7 +316,6 @@ describe("worker", () => {
       };
 
       spyWorker.mockImplementation(() => mockWorkerInstance);
-      spyLoggerChild.mockReturnValue(mockLogger);
 
       const promise = spawnArticleWorker({
         articleId: "test-123",
@@ -688,7 +345,6 @@ describe("worker", () => {
       };
 
       spyWorker.mockImplementation(() => mockWorkerInstance);
-      spyLoggerChild.mockReturnValue(mockLogger);
 
       const promise = spawnArticleWorker({
         articleId: "test-123",
@@ -718,7 +374,6 @@ describe("worker", () => {
       };
 
       spyWorker.mockImplementation(() => mockWorkerInstance);
-      spyLoggerChild.mockReturnValue(mockLogger);
 
       const promise = spawnArticleWorker({
         articleId: "test-123",
@@ -753,7 +408,6 @@ describe("worker", () => {
       };
 
       spyWorker.mockImplementation(() => mockWorkerInstance);
-      spyLoggerChild.mockReturnValue(mockLogger);
 
       let callbackCompleted = false;
       const mockOnSuccess = mock(async (articleId: string) => {
@@ -794,7 +448,6 @@ describe("worker", () => {
       };
 
       spyWorker.mockImplementation(() => mockWorkerInstance);
-      spyLoggerChild.mockReturnValue(mockLogger);
 
       let callbackCompleted = false;
       const mockOnFailure = mock(async (articleId: string, error?: unknown) => {
@@ -835,7 +488,6 @@ describe("worker", () => {
       };
 
       spyWorker.mockImplementation(() => mockWorkerInstance);
-      spyLoggerChild.mockReturnValue(mockLogger);
 
       const mockOnSuccess = mock(async (articleId: string) => {
         await new Promise((resolve) => setTimeout(resolve, 10));

@@ -6,7 +6,13 @@ import type { AppContext } from "../../types/context";
 
 // I don't think I'm in love with this
 // It looks to me that the bundler is great for SPAs but not SSR apps
-function getAssetNames() {
+function getAssetNames(): { appJs: string; appCss: string } {
+  // In test environment, assets aren't built - use fallback values
+  // The Head component has defaults of app.js/app.css anyway
+  if (process.env.NODE_ENV === "test") {
+    return { appJs: "app.js", appCss: "app.css" };
+  }
+
   let appJs: string | undefined;
   let appCss: string | undefined;
 
@@ -31,7 +37,8 @@ function getAssetNames() {
 }
 
 // In prod it will have the app-{hash}.[js|css] files
-// But in dev just plain app.[js|css]
+// In dev just plain app.[js|css]
+// In test, fallback values are used
 const { appCss, appJs } = getAssetNames();
 
 export function renderWithLayout({

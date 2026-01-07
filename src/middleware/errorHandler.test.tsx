@@ -1,4 +1,4 @@
-import { beforeEach, describe, expect, it, mock, spyOn } from "bun:test";
+import { describe, expect, it, mock, spyOn } from "bun:test";
 import type { Context } from "hono";
 import { createNoopLogger } from "../../test/fixtures";
 import {
@@ -11,21 +11,10 @@ import {
 import type { AppContext } from "../types/context";
 import { errorHandler } from "./errorHandler";
 
-// Mock renderWithLayout to avoid file system access
-// Bun automatically hoists mock.module calls
-mock.module("../routes/utils/render", () => ({
-  renderWithLayout: ({
-    c,
-    content,
-    statusCode,
-  }: {
-    c: Context;
-    content: unknown;
-    statusCode?: number;
-  }) => {
-    return c.html(content, statusCode);
-  },
-}));
+// Note: We don't need to mock renderWithLayout here because:
+// 1. The test uses a fully mocked context where c.html is already mocked
+// 2. render.tsx now handles the test environment properly (NODE_ENV=test fallback)
+// Using mock.module() would affect ALL test files globally due to Bun's hoisting
 
 function createMockContext(options?: {
   path?: string;

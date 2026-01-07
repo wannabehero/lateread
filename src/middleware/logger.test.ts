@@ -33,22 +33,25 @@ function createMockContext(options?: {
 
 describe("middleware/logger", () => {
   let mockNext: ReturnType<typeof mock>;
+  let spyChild: ReturnType<typeof spyOn<typeof defaultLogger, "child">>;
+  let childLogger: ReturnType<typeof createNoopLogger>;
+  let spyInfo: ReturnType<typeof spyOn>;
 
   beforeEach(() => {
     mockNext = mock(async () => {});
+    childLogger = createNoopLogger();
+    spyInfo = spyOn(childLogger, "info");
+    spyChild = spyOn(defaultLogger, "child").mockReturnValue(childLogger);
   });
 
   afterEach(() => {
-    mock.clearAllMocks();
+    // Restore spies to avoid polluting other test files running in parallel
+    spyChild.mockRestore();
     setSystemTime(); // Reset system time
   });
 
   describe("logger creation and setup", () => {
     it("should create child logger with requestId", async () => {
-      const spyChild = spyOn(defaultLogger, "child");
-      const childLogger = createNoopLogger();
-      spyChild.mockReturnValue(childLogger);
-
       const c = createMockContext({ requestId: "test-req-id" });
 
       await loggerMiddleware(c, mockNext);
@@ -60,10 +63,6 @@ describe("middleware/logger", () => {
     });
 
     it("should set logger in context", async () => {
-      const spyChild = spyOn(defaultLogger, "child");
-      const childLogger = createNoopLogger();
-      spyChild.mockReturnValue(childLogger);
-
       const c = createMockContext();
 
       await loggerMiddleware(c, mockNext);
@@ -80,10 +79,6 @@ describe("middleware/logger", () => {
     });
 
     it("should handle missing requestId gracefully", async () => {
-      const spyChild = spyOn(defaultLogger, "child");
-      const childLogger = createNoopLogger();
-      spyChild.mockReturnValue(childLogger);
-
       // Create context that explicitly returns undefined for requestId
       const c = {
         get: (_key: string) => undefined,
@@ -108,11 +103,6 @@ describe("middleware/logger", () => {
 
   describe("request logging", () => {
     it("should log request completion with method, path, status", async () => {
-      const spyChild = spyOn(defaultLogger, "child");
-      const childLogger = createNoopLogger();
-      const spyInfo = spyOn(childLogger, "info");
-      spyChild.mockReturnValue(childLogger);
-
       const c = createMockContext();
       c.req.method = "POST";
       c.req.path = "/api/articles/123";
@@ -126,11 +116,6 @@ describe("middleware/logger", () => {
     });
 
     it("should include duration in log message", async () => {
-      const spyChild = spyOn(defaultLogger, "child");
-      const childLogger = createNoopLogger();
-      const spyInfo = spyOn(childLogger, "info");
-      spyChild.mockReturnValue(childLogger);
-
       const c = createMockContext();
 
       // Set a fixed start time
@@ -158,11 +143,6 @@ describe("middleware/logger", () => {
 
   describe("error handling", () => {
     it("should log even when next() throws an error", async () => {
-      const spyChild = spyOn(defaultLogger, "child");
-      const childLogger = createNoopLogger();
-      const spyInfo = spyOn(childLogger, "info");
-      spyChild.mockReturnValue(childLogger);
-
       const c = createMockContext();
       const errorNext = mock(async () => {
         throw new Error("Handler error");
@@ -180,11 +160,6 @@ describe("middleware/logger", () => {
     });
 
     it("should measure duration correctly even when handler throws", async () => {
-      const spyChild = spyOn(defaultLogger, "child");
-      const childLogger = createNoopLogger();
-      const spyInfo = spyOn(childLogger, "info");
-      spyChild.mockReturnValue(childLogger);
-
       const c = createMockContext();
 
       setSystemTime(new Date("2025-01-01T00:00:00.000Z"));
@@ -204,11 +179,6 @@ describe("middleware/logger", () => {
 
   describe("async handler support", () => {
     it("should work with async handlers", async () => {
-      const spyChild = spyOn(defaultLogger, "child");
-      const childLogger = createNoopLogger();
-      const spyInfo = spyOn(childLogger, "info");
-      spyChild.mockReturnValue(childLogger);
-
       const c = createMockContext();
 
       const asyncNext = mock(async () => {
@@ -234,11 +204,6 @@ describe("middleware/logger", () => {
       path,
       status,
     }) => {
-      const spyChild = spyOn(defaultLogger, "child");
-      const childLogger = createNoopLogger();
-      const spyInfo = spyOn(childLogger, "info");
-      spyChild.mockReturnValue(childLogger);
-
       const c = createMockContext();
       c.req.method = method;
       c.req.path = path;

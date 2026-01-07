@@ -1,5 +1,6 @@
 import { randomUUID } from "node:crypto";
 import type { drizzle } from "drizzle-orm/bun-sqlite";
+import { Window } from "happy-dom";
 import * as schema from "../src/db/schema";
 import type { Logger } from "../src/lib/logger/types";
 
@@ -204,4 +205,14 @@ export function createNoopLogger(): Logger {
     child: () => createNoopLogger(),
     context: {},
   };
+}
+
+/**
+ * Parse HTML string into a DOM Document for testing
+ * Uses happy-dom's Window directly (not GlobalRegistrator) to avoid parallel test conflicts
+ */
+export function parseHtml(html: string): Document {
+  const window = new Window();
+  window.document.write(html);
+  return window.document as unknown as Document;
 }

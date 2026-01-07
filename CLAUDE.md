@@ -437,6 +437,118 @@ describe("getArticleContent", () => {
 - **Mocking**: Use `mockResolvedValue()`, `mockRejectedValue()`, `mockImplementation()` as needed
 - **Assertions**: Verify calls with `toHaveBeenCalledWith()`, `toHaveBeenCalledTimes()`, `not.toHaveBeenCalled()`
 
+### Mocking Pitfalls (IMPORTANT)
+
+Bun's mocking has several gotchas that can cause hard-to-debug test failures:
+
+**1. NEVER use `mock.module()` for shared modules**
+```typescript
+// ❌ BAD - This mock is HOISTED and affects ALL test files globally!
+mock.module("../routes/utils/render", () => ({
+  renderWithLayout: () => "mocked",
+}));
+
+// The above mock will pollute other test files that import render.tsx
+// even if they run in parallel. Bun hoists mock.module calls.
+```
+
+**Why it's dangerous:** `mock.module()` is hoisted by Bun to the top of the file and applied before any imports. When tests run in parallel, this mock persists and affects other test files importing the same module.
+
+**2. Use spies with proper cleanup instead**
+```typescript
+// ✅ GOOD - Spy on specific functions with proper restoration
+import { afterEach, beforeEach, spyOn } from "bun:test";
+
+describe("myTest", () => {
+  let spyFunction: ReturnType<typeof spyOn>;
+
+  beforeEach(() => {
+    spyFunction = spyOn(myModule, "myFunction").mockReturnValue("mocked");
+  });
+
+  afterEach(() => {
+    spyFunction.mockRestore();  // Restore original implementation
+  });
+});
+```
+
+**3. Don't use `mock.clearAllMocks()` with describe-level spies**
+```typescript
+// ❌ BAD - clearAllMocks() clears the mock implementation, breaking subsequent tests
+const spyLog = spyOn(console, "log").mockImplementation(() => {});
+
+afterEach(() => {
+  mock.clearAllMocks();  // This breaks the spy!
+});
+
+// ✅ GOOD - Use mockClear() or mockRestore() for describe-level spies
+afterEach(() => {
+  spyLog.mockClear();   // Clears call history, keeps implementation
+  // OR
+  spyLog.mockRestore(); // Fully restores original (need to re-spy in beforeEach)
+});
+```
+
+**4. For tests that need isolation, create spies in beforeEach**
+```typescript
+// ✅ GOOD - Fresh spy for each test, immune to parallel test pollution
+describe("myTest", () => {
+  let spyLog: ReturnType<typeof spyOn<typeof console, "log">>;
+
+  beforeEach(() => {
+    spyLog = spyOn(console, "log").mockImplementation(() => {});
+  });
+
+  afterEach(() => {
+    spyLog.mockRestore();
+  });
+
+  it("works in isolation", () => {
+    // spyLog is fresh for this test
+  });
+});
+```
+
+### Testing JSX/Hono Routes
+
+For testing routes that render JSX, use Hono's built-in request testing with happy-dom for DOM assertions:
+
+```typescript
+import { describe, expect, it } from "bun:test";
+import { Hono } from "hono";
+import { parseHtml } from "../../test/fixtures";  // Shared DOM parsing utility
+import type { AppContext } from "../../types/context";
+
+describe("myRoute", () => {
+  it("should render page correctly", async () => {
+    const app = new Hono<AppContext>();
+
+    // Add middleware to set context variables
+    app.use("*", async (c, next) => {
+      c.set("userId", "user-123");
+      return next();
+    });
+
+    app.get("/test", myRouteHandler);
+
+    // Use Hono's built-in request method
+    const res = await app.request("/test");
+    const html = await res.text();
+    const doc = parseHtml(html);
+
+    expect(res.status).toBe(200);
+    expect(doc.querySelector(".my-element")).toBeTruthy();
+    expect(doc.querySelector("title")?.textContent).toBe("Expected Title");
+  });
+});
+```
+
+**Route testing best practices:**
+- Use `app.request()` instead of making real HTTP calls
+- Use `parseHtml()` from `test/fixtures` for DOM assertions (uses happy-dom)
+- Set context variables via middleware in tests
+- happy-dom is faster and lighter than jsdom for test assertions
+
 ### Testing with Dates (setSystemTime)
 
 For date-based tests, always use `setSystemTime` from Bun to set a fixed system time. This eliminates flakiness and makes tests deterministic regardless of when they run or how slow the test environment is.

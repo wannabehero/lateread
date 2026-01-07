@@ -1,4 +1,3 @@
-import { eq } from "drizzle-orm";
 import {
   afterEach,
   beforeEach,
@@ -8,6 +7,7 @@ import {
   mock,
   spyOn,
 } from "bun:test";
+import { eq } from "drizzle-orm";
 import { db, resetDatabase } from "../../test/bootstrap";
 import {
   createArticle,
@@ -15,7 +15,7 @@ import {
   createTag,
   createUser,
 } from "../../test/fixtures";
-import { articleTags, articles, tags } from "../db/schema";
+import { articles, articleTags, tags } from "../db/schema";
 import { contentCache } from "../lib/content-cache";
 import * as llm from "../lib/llm";
 import * as readability from "../lib/readability";
@@ -35,7 +35,7 @@ describe("process-metadata worker", () => {
       tags: ["javascript", "testing"],
       language: "en",
       confidence: 0.95,
-    })
+    }),
   );
 
   const mockLLMProvider = {
@@ -103,7 +103,7 @@ describe("process-metadata worker", () => {
 
       expect(spyContentCacheGet).toHaveBeenCalledWith(user.id, article.id);
       expect(spyExtractCleanContent).toHaveBeenCalledWith(
-        "https://example.com/article"
+        "https://example.com/article",
       );
     });
 
@@ -146,7 +146,7 @@ describe("process-metadata worker", () => {
       expect(spyContentCacheSet).toHaveBeenCalledWith(
         user.id,
         article.id,
-        "<p>Test article content</p>"
+        "<p>Test article content</p>",
       );
     });
 
@@ -184,7 +184,7 @@ describe("process-metadata worker", () => {
       const logger = createNoopLogger();
 
       spyContentCacheGet.mockResolvedValue(
-        "<p>Cached</p> <span>content</span> here"
+        "<p>Cached</p> <span>content</span> here",
       );
 
       await processArticle(article, logger);
@@ -192,7 +192,7 @@ describe("process-metadata worker", () => {
       // Text extraction strips HTML tags and normalizes whitespace
       expect(mockExtractTags).toHaveBeenCalledWith(
         expect.stringContaining("Cached"),
-        []
+        [],
       );
     });
   });
@@ -386,7 +386,9 @@ describe("process-metadata worker", () => {
       expect(updatedArticle?.title).toBe("Extracted Title");
       expect(updatedArticle?.description).toBe("Extracted description");
       expect(updatedArticle?.siteName).toBe("Extracted Site");
-      expect(updatedArticle?.imageUrl).toBe("https://example.com/extracted.jpg");
+      expect(updatedArticle?.imageUrl).toBe(
+        "https://example.com/extracted.jpg",
+      );
     });
 
     it("should preserve existing metadata when using cached content", async () => {

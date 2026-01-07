@@ -1,12 +1,20 @@
-import { afterEach, describe, expect, it, mock, spyOn } from "bun:test";
+import { afterEach, beforeEach, describe, expect, it, spyOn } from "bun:test";
 import { createLogger, getLogger, defaultLogger as logger } from ".";
 
 describe("logger", () => {
-  const spyLog = spyOn(console, "log").mockImplementation(() => {});
-  const spyError = spyOn(console, "error").mockImplementation(() => {});
+  // Create spies in beforeEach to ensure isolation from other test files
+  // that might call mock.clearAllMocks() during parallel execution
+  let spyLog: ReturnType<typeof spyOn<typeof console, "log">>;
+  let spyError: ReturnType<typeof spyOn<typeof console, "error">>;
+
+  beforeEach(() => {
+    spyLog = spyOn(console, "log").mockImplementation(() => {});
+    spyError = spyOn(console, "error").mockImplementation(() => {});
+  });
 
   afterEach(() => {
-    mock.clearAllMocks();
+    spyLog.mockRestore();
+    spyError.mockRestore();
   });
 
   describe("log levels", () => {

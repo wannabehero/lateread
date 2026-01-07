@@ -29,6 +29,7 @@ import type { AppContext } from "../types/context";
 describe("routes/api", () => {
   let app: Hono<AppContext>;
   let testUserId: string;
+  let spyGetSession: ReturnType<typeof spyOn>;
 
   beforeEach(async () => {
     resetDatabase();
@@ -37,22 +38,20 @@ describe("routes/api", () => {
     const user = await createUser(db);
     testUserId = user.id;
 
-    // Mock the session middleware to return our test userId
+    // Spy on getSession to return our test userId
     // This simulates an authenticated user session
-    mock.module("../lib/session", () => ({
-      getSession: () => ({ userId: testUserId }),
-      setSession: () => {},
-      clearSession: () => {},
-    }));
+    const sessionModule = await import("../lib/session");
+    spyGetSession = spyOn(sessionModule, "getSession");
+    spyGetSession.mockReturnValue({ userId: testUserId });
 
     // Create the actual production app with all middleware
-    // The mocked session will make this user authenticated
+    // The spied session will make this user authenticated
     app = createApp();
   });
 
   afterEach(() => {
-    // Clean up mocks after each test
-    mock.restore();
+    // Restore the spy after each test
+    spyGetSession.mockRestore();
   });
 
   describe("POST /api/articles/:id/read", () => {
@@ -761,15 +760,8 @@ describe("routes/api", () => {
     let unauthenticatedApp: Hono<AppContext>;
 
     beforeEach(() => {
-      // Clear the mock from parent beforeEach and restore real session behavior
-      mock.restore();
-
-      // Mock session to return no userId (unauthenticated)
-      mock.module("../lib/session", () => ({
-        getSession: () => null,
-        setSession: () => {},
-        clearSession: () => {},
-      }));
+      // Override the parent spy to return null (unauthenticated)
+      spyGetSession.mockReturnValue(null);
 
       // Create the actual production app WITHOUT authenticated session
       // This tests the real authentication behavior

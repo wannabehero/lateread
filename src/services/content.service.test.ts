@@ -1,4 +1,4 @@
-import { afterEach, describe, expect, it, mock, spyOn } from "bun:test";
+import { afterEach, beforeEach, describe, expect, it, spyOn } from "bun:test";
 import { randomUUID } from "node:crypto";
 import { mkdir, rm } from "node:fs/promises";
 import { join } from "node:path";
@@ -8,34 +8,27 @@ import { ExternalServiceError } from "../lib/errors";
 import * as readability from "../lib/readability";
 import { getArticleContent, searchCachedArticleIds } from "./content.service";
 
-const TEST_CACHE_DIR = `/tmp/${crypto.randomUUID()}`;
-const TEST_USER_ID = "test-user-123";
-
-// Mock config to use test cache directory (override only CACHE_DIR)
-mock.module("../lib/config", () => ({
-  config: {
-    ...config,
-    CACHE_DIR: TEST_CACHE_DIR,
-  },
-}));
+// Use real config.CACHE_DIR but with test-specific user ID to avoid conflicts
+const TEST_USER_ID = `test-user-${crypto.randomUUID()}`;
 
 describe("content.service", () => {
-  afterEach(async () => {
-    // Clean up after all tests
-    try {
-      await rm(TEST_CACHE_DIR, { recursive: true, force: true });
-    } catch {
-      // Ignore if doesn't exist
-    }
-  });
-
   describe("getArticleContent", () => {
-    const spyGet = spyOn(contentCache, "get");
-    const spySet = spyOn(contentCache, "set");
-    const spyExtractCleanContent = spyOn(readability, "extractCleanContent");
+    let spyGet: ReturnType<typeof spyOn<typeof contentCache, "get">>;
+    let spySet: ReturnType<typeof spyOn<typeof contentCache, "set">>;
+    let spyExtractCleanContent: ReturnType<
+      typeof spyOn<typeof readability, "extractCleanContent">
+    >;
+
+    beforeEach(() => {
+      spyGet = spyOn(contentCache, "get");
+      spySet = spyOn(contentCache, "set");
+      spyExtractCleanContent = spyOn(readability, "extractCleanContent");
+    });
 
     afterEach(() => {
-      mock.clearAllMocks();
+      spyGet.mockRestore();
+      spySet.mockRestore();
+      spyExtractCleanContent.mockRestore();
     });
 
     it("should return cached content when available", async () => {
@@ -162,13 +155,33 @@ describe("content.service", () => {
   });
 
   describe("searchCachedArticleIds", () => {
+    afterEach(async () => {
+      // Clean up test user cache directories
+      const testUserPatterns = [
+        TEST_USER_ID,
+        "user-1", // from "should only search within user's own cache directory" test
+        "user-2", // from "should only search within user's own cache directory" test
+      ];
+
+      for (const userId of testUserPatterns) {
+        try {
+          await rm(join(config.CACHE_DIR, userId), {
+            recursive: true,
+            force: true,
+          });
+        } catch {
+          // Ignore if doesn't exist
+        }
+      }
+    });
+
     it("should find articles matching search query", async () => {
       const article1Id = randomUUID();
       const article2Id = randomUUID();
       const article3Id = randomUUID();
 
-      // Create cache directory
-      const userCacheDir = join(TEST_CACHE_DIR, TEST_USER_ID);
+      // Create cache directory (uses real config.CACHE_DIR)
+      const userCacheDir = join(config.CACHE_DIR, TEST_USER_ID);
       await mkdir(userCacheDir, { recursive: true });
 
       // Create test articles
@@ -198,7 +211,7 @@ describe("content.service", () => {
     it("should be case-insensitive", async () => {
       const articleId = randomUUID();
 
-      const userCacheDir = join(TEST_CACHE_DIR, TEST_USER_ID);
+      const userCacheDir = join(config.CACHE_DIR, TEST_USER_ID);
       await mkdir(userCacheDir, { recursive: true });
 
       await Bun.write(
@@ -221,7 +234,7 @@ describe("content.service", () => {
     it("should return empty array if no matches found", async () => {
       const articleId = randomUUID();
 
-      const userCacheDir = join(TEST_CACHE_DIR, TEST_USER_ID);
+      const userCacheDir = join(config.CACHE_DIR, TEST_USER_ID);
       await mkdir(userCacheDir, { recursive: true });
 
       await Bun.write(
@@ -244,7 +257,7 @@ describe("content.service", () => {
     });
 
     it("should return empty array if cache directory is empty", async () => {
-      const userCacheDir = join(TEST_CACHE_DIR, TEST_USER_ID);
+      const userCacheDir = join(config.CACHE_DIR, TEST_USER_ID);
       await mkdir(userCacheDir, { recursive: true });
 
       const results = await searchCachedArticleIds(TEST_USER_ID, "JavaScript");
@@ -259,7 +272,7 @@ describe("content.service", () => {
       const article2Id = randomUUID();
 
       // Create cache for user 1
-      const user1CacheDir = join(TEST_CACHE_DIR, user1Id);
+      const user1CacheDir = join(config.CACHE_DIR, user1Id);
       await mkdir(user1CacheDir, { recursive: true });
       await Bun.write(
         join(user1CacheDir, `${article1Id}.html`),
@@ -267,7 +280,7 @@ describe("content.service", () => {
       );
 
       // Create cache for user 2
-      const user2CacheDir = join(TEST_CACHE_DIR, user2Id);
+      const user2CacheDir = join(config.CACHE_DIR, user2Id);
       await mkdir(user2CacheDir, { recursive: true });
       await Bun.write(
         join(user2CacheDir, `${article2Id}.html`),
@@ -287,7 +300,7 @@ describe("content.service", () => {
     it("should extract article IDs from file paths correctly", async () => {
       const articleId = "550e8400-e29b-41d4-a716-446655440000"; // Valid UUID
 
-      const userCacheDir = join(TEST_CACHE_DIR, TEST_USER_ID);
+      const userCacheDir = join(config.CACHE_DIR, TEST_USER_ID);
       await mkdir(userCacheDir, { recursive: true });
 
       await Bun.write(
@@ -304,7 +317,7 @@ describe("content.service", () => {
     it("should handle search queries with special characters", async () => {
       const articleId = randomUUID();
 
-      const userCacheDir = join(TEST_CACHE_DIR, TEST_USER_ID);
+      const userCacheDir = join(config.CACHE_DIR, TEST_USER_ID);
       await mkdir(userCacheDir, { recursive: true });
 
       await Bun.write(
@@ -324,7 +337,7 @@ describe("content.service", () => {
       const article3Id = randomUUID();
       const article4Id = randomUUID();
 
-      const userCacheDir = join(TEST_CACHE_DIR, TEST_USER_ID);
+      const userCacheDir = join(config.CACHE_DIR, TEST_USER_ID);
       await mkdir(userCacheDir, { recursive: true });
 
       await Bun.write(

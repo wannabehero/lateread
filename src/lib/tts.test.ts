@@ -1,5 +1,18 @@
-import { describe, expect, it } from "bun:test";
-import { htmlToPlainText } from "./tts";
+import { beforeEach, describe, expect, it, mock } from "bun:test";
+import { getTTSProvider, htmlToPlainText, isTTSAvailable } from "./tts";
+
+// Mock ElevenLabs SDK globally
+const mockStream = mock(() => Promise.resolve());
+
+mock.module("@elevenlabs/elevenlabs-js", () => {
+  return {
+    ElevenLabsClient: class MockElevenLabsClient {
+      textToSpeech = {
+        stream: mockStream,
+      };
+    },
+  };
+});
 
 describe("htmlToPlainText", () => {
   it("should remove basic HTML tags", () => {
@@ -180,5 +193,370 @@ describe("htmlToPlainText", () => {
     const thirdIndex = result.indexOf("Third");
     expect(firstIndex).toBeLessThan(secondIndex);
     expect(secondIndex).toBeLessThan(thirdIndex);
+  });
+});
+
+describe("ElevenLabsTTSProvider", () => {
+  beforeEach(() => {
+    mockStream.mockReset();
+  });
+
+  describe("generateStream", () => {
+    it("should generate stream with English voice by default", async () => {
+      const mockReadableStream = new ReadableStream<Uint8Array>();
+      mockStream.mockResolvedValue(mockReadableStream);
+
+      const provider = getTTSProvider();
+      const result = await provider.generateStream("Hello world");
+
+      expect(result).toBe(mockReadableStream);
+      expect(mockStream).toHaveBeenCalledTimes(1);
+
+      const callArgs = mockStream.mock.calls[0];
+      const voiceId = callArgs?.[0];
+      const options = callArgs?.[1];
+
+      expect(voiceId).toBe("21m00Tcm4TlvDq8ikWAM"); // Rachel - English
+      expect(options?.text).toBe("Hello world");
+      expect(options?.modelId).toBe("eleven_flash_v2_5");
+      expect(options?.outputFormat).toBe("mp3_44100_128");
+    });
+
+    it("should use correct voice for Spanish (es)", async () => {
+      const mockReadableStream = new ReadableStream<Uint8Array>();
+      mockStream.mockResolvedValue(mockReadableStream);
+
+      const provider = getTTSProvider();
+      await provider.generateStream("Hola mundo", "es");
+
+      const callArgs = mockStream.mock.calls[0];
+      const voiceId = callArgs?.[0];
+
+      expect(voiceId).toBe("VR6AewLTigWG4xSOukaG"); // Arnold - Spanish
+    });
+
+    it("should use correct voice for French (fr)", async () => {
+      const mockReadableStream = new ReadableStream<Uint8Array>();
+      mockStream.mockResolvedValue(mockReadableStream);
+
+      const provider = getTTSProvider();
+      await provider.generateStream("Bonjour le monde", "fr");
+
+      const callArgs = mockStream.mock.calls[0];
+      const voiceId = callArgs?.[0];
+
+      expect(voiceId).toBe("ThT5KcBeYPX3keUQqHPh"); // Dorothy - French
+    });
+
+    it("should use correct voice for German (de)", async () => {
+      const mockReadableStream = new ReadableStream<Uint8Array>();
+      mockStream.mockResolvedValue(mockReadableStream);
+
+      const provider = getTTSProvider();
+      await provider.generateStream("Hallo Welt", "de");
+
+      const callArgs = mockStream.mock.calls[0];
+      const voiceId = callArgs?.[0];
+
+      expect(voiceId).toBe("ErXwobaYiN019PkySvjV"); // Antoni - German
+    });
+
+    it("should use correct voice for Italian (it)", async () => {
+      const mockReadableStream = new ReadableStream<Uint8Array>();
+      mockStream.mockResolvedValue(mockReadableStream);
+
+      const provider = getTTSProvider();
+      await provider.generateStream("Ciao mondo", "it");
+
+      const callArgs = mockStream.mock.calls[0];
+      const voiceId = callArgs?.[0];
+
+      expect(voiceId).toBe("XB0fDUnXU5powFXDhCwa"); // Charlotte - Italian
+    });
+
+    it("should use correct voice for Portuguese (pt)", async () => {
+      const mockReadableStream = new ReadableStream<Uint8Array>();
+      mockStream.mockResolvedValue(mockReadableStream);
+
+      const provider = getTTSProvider();
+      await provider.generateStream("Olá mundo", "pt");
+
+      const callArgs = mockStream.mock.calls[0];
+      const voiceId = callArgs?.[0];
+
+      expect(voiceId).toBe("pNInz6obpgDQGcFmaJgB"); // Adam - Portuguese
+    });
+
+    it("should use correct voice for Russian (ru)", async () => {
+      const mockReadableStream = new ReadableStream<Uint8Array>();
+      mockStream.mockResolvedValue(mockReadableStream);
+
+      const provider = getTTSProvider();
+      await provider.generateStream("Привет мир", "ru");
+
+      const callArgs = mockStream.mock.calls[0];
+      const voiceId = callArgs?.[0];
+
+      expect(voiceId).toBe("yoZ06aMxZJJ28mfd3POQ"); // Freya - Russian
+    });
+
+    it("should use correct voice for Japanese (ja)", async () => {
+      const mockReadableStream = new ReadableStream<Uint8Array>();
+      mockStream.mockResolvedValue(mockReadableStream);
+
+      const provider = getTTSProvider();
+      await provider.generateStream("こんにちは世界", "ja");
+
+      const callArgs = mockStream.mock.calls[0];
+      const voiceId = callArgs?.[0];
+
+      expect(voiceId).toBe("TxGEqnHWrfWFTfGW9XjX"); // Josh - Japanese
+    });
+
+    it("should use correct voice for Chinese (zh)", async () => {
+      const mockReadableStream = new ReadableStream<Uint8Array>();
+      mockStream.mockResolvedValue(mockReadableStream);
+
+      const provider = getTTSProvider();
+      await provider.generateStream("你好世界", "zh");
+
+      const callArgs = mockStream.mock.calls[0];
+      const voiceId = callArgs?.[0];
+
+      expect(voiceId).toBe("onwK4e9ZLuTAKqWW03F9"); // Serena - Chinese
+    });
+
+    it("should use correct voice for Korean (ko)", async () => {
+      const mockReadableStream = new ReadableStream<Uint8Array>();
+      mockStream.mockResolvedValue(mockReadableStream);
+
+      const provider = getTTSProvider();
+      await provider.generateStream("안녕하세요 세계", "ko");
+
+      const callArgs = mockStream.mock.calls[0];
+      const voiceId = callArgs?.[0];
+
+      expect(voiceId).toBe("pqHfZKP75CvOlQylNhV4"); // Bill - Korean
+    });
+
+    it("should use correct voice for Arabic (ar)", async () => {
+      const mockReadableStream = new ReadableStream<Uint8Array>();
+      mockStream.mockResolvedValue(mockReadableStream);
+
+      const provider = getTTSProvider();
+      await provider.generateStream("مرحبا بالعالم", "ar");
+
+      const callArgs = mockStream.mock.calls[0];
+      const voiceId = callArgs?.[0];
+
+      expect(voiceId).toBe("ODq5zmih8GrVes37Dizd"); // Patrick - Arabic
+    });
+
+    it("should use correct voice for Hindi (hi)", async () => {
+      const mockReadableStream = new ReadableStream<Uint8Array>();
+      mockStream.mockResolvedValue(mockReadableStream);
+
+      const provider = getTTSProvider();
+      await provider.generateStream("नमस्ते दुनिया", "hi");
+
+      const callArgs = mockStream.mock.calls[0];
+      const voiceId = callArgs?.[0];
+
+      expect(voiceId).toBe("pFZP5JQG7iQjIQuC4Bku"); // Lily - Hindi
+    });
+
+    it("should use default voice for unsupported language", async () => {
+      const mockReadableStream = new ReadableStream<Uint8Array>();
+      mockStream.mockResolvedValue(mockReadableStream);
+
+      const provider = getTTSProvider();
+      await provider.generateStream("Text", "unsupported");
+
+      const callArgs = mockStream.mock.calls[0];
+      const voiceId = callArgs?.[0];
+
+      expect(voiceId).toBe("21m00Tcm4TlvDq8ikWAM"); // Default - Rachel
+    });
+
+    it("should use default voice for null languageCode", async () => {
+      const mockReadableStream = new ReadableStream<Uint8Array>();
+      mockStream.mockResolvedValue(mockReadableStream);
+
+      const provider = getTTSProvider();
+      await provider.generateStream("Text", null);
+
+      const callArgs = mockStream.mock.calls[0];
+      const voiceId = callArgs?.[0];
+
+      expect(voiceId).toBe("21m00Tcm4TlvDq8ikWAM"); // Default - Rachel
+    });
+
+    it("should use default voice for undefined languageCode", async () => {
+      const mockReadableStream = new ReadableStream<Uint8Array>();
+      mockStream.mockResolvedValue(mockReadableStream);
+
+      const provider = getTTSProvider();
+      await provider.generateStream("Text", undefined);
+
+      const callArgs = mockStream.mock.calls[0];
+      const voiceId = callArgs?.[0];
+
+      expect(voiceId).toBe("21m00Tcm4TlvDq8ikWAM"); // Default - Rachel
+    });
+
+    it("should handle case-insensitive language codes", async () => {
+      const mockReadableStream = new ReadableStream<Uint8Array>();
+      mockStream.mockResolvedValue(mockReadableStream);
+
+      const provider = getTTSProvider();
+      await provider.generateStream("Text", "ES"); // Uppercase
+
+      const callArgs = mockStream.mock.calls[0];
+      const voiceId = callArgs?.[0];
+
+      expect(voiceId).toBe("VR6AewLTigWG4xSOukaG"); // Spanish voice
+    });
+
+    it("should truncate text longer than 40k characters", async () => {
+      const mockReadableStream = new ReadableStream<Uint8Array>();
+      mockStream.mockResolvedValue(mockReadableStream);
+
+      const provider = getTTSProvider();
+      const longText = "a".repeat(50000);
+      await provider.generateStream(longText);
+
+      const callArgs = mockStream.mock.calls[0];
+      const options = callArgs?.[1];
+      const sentText = options?.text;
+
+      expect(sentText?.length).toBe(40000);
+      expect(sentText?.startsWith("aaa")).toBe(true);
+    });
+
+    it("should not truncate text shorter than 40k characters", async () => {
+      const mockReadableStream = new ReadableStream<Uint8Array>();
+      mockStream.mockResolvedValue(mockReadableStream);
+
+      const provider = getTTSProvider();
+      const text = "a".repeat(30000);
+      await provider.generateStream(text);
+
+      const callArgs = mockStream.mock.calls[0];
+      const options = callArgs?.[1];
+      const sentText = options?.text;
+
+      expect(sentText?.length).toBe(30000);
+      expect(sentText).toBe(text);
+    });
+
+    it("should handle exactly 40k characters", async () => {
+      const mockReadableStream = new ReadableStream<Uint8Array>();
+      mockStream.mockResolvedValue(mockReadableStream);
+
+      const provider = getTTSProvider();
+      const text = "a".repeat(40000);
+      await provider.generateStream(text);
+
+      const callArgs = mockStream.mock.calls[0];
+      const options = callArgs?.[1];
+      const sentText = options?.text;
+
+      expect(sentText?.length).toBe(40000);
+      expect(sentText).toBe(text);
+    });
+
+    it("should propagate API errors", async () => {
+      mockStream.mockRejectedValue(new Error("API error"));
+
+      const provider = getTTSProvider();
+
+      await expect(provider.generateStream("Test")).rejects.toThrow(
+        "API error",
+      );
+    });
+
+    it("should handle empty text", async () => {
+      const mockReadableStream = new ReadableStream<Uint8Array>();
+      mockStream.mockResolvedValue(mockReadableStream);
+
+      const provider = getTTSProvider();
+      await provider.generateStream("");
+
+      const callArgs = mockStream.mock.calls[0];
+      const options = callArgs?.[1];
+
+      expect(options?.text).toBe("");
+    });
+  });
+});
+
+describe("getTTSProvider and isTTSAvailable", () => {
+  it("isTTSAvailable should return true when API key is set", () => {
+    // .env.test has ELEVENLABS_API_KEY set
+    const result = isTTSAvailable();
+    expect(result).toBe(true);
+  });
+
+  it("isTTSAvailable should return false when API key is not set", () => {
+    // Mock config with no API key
+    mock.module("./config", () => {
+      const actual = require("./config");
+      return {
+        config: {
+          ...actual.config,
+          ELEVENLABS_API_KEY: undefined,
+        },
+      };
+    });
+
+    const { isTTSAvailable: isAvailable } = require("./tts");
+    const result = isAvailable();
+    expect(result).toBe(false);
+  });
+
+  it("getTTSProvider should return ElevenLabsTTSProvider when API key is set", () => {
+    // .env.test has ELEVENLABS_API_KEY set
+    const provider = getTTSProvider();
+
+    expect(provider).toBeDefined();
+    expect(typeof provider.generateStream).toBe("function");
+  });
+
+  it("getTTSProvider should return noop provider when API key is not set", async () => {
+    // Mock config with no API key
+    mock.module("./config", () => {
+      const actual = require("./config");
+      return {
+        config: {
+          ...actual.config,
+          ELEVENLABS_API_KEY: undefined,
+        },
+      };
+    });
+
+    // Force re-import to get provider with mocked config
+    delete require.cache[require.resolve("./tts")];
+    const { getTTSProvider: getProvider } = require("./tts");
+    const provider = getProvider();
+
+    expect(provider).toBeDefined();
+    expect(typeof provider.generateStream).toBe("function");
+
+    // Test noop provider behavior - should throw error
+    await expect(provider.generateStream("content")).rejects.toThrow(
+      "External service error: TTS provider not configured",
+    );
+  });
+
+  it("getTTSProvider should cache provider instance (singleton)", () => {
+    // Clear the module cache and get fresh imports
+    delete require.cache[require.resolve("./tts")];
+    const { getTTSProvider: getProvider } = require("./tts");
+
+    const provider1 = getProvider();
+    const provider2 = getProvider();
+
+    // Both should be the same instance
+    expect(provider1).toBe(provider2);
   });
 });

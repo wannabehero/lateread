@@ -41,9 +41,19 @@ mock.module("hono/cookie", () => ({
 
 mock.module("./config", () => ({
   config: {
-    SESSION_SECRET: "test-secret-key-for-hmac-sha256-signing",
+    PORT: 3000,
     NODE_ENV: "test",
+    DATABASE_URL: ":memory:",
+    TELEGRAM_BOT_TOKEN: "test_token",
+    BOT_USERNAME: "test_bot",
+    SESSION_SECRET: "test-secret-key-for-hmac-sha256-signing",
     SESSION_MAX_AGE_DAYS: 180,
+    CACHE_DIR: "./cache/articles",
+    CACHE_MAX_AGE_DAYS: 30,
+    PROCESSING_TIMEOUT_SECONDS: 60,
+    MAX_RETRY_ATTEMPTS: 3,
+    RETRY_DELAY_MINUTES: 5,
+    LONG_MESSAGE_THRESHOLD: 1000,
   },
 }));
 
@@ -95,9 +105,19 @@ describe("session", () => {
       beforeEach(() => {
         mock.module("./config", () => ({
           config: {
-            SESSION_SECRET: "test-secret-key-for-hmac-sha256-signing",
+            PORT: 3000,
             NODE_ENV: env,
+            DATABASE_URL: ":memory:",
+            TELEGRAM_BOT_TOKEN: "test_token",
+            BOT_USERNAME: "test_bot",
+            SESSION_SECRET: "test-secret-key-for-hmac-sha256-signing",
             SESSION_MAX_AGE_DAYS: 180,
+            CACHE_DIR: "./cache/articles",
+            CACHE_MAX_AGE_DAYS: 30,
+            PROCESSING_TIMEOUT_SECONDS: 60,
+            MAX_RETRY_ATTEMPTS: 3,
+            RETRY_DELAY_MINUTES: 5,
+            LONG_MESSAGE_THRESHOLD: 1000,
           },
         }));
       });
@@ -105,9 +125,19 @@ describe("session", () => {
       afterAll(() => {
         mock.module("./config", () => ({
           config: {
-            SESSION_SECRET: "test-secret-key-for-hmac-sha256-signing",
+            PORT: 3000,
             NODE_ENV: "test",
+            DATABASE_URL: ":memory:",
+            TELEGRAM_BOT_TOKEN: "test_token",
+            BOT_USERNAME: "test_bot",
+            SESSION_SECRET: "test-secret-key-for-hmac-sha256-signing",
             SESSION_MAX_AGE_DAYS: 180,
+            CACHE_DIR: "./cache/articles",
+            CACHE_MAX_AGE_DAYS: 30,
+            PROCESSING_TIMEOUT_SECONDS: 60,
+            MAX_RETRY_ATTEMPTS: 3,
+            RETRY_DELAY_MINUTES: 5,
+            LONG_MESSAGE_THRESHOLD: 1000,
           },
         }));
       });

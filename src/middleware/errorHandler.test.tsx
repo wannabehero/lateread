@@ -1,21 +1,4 @@
 import { beforeEach, describe, expect, it, mock, spyOn } from "bun:test";
-
-// Mock renderWithLayout BEFORE any imports that use it
-// This must be at the top to prevent file system access during module loading
-mock.module("../routes/utils/render", () => ({
-  renderWithLayout: ({
-    c,
-    content,
-    statusCode,
-  }: {
-    c: any;
-    content: unknown;
-    statusCode?: number;
-  }) => {
-    return c.html(content, statusCode);
-  },
-}));
-
 import type { Context } from "hono";
 import { createNoopLogger } from "../../test/fixtures";
 import {
@@ -27,6 +10,22 @@ import {
 } from "../lib/errors";
 import type { AppContext } from "../types/context";
 import { errorHandler } from "./errorHandler";
+
+// Mock renderWithLayout to avoid file system access
+// Bun automatically hoists mock.module calls
+mock.module("../routes/utils/render", () => ({
+  renderWithLayout: ({
+    c,
+    content,
+    statusCode,
+  }: {
+    c: Context;
+    content: unknown;
+    statusCode?: number;
+  }) => {
+    return c.html(content, statusCode);
+  },
+}));
 
 function createMockContext(options?: {
   path?: string;

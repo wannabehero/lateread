@@ -1,23 +1,24 @@
-import {
-  afterEach,
-  beforeEach,
-  describe,
-  expect,
-  it,
-  mock,
-  spyOn,
-} from "bun:test";
+import { afterEach, beforeEach, describe, expect, it, spyOn } from "bun:test";
 import dns from "node:dns/promises";
 import { extractCleanContent } from "./readability";
 
 describe("readability", () => {
+  // Declare spies at describe level, create in beforeEach
+  let spyResolve4: ReturnType<typeof spyOn<typeof dns, "resolve4">>;
+  let spyResolve6: ReturnType<typeof spyOn<typeof dns, "resolve6">>;
+
   beforeEach(() => {
-    spyOn(dns, "resolve4").mockResolvedValueOnce(["93.184.216.34"]);
-    spyOn(dns, "resolve6").mockRejectedValueOnce(new Error("ENOTFOUND"));
+    spyResolve4 = spyOn(dns, "resolve4").mockResolvedValueOnce([
+      "93.184.216.34",
+    ]);
+    spyResolve6 = spyOn(dns, "resolve6").mockRejectedValueOnce(
+      new Error("ENOTFOUND"),
+    );
   });
 
   afterEach(() => {
-    mock.clearAllMocks();
+    spyResolve4.mockRestore();
+    spyResolve6.mockRestore();
   });
 
   describe("extractCleanContent", () => {

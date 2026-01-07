@@ -60,7 +60,7 @@ export function extractJsonFromResponse<T>(
   }
 }
 
-class ClaudeProvider implements LLMProvider {
+export class ClaudeProvider implements LLMProvider {
   private client: Anthropic;
   private taggingModel = "claude-haiku-4-5";
   private summaryModel = "claude-sonnet-4-5";

@@ -81,6 +81,15 @@ describe("routes/api", () => {
       });
 
       expect(res.status).toBe(404);
+      const json = await res.json();
+      expect(json).toEqual({
+        error: "Article not found",
+        statusCode: 404,
+        context: {
+          resource: "Article",
+          id: "non-existent-id",
+        },
+      });
     });
 
     it("should return 404 when article belongs to different user", async () => {
@@ -92,6 +101,15 @@ describe("routes/api", () => {
       });
 
       expect(res.status).toBe(404);
+      const json = await res.json();
+      expect(json).toEqual({
+        error: "Article not found",
+        statusCode: 404,
+        context: {
+          resource: "Article",
+          id: article.id,
+        },
+      });
 
       // Verify article was NOT marked as read
       const [unchangedArticle] = await db
@@ -224,6 +242,9 @@ describe("routes/api", () => {
       });
 
       expect(res.status).toBe(404);
+      const json = await res.json();
+      expect(json.error).toBe("Article not found");
+      expect(json.statusCode).toBe(404);
     });
 
     it("should return 404 when article belongs to different user", async () => {
@@ -235,6 +256,9 @@ describe("routes/api", () => {
       });
 
       expect(res.status).toBe(404);
+      const json = await res.json();
+      expect(json.error).toBe("Article not found");
+      expect(json.statusCode).toBe(404);
     });
   });
 
@@ -631,10 +655,14 @@ describe("routes/api", () => {
   });
 
   describe("POST /api/preferences/reader", () => {
-    it("should update reader preferences with valid data", async () => {
+    it.each([
+      ["sans", 16],
+      ["serif", 18],
+      ["new-york", 20],
+    ])("should accept '%s' font family with size %i", async (fontFamily, fontSize) => {
       const formData = new FormData();
-      formData.append("fontFamily", "serif");
-      formData.append("fontSize", "18");
+      formData.append("fontFamily", fontFamily);
+      formData.append("fontSize", String(fontSize));
 
       const res = await app.request("/api/preferences/reader", {
         method: "POST",
@@ -646,54 +674,28 @@ describe("routes/api", () => {
       expect(json).toEqual({ success: true });
 
       // Verify database state
+      const { users } = await import("../db/schema");
       const [user] = await db
         .select()
-        .from(await import("../db/schema").then((m) => m.users))
-        .where(
-          eq(
-            (await import("../db/schema").then((m) => m.users)).id,
-            testUserId,
-          ),
-        )
+        .from(users)
+        .where(eq(users.id, testUserId))
         .limit(1);
 
       const preferences = JSON.parse(user?.preferences || "{}");
       expect(preferences.reader).toEqual({
-        fontFamily: "serif",
-        fontSize: 18,
+        fontFamily,
+        fontSize,
       });
     });
 
-    it("should accept 'sans' font family", async () => {
+    it.each([
+      ["invalid-font", 16, "Invalid font family"],
+      ["sans", 13, "Font size must be between 14 and 24"],
+      ["sans", 25, "Font size must be between 14 and 24"],
+    ])("should return 400 for fontFamily=%s, fontSize=%i", async (fontFamily, fontSize, expectedError) => {
       const formData = new FormData();
-      formData.append("fontFamily", "sans");
-      formData.append("fontSize", "16");
-
-      const res = await app.request("/api/preferences/reader", {
-        method: "POST",
-        body: formData,
-      });
-
-      expect(res.status).toBe(200);
-    });
-
-    it("should accept 'new-york' font family", async () => {
-      const formData = new FormData();
-      formData.append("fontFamily", "new-york");
-      formData.append("fontSize", "16");
-
-      const res = await app.request("/api/preferences/reader", {
-        method: "POST",
-        body: formData,
-      });
-
-      expect(res.status).toBe(200);
-    });
-
-    it("should return 400 with invalid font family", async () => {
-      const formData = new FormData();
-      formData.append("fontFamily", "invalid-font");
-      formData.append("fontSize", "16");
+      formData.append("fontFamily", fontFamily);
+      formData.append("fontSize", String(fontSize));
 
       const res = await app.request("/api/preferences/reader", {
         method: "POST",
@@ -701,38 +703,18 @@ describe("routes/api", () => {
       });
 
       expect(res.status).toBe(400);
+      const json = await res.json();
+      expect(json.error).toBe(expectedError);
+      expect(json.statusCode).toBe(400);
     });
 
-    it("should return 400 when font size is below minimum", async () => {
+    it.each([
+      [14, "minimum"],
+      [24, "maximum"],
+    ])("should accept %s font size (%i)", async (fontSize) => {
       const formData = new FormData();
       formData.append("fontFamily", "sans");
-      formData.append("fontSize", "13");
-
-      const res = await app.request("/api/preferences/reader", {
-        method: "POST",
-        body: formData,
-      });
-
-      expect(res.status).toBe(400);
-    });
-
-    it("should return 400 when font size is above maximum", async () => {
-      const formData = new FormData();
-      formData.append("fontFamily", "sans");
-      formData.append("fontSize", "25");
-
-      const res = await app.request("/api/preferences/reader", {
-        method: "POST",
-        body: formData,
-      });
-
-      expect(res.status).toBe(400);
-    });
-
-    it("should accept minimum font size (14)", async () => {
-      const formData = new FormData();
-      formData.append("fontFamily", "sans");
-      formData.append("fontSize", "14");
+      formData.append("fontSize", String(fontSize));
 
       const res = await app.request("/api/preferences/reader", {
         method: "POST",
@@ -740,19 +722,8 @@ describe("routes/api", () => {
       });
 
       expect(res.status).toBe(200);
-    });
-
-    it("should accept maximum font size (24)", async () => {
-      const formData = new FormData();
-      formData.append("fontFamily", "sans");
-      formData.append("fontSize", "24");
-
-      const res = await app.request("/api/preferences/reader", {
-        method: "POST",
-        body: formData,
-      });
-
-      expect(res.status).toBe(200);
+      const json = await res.json();
+      expect(json).toEqual({ success: true });
     });
   });
 
@@ -768,64 +739,122 @@ describe("routes/api", () => {
       unauthenticatedApp = createApp();
     });
 
-    it("should return 401 for /api/articles/:id/read without auth", async () => {
-      const res = await unauthenticatedApp.request(
-        "/api/articles/some-id/read",
-        {
-          method: "POST",
+    it.each([
+      ["POST", "/api/articles/some-id/read"],
+      ["POST", "/api/articles/some-id/archive"],
+      ["POST", "/api/articles/some-id/summarize"],
+      ["GET", "/api/articles/processing-count"],
+      ["GET", "/api/articles/some-id/tts"],
+      ["POST", "/api/preferences/reader"],
+    ])("should return 401 for %s %s without auth", async (method, path) => {
+      const options: RequestInit = { method };
+
+      // Add form data for POST /api/preferences/reader
+      if (path === "/api/preferences/reader") {
+        const formData = new FormData();
+        formData.append("fontFamily", "sans");
+        formData.append("fontSize", "16");
+        options.body = formData;
+      }
+
+      const res = await unauthenticatedApp.request(path, options);
+
+      expect(res.status).toBe(401);
+      const json = await res.json();
+      expect(json).toEqual({
+        error: "Unauthorized",
+      });
+    });
+  });
+
+  describe("Error Handler Integration", () => {
+    it("should return JSON for API route errors (default)", async () => {
+      const otherUser = await createUser(db);
+      const article = await createCompletedArticle(db, otherUser.id);
+
+      // API routes return JSON by default due to /api/ path check
+      const res = await app.request(`/api/articles/${article.id}/read`, {
+        method: "POST",
+      });
+
+      expect(res.status).toBe(404);
+      expect(res.headers.get("content-type")).toContain("application/json");
+
+      const json = await res.json();
+      expect(json).toEqual({
+        error: "Article not found",
+        statusCode: 404,
+        context: {
+          resource: "Article",
+          id: article.id,
         },
-      );
-
-      expect(res.status).toBe(401);
+      });
     });
 
-    it("should return 401 for /api/articles/:id/archive without auth", async () => {
-      const res = await unauthenticatedApp.request(
-        "/api/articles/some-id/archive",
-        {
-          method: "POST",
+    it("should return HTMX partial for HTMX requests on API routes", async () => {
+      const otherUser = await createUser(db);
+      const article = await createCompletedArticle(db, otherUser.id);
+
+      // Make a request with HX-Request header
+      const res = await app.request(`/api/articles/${article.id}/read`, {
+        method: "POST",
+        headers: {
+          "HX-Request": "true",
         },
-      );
+      });
 
-      expect(res.status).toBe(401);
+      // HTMX errors return 200 with error partial for proper swapping
+      expect(res.status).toBe(200);
+      expect(res.headers.get("hx-reswap")).toBe("outerHTML");
+      expect(res.headers.get("content-type")).toContain("text/html");
+
+      const html = await res.text();
+      const doc = parseHtml(html);
+
+      // Should contain error partial
+      expect(doc.querySelector(".error-partial")).toBeTruthy();
+      expect(html).toContain("Article not found");
     });
 
-    it("should return 401 for /api/articles/:id/summarize without auth", async () => {
-      const res = await unauthenticatedApp.request(
-        "/api/articles/some-id/summarize",
-        {
-          method: "POST",
-        },
-      );
-
-      expect(res.status).toBe(401);
-    });
-
-    it("should return 401 for /api/articles/processing-count without auth", async () => {
-      const res = await unauthenticatedApp.request(
-        "/api/articles/processing-count",
-      );
-
-      expect(res.status).toBe(401);
-    });
-
-    it("should return 401 for /api/articles/:id/tts without auth", async () => {
-      const res = await unauthenticatedApp.request("/api/articles/some-id/tts");
-
-      expect(res.status).toBe(401);
-    });
-
-    it("should return 401 for /api/preferences/reader without auth", async () => {
+    it("should handle ValidationError with 400 status", async () => {
       const formData = new FormData();
-      formData.append("fontFamily", "sans");
+      formData.append("fontFamily", "invalid");
       formData.append("fontSize", "16");
 
-      const res = await unauthenticatedApp.request("/api/preferences/reader", {
+      const res = await app.request("/api/preferences/reader", {
         method: "POST",
         body: formData,
       });
 
-      expect(res.status).toBe(401);
+      expect(res.status).toBe(400);
+      const json = await res.json();
+      expect(json.error).toBe("Invalid font family");
+      expect(json.statusCode).toBe(400);
+      expect(json.context).toBeDefined();
+    });
+
+    it("should handle InternalError with 500 status", async () => {
+      const article = await createCompletedArticle(db, testUserId);
+
+      // Spy on getOrGenerateSummary to throw an unexpected error
+      const spyGetOrGenerateSummary = spyOn(
+        summariesService,
+        "getOrGenerateSummary",
+      );
+      spyGetOrGenerateSummary.mockRejectedValue(
+        new Error("Unexpected database error"),
+      );
+
+      const res = await app.request(`/api/articles/${article.id}/summarize`, {
+        method: "POST",
+      });
+
+      expect(res.status).toBe(500);
+      const json = await res.json();
+      expect(json.error).toBe("An unexpected error occurred");
+      expect(json.statusCode).toBe(500);
+
+      spyGetOrGenerateSummary.mockRestore();
     });
   });
 });

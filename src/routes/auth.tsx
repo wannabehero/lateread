@@ -1,13 +1,13 @@
 import { Hono } from "hono";
 import { AuthError } from "../components/auth/AuthError";
 import { AuthPolling } from "../components/auth/AuthPolling";
+import { config } from "../lib/config";
+import { clearSession, setSession } from "../lib/session";
 import {
   createAuthToken,
   getAuthTokenStatus,
   TOKEN_EXPIRATION_MINUTES,
 } from "../services/auth.service";
-import { config } from "../lib/config";
-import { clearSession, setSession } from "../lib/session";
 import type { AppContext } from "../types/context";
 
 const auth = new Hono<AppContext>();

@@ -7,8 +7,9 @@ function createMockContext(userId?: string): Context<AppContext> {
   const context = {
     get: (key: string) => (key === "userId" ? userId : undefined),
     redirect: mock(() => new Response("", { status: 302 })),
-    json: mock((data: unknown, status?: number) =>
-      new Response(JSON.stringify(data), { status }),
+    json: mock(
+      (data: unknown, status?: number) =>
+        new Response(JSON.stringify(data), { status }),
     ),
   } as unknown as Context<AppContext>;
   return context;

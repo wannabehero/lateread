@@ -1,10 +1,10 @@
 import type { Bot, Context } from "grammy";
-import { claimAuthToken } from "../services/auth.service";
 import { config } from "../lib/config";
 import { contentCache } from "../lib/content-cache";
 import { defaultLogger } from "../lib/logger";
 import { spawnArticleWorker } from "../lib/worker";
 import { createArticle } from "../services/articles.service";
+import { claimAuthToken } from "../services/auth.service";
 import { getTelegramUserByTelegramId } from "../services/telegram-users.service";
 import { extractMessageMetadata, extractUrl } from "./helpers";
 import type { BotContext } from "./types";

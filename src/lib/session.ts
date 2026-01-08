@@ -55,6 +55,21 @@ export function getSession(c: Context<AppContext>): SessionData | null {
 }
 
 /**
+ * Create a session cookie value from user ID
+ * This is a low-level function that creates the signed cookie value
+ * Used by both setSession (for production) and test utilities
+ */
+export function createSessionCookie(userId: string): string {
+  const now = Math.floor(Date.now() / 1000);
+  const sessionData: SessionData = {
+    userId,
+    iat: now,
+    exp: now + SESSION_MAX_AGE,
+  };
+  return signAndStringify(sessionData);
+}
+
+/**
  * Set session data in response
  * Automatically adds iat (issued at) and exp (expiration) timestamps
  */
@@ -62,14 +77,7 @@ export function setSession(
   c: Context<AppContext>,
   data: Omit<SessionData, "iat" | "exp">,
 ): void {
-  const now = Math.floor(Date.now() / 1000);
-  const sessionData: SessionData = {
-    ...data,
-    iat: now,
-    exp: now + SESSION_MAX_AGE,
-  };
-
-  const sessionValue = signAndStringify(sessionData);
+  const sessionValue = createSessionCookie(data.userId);
 
   setCookie(c, SESSION_COOKIE_NAME, sessionValue, {
     maxAge: SESSION_MAX_AGE,
@@ -195,4 +203,11 @@ function createHmacSignature(data: string): string {
   const signature = hasher.digest("base64");
   // Convert to base64url (replace +/= with URL-safe chars)
   return signature.replace(/\+/g, "-").replace(/\//g, "_").replace(/=/g, "");
+}
+
+/**
+ * Get the session cookie name (exported for tests)
+ */
+export function getSessionCookieName(): string {
+  return SESSION_COOKIE_NAME;
 }

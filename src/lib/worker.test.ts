@@ -1,5 +1,4 @@
 import {
-  afterAll,
   afterEach,
   beforeEach,
   describe,
@@ -12,9 +11,9 @@ import { defaultLogger } from "./logger";
 import { spawnArticleWorker } from "./worker";
 
 describe("worker", () => {
-  // Declare spies at describe level
-  const spyWorker = spyOn(globalThis, "Worker");
-  const spyLoggerChild = spyOn(defaultLogger, "child");
+  // Declare spy types at describe level, but create fresh spies in beforeEach
+  let spyWorker: ReturnType<typeof spyOn<typeof globalThis, "Worker">>;
+  let spyLoggerChild: ReturnType<typeof spyOn<typeof defaultLogger, "child">>;
 
   // Mock logger - will be set up in each test
   let mockLogger: {
@@ -24,6 +23,10 @@ describe("worker", () => {
   };
 
   beforeEach(() => {
+    // Create fresh spies for each test to avoid parallel test pollution
+    spyWorker = spyOn(globalThis, "Worker");
+    spyLoggerChild = spyOn(defaultLogger, "child");
+
     // Create fresh mock logger for each test
     mockLogger = {
       info: mock(() => {}),
@@ -34,14 +37,8 @@ describe("worker", () => {
   });
 
   afterEach(() => {
-    // Reset spies between tests
-    spyWorker.mockReset();
-    spyLoggerChild.mockReset();
-    mock.clearAllMocks();
-  });
-
-  afterAll(() => {
-    // Restore logger spy after all tests to avoid affecting other test files
+    // Restore spies to original implementations
+    spyWorker.mockRestore();
     spyLoggerChild.mockRestore();
   });
 

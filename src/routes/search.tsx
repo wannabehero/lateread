@@ -1,19 +1,33 @@
 import { Hono } from "hono";
+import { z } from "zod";
 import { SearchPage, SearchResults } from "../components/SearchPage";
-import { schemas, zValidator } from "../lib/validator";
+import { validator } from "../lib/validator";
 import { requireAuth } from "../middleware/auth";
 import { getArticlesWithTags } from "../services/articles.service";
 import type { AppContext } from "../types/context";
 import { renderWithLayout } from "./utils/render";
 
 const searchRouter = new Hono<AppContext>();
+
 /**
  * GET /search - Search all articles
  */
 searchRouter.get(
   "/search",
   requireAuth("redirect"),
-  zValidator("query", schemas.searchQuery),
+  validator(
+    "query",
+    z.object({
+      q: z
+        .string()
+        .max(500, "Search query too long")
+        .transform((val) => val.trim())
+        .refine((val) => !val.includes("%"), {
+          message: "Search query contains invalid characters",
+        })
+        .optional(),
+    }),
+  ),
   async (c) => {
     const userId = c.get("userId");
     const { q: query } = c.req.valid("query");

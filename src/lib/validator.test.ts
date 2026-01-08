@@ -1,10 +1,10 @@
 import { describe, expect, it } from "bun:test";
 import { Hono } from "hono";
 import { z } from "zod";
-import { schemas, zValidator } from "./validator";
+import { validator } from "./validator";
 
 describe("lib/validator", () => {
-  describe("zValidator", () => {
+  describe("validator", () => {
     it("should validate query parameters and pass to handler", async () => {
       const app = new Hono();
       const schema = z.object({
@@ -12,7 +12,7 @@ describe("lib/validator", () => {
         age: z.coerce.number(),
       });
 
-      app.get("/test", zValidator("query", schema), (c) => {
+      app.get("/test", validator("query", schema), (c) => {
         const { name, age } = c.req.valid("query");
         return c.json({ name, age });
       });
@@ -30,7 +30,7 @@ describe("lib/validator", () => {
         id: z.string().uuid(),
       });
 
-      app.get("/test/:id", zValidator("param", schema), (c) => {
+      app.get("/test/:id", validator("param", schema), (c) => {
         const { id } = c.req.valid("param");
         return c.json({ id });
       });
@@ -50,7 +50,7 @@ describe("lib/validator", () => {
         password: z.string().min(8),
       });
 
-      app.post("/test", zValidator("form", schema), (c) => {
+      app.post("/test", validator("form", schema), (c) => {
         const { email, password } = c.req.valid("form");
         return c.json({ email, passwordLength: password.length });
       });
@@ -78,7 +78,7 @@ describe("lib/validator", () => {
         page: z.coerce.number().min(1),
       });
 
-      app.get("/test", zValidator("query", schema), (c) => {
+      app.get("/test", validator("query", schema), (c) => {
         return c.json({ success: true });
       });
 
@@ -102,7 +102,7 @@ describe("lib/validator", () => {
         id: z.string().uuid("Invalid UUID format"),
       });
 
-      app.get("/test/:id", zValidator("param", schema), (c) => {
+      app.get("/test/:id", validator("param", schema), (c) => {
         return c.json({ success: true });
       });
 
@@ -127,7 +127,7 @@ describe("lib/validator", () => {
         email: z.string().email(),
       });
 
-      app.post("/test", zValidator("form", schema), (c) => {
+      app.post("/test", validator("form", schema), (c) => {
         return c.json({ success: true });
       });
 
@@ -151,251 +151,68 @@ describe("lib/validator", () => {
       const json = await res.json();
       expect(json.error).toBe("Validation failed");
     });
-  });
 
-  describe("schemas", () => {
-    describe("articleId", () => {
-      it("should accept valid UUID", () => {
-        const result = schemas.articleId.safeParse({
-          id: "550e8400-e29b-41d4-a716-446655440000",
-        });
-        expect(result.success).toBe(true);
+    it("should support async refinements with safeParseAsync", async () => {
+      const app = new Hono();
+      const schema = z.object({
+        username: z.string().refine(async (val) => val !== "taken", {
+          message: "Username is already taken",
+        }),
       });
 
-      it("should reject invalid UUID", () => {
-        const result = schemas.articleId.safeParse({ id: "invalid-id" });
-        expect(result.success).toBe(false);
-        if (!result.success) {
-          expect(result.error.issues[0]?.message).toBe(
-            "Invalid article ID format",
-          );
+      app.post("/test", validator("form", schema), (c) => {
+        const { username } = c.req.valid("form");
+        return c.json({ username });
+      });
+
+      app.onError((err, c) => {
+        if (err.message === "Validation failed") {
+          return c.json({ error: err.message }, 400);
         }
+        throw err;
       });
+
+      // Test valid username
+      const formData = new FormData();
+      formData.append("username", "available");
+
+      const res = await app.request("/test", {
+        method: "POST",
+        body: formData,
+      });
+
+      expect(res.status).toBe(200);
+      const json = await res.json();
+      expect(json.username).toBe("available");
+
+      // Test taken username
+      const formData2 = new FormData();
+      formData2.append("username", "taken");
+
+      const res2 = await app.request("/test", {
+        method: "POST",
+        body: formData2,
+      });
+
+      expect(res2.status).toBe(400);
     });
 
-    describe("authToken", () => {
-      it("should accept non-empty token", () => {
-        const result = schemas.authToken.safeParse({ token: "abc123" });
-        expect(result.success).toBe(true);
+    it("should apply transforms", async () => {
+      const app = new Hono();
+      const schema = z.object({
+        name: z.string().transform((val) => val.toLowerCase().trim()),
       });
 
-      it("should reject empty token", () => {
-        const result = schemas.authToken.safeParse({ token: "" });
-        expect(result.success).toBe(false);
-        if (!result.success) {
-          expect(result.error.issues[0]?.message).toBe("Token is required");
-        }
-      });
-    });
-
-    describe("articlesQuery", () => {
-      it("should default status to 'all' when not provided", () => {
-        const result = schemas.articlesQuery.safeParse({});
-        expect(result.success).toBe(true);
-        if (result.success) {
-          expect(result.data.status).toBe("all");
-        }
+      app.get("/test", validator("query", schema), (c) => {
+        const { name } = c.req.valid("query");
+        return c.json({ name });
       });
 
-      it("should accept valid status values", () => {
-        const allResult = schemas.articlesQuery.safeParse({ status: "all" });
-        const archivedResult = schemas.articlesQuery.safeParse({
-          status: "archived",
-        });
+      const res = await app.request("/test?name=%20JOHN%20");
+      const json = await res.json();
 
-        expect(allResult.success).toBe(true);
-        expect(archivedResult.success).toBe(true);
-      });
-
-      it("should reject invalid status values", () => {
-        const result = schemas.articlesQuery.safeParse({ status: "invalid" });
-        expect(result.success).toBe(false);
-        if (!result.success) {
-          expect(result.error.issues[0]?.message).toBe(
-            "Status must be 'all' or 'archived'",
-          );
-        }
-      });
-
-      it("should accept optional tag", () => {
-        const result = schemas.articlesQuery.safeParse({ tag: "technology" });
-        expect(result.success).toBe(true);
-        if (result.success) {
-          expect(result.data.tag).toBe("technology");
-        }
-      });
-
-      it("should reject empty tag", () => {
-        const result = schemas.articlesQuery.safeParse({ tag: "" });
-        expect(result.success).toBe(false);
-        if (!result.success) {
-          expect(result.error.issues[0]?.message).toBe("Tag cannot be empty");
-        }
-      });
-    });
-
-    describe("archiveQuery", () => {
-      it("should transform redirect 'true' to boolean true", () => {
-        const result = schemas.archiveQuery.safeParse({ redirect: "true" });
-        expect(result.success).toBe(true);
-        if (result.success) {
-          expect(result.data.redirect).toBe(true);
-        }
-      });
-
-      it("should transform redirect 'false' to boolean false", () => {
-        const result = schemas.archiveQuery.safeParse({ redirect: "false" });
-        expect(result.success).toBe(true);
-        if (result.success) {
-          expect(result.data.redirect).toBe(false);
-        }
-      });
-
-      it("should default redirect to false when not provided", () => {
-        const result = schemas.archiveQuery.safeParse({});
-        expect(result.success).toBe(true);
-        if (result.success) {
-          // When not provided, the transform converts undefined to false
-          expect(result.data.redirect).toBe(false);
-        }
-      });
-
-      it("should reject invalid redirect values", () => {
-        const result = schemas.archiveQuery.safeParse({ redirect: "yes" });
-        expect(result.success).toBe(false);
-        if (!result.success) {
-          expect(result.error.issues[0]?.message).toBe(
-            "Redirect must be 'true' or 'false'",
-          );
-        }
-      });
-    });
-
-    describe("searchQuery", () => {
-      it("should accept empty search query", () => {
-        const result = schemas.searchQuery.safeParse({});
-        expect(result.success).toBe(true);
-      });
-
-      it("should accept valid search query", () => {
-        const result = schemas.searchQuery.safeParse({ q: "test search" });
-        expect(result.success).toBe(true);
-        if (result.success) {
-          expect(result.data.q).toBe("test search");
-        }
-      });
-
-      it("should reject query exceeding max length", () => {
-        const longQuery = "a".repeat(501);
-        const result = schemas.searchQuery.safeParse({ q: longQuery });
-        expect(result.success).toBe(false);
-        if (!result.success) {
-          expect(result.error.issues[0]?.message).toBe("Search query too long");
-        }
-      });
-    });
-
-    describe("readerPreferences", () => {
-      it("should accept valid font family and size", () => {
-        const result = schemas.readerPreferences.safeParse({
-          fontFamily: "serif",
-          fontSize: "18",
-        });
-        expect(result.success).toBe(true);
-        if (result.success) {
-          expect(result.data.fontFamily).toBe("serif");
-          expect(result.data.fontSize).toBe(18);
-        }
-      });
-
-      it("should accept all valid font families", () => {
-        const families = ["sans", "serif", "new-york"] as const;
-        for (const fontFamily of families) {
-          const result = schemas.readerPreferences.safeParse({
-            fontFamily,
-            fontSize: "16",
-          });
-          expect(result.success).toBe(true);
-        }
-      });
-
-      it("should reject invalid font family", () => {
-        const result = schemas.readerPreferences.safeParse({
-          fontFamily: "comic-sans",
-          fontSize: "16",
-        });
-        expect(result.success).toBe(false);
-        if (!result.success) {
-          expect(result.error.issues[0]?.message).toBe(
-            "Font family must be 'sans', 'serif', or 'new-york'",
-          );
-        }
-      });
-
-      it("should reject font size below minimum", () => {
-        const result = schemas.readerPreferences.safeParse({
-          fontFamily: "sans",
-          fontSize: "13",
-        });
-        expect(result.success).toBe(false);
-        if (!result.success) {
-          expect(result.error.issues[0]?.message).toBe(
-            "Font size must be at least 14",
-          );
-        }
-      });
-
-      it("should reject font size above maximum", () => {
-        const result = schemas.readerPreferences.safeParse({
-          fontFamily: "sans",
-          fontSize: "25",
-        });
-        expect(result.success).toBe(false);
-        if (!result.success) {
-          expect(result.error.issues[0]?.message).toBe(
-            "Font size must be at most 24",
-          );
-        }
-      });
-
-      it("should accept boundary font sizes", () => {
-        const min = schemas.readerPreferences.safeParse({
-          fontFamily: "sans",
-          fontSize: "14",
-        });
-        const max = schemas.readerPreferences.safeParse({
-          fontFamily: "sans",
-          fontSize: "24",
-        });
-
-        expect(min.success).toBe(true);
-        expect(max.success).toBe(true);
-      });
-
-      it("should coerce string fontSize to number", () => {
-        const result = schemas.readerPreferences.safeParse({
-          fontFamily: "sans",
-          fontSize: "20",
-        });
-        expect(result.success).toBe(true);
-        if (result.success) {
-          expect(typeof result.data.fontSize).toBe("number");
-          expect(result.data.fontSize).toBe(20);
-        }
-      });
-
-      it("should reject non-integer font sizes", () => {
-        const result = schemas.readerPreferences.safeParse({
-          fontFamily: "sans",
-          fontSize: "16.5",
-        });
-        expect(result.success).toBe(false);
-        if (!result.success) {
-          expect(result.error.issues[0]?.message).toBe(
-            "Font size must be a whole number",
-          );
-        }
-      });
+      expect(res.status).toBe(200);
+      expect(json.name).toBe("john");
     });
   });
 });

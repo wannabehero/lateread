@@ -1,10 +1,12 @@
 import { type Context, Hono } from "hono";
+import { z } from "zod";
 import { ArticleList } from "../components/ArticleList";
 import { ReaderView } from "../components/ReaderView";
 import { isLLMAvailable } from "../lib/llm";
 import { isTTSAvailable } from "../lib/tts";
-import { schemas, zValidator } from "../lib/validator";
+import { validator } from "../lib/validator";
 import { requireAuth } from "../middleware/auth";
+import { articleIdParam } from "../schemas/common";
 import {
   countArticlesByStatus,
   getArticlesWithTags,
@@ -50,7 +52,22 @@ export async function renderArticlesList(c: Context<AppContext>) {
 articlesRouter.get(
   "/articles",
   requireAuth("redirect"),
-  zValidator("query", schemas.articlesQuery),
+  validator(
+    "query",
+    z.object({
+      status: z
+        .enum(["all", "archived"], {
+          message: "Status must be 'all' or 'archived'",
+        })
+        .optional()
+        .default("all"),
+      tag: z
+        .string()
+        .min(1, "Tag cannot be empty")
+        .transform((val) => val.toLowerCase().trim())
+        .optional(),
+    }),
+  ),
   async (c) => {
     return renderArticlesList(c);
   },
@@ -62,7 +79,7 @@ articlesRouter.get(
 articlesRouter.get(
   "/articles/:id",
   requireAuth("redirect"),
-  zValidator("param", schemas.articleId),
+  validator("param", articleIdParam),
   async (c) => {
     const userId = c.get("userId");
     const { id: articleId } = c.req.valid("param");

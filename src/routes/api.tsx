@@ -1,11 +1,13 @@
 import { Hono } from "hono";
 import { stream } from "hono/streaming";
+import { z } from "zod";
 import { EmptyState } from "../components/EmptyState";
 import { ProcessingBanner } from "../components/ProcessingBanner";
 import { SummaryView } from "../components/SummaryView";
 import { getTTSProvider, htmlToPlainText } from "../lib/tts";
-import { schemas, zValidator } from "../lib/validator";
+import { validator } from "../lib/validator";
 import { requireAuth } from "../middleware/auth";
+import { articleIdParam } from "../schemas/common";
 import {
   countArticles,
   countArticlesByStatus,
@@ -27,7 +29,7 @@ const api = new Hono<AppContext>();
 api.post(
   "/api/articles/:id/read",
   requireAuth("json-401"),
-  zValidator("param", schemas.articleId),
+  validator("param", articleIdParam),
   async (c) => {
     const userId = c.get("userId");
     const { id: articleId } = c.req.valid("param");
@@ -44,8 +46,18 @@ api.post(
 api.post(
   "/api/articles/:id/archive",
   requireAuth("json-401"),
-  zValidator("param", schemas.articleId),
-  zValidator("query", schemas.archiveQuery),
+  validator("param", articleIdParam),
+  validator(
+    "query",
+    z.object({
+      redirect: z
+        .enum(["true", "false"], {
+          message: "Redirect must be 'true' or 'false'",
+        })
+        .optional()
+        .transform((val) => val === "true"),
+    }),
+  ),
   async (c) => {
     const userId = c.get("userId");
     const { id: articleId } = c.req.valid("param");
@@ -92,7 +104,7 @@ api.post(
 api.delete(
   "/api/articles/:id",
   requireAuth("json-401"),
-  zValidator("param", schemas.articleId),
+  validator("param", articleIdParam),
   async (c) => {
     const userId = c.get("userId");
     const { id: articleId } = c.req.valid("param");
@@ -114,7 +126,7 @@ api.delete(
 api.post(
   "/api/articles/:id/summarize",
   requireAuth("json-401"),
-  zValidator("param", schemas.articleId),
+  validator("param", articleIdParam),
   async (c) => {
     const userId = c.get("userId");
     const { id: articleId } = c.req.valid("param");
@@ -163,7 +175,7 @@ api.get(
 api.get(
   "/api/articles/:id/tts",
   requireAuth("json-401"),
-  zValidator("param", schemas.articleId),
+  validator("param", articleIdParam),
   async (c) => {
     const userId = c.get("userId");
     const { id: articleId } = c.req.valid("param");
@@ -213,7 +225,21 @@ api.get(
 api.post(
   "/api/preferences/reader",
   requireAuth("json-401"),
-  zValidator("form", schemas.readerPreferences),
+  validator(
+    "form",
+    z.object({
+      fontFamily: z.enum(["sans", "serif", "new-york"], {
+        message: "Font family must be 'sans', 'serif', or 'new-york'",
+      }),
+      fontSize: z.coerce
+        .number({
+          message: "Font size must be a number",
+        })
+        .int("Font size must be a whole number")
+        .min(14, "Font size must be at least 14")
+        .max(24, "Font size must be at most 24"),
+    }),
+  ),
   async (c) => {
     const userId = c.get("userId");
     const { fontFamily, fontSize } = c.req.valid("form");

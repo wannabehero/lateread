@@ -93,6 +93,8 @@ src/
 │   ├── search.tsx       # Search page
 │   ├── api.tsx          # API endpoints
 │   └── health.tsx       # Health check
+├── schemas/             # Shared Zod validation schemas
+│   └── common.ts        # Common schemas (articleIdParam, etc.)
 ├── services/            # Database operations & business logic
 │   ├── articles.service.ts
 │   ├── tags.service.ts
@@ -173,6 +175,72 @@ app.post("/api/articles/:id", requireAuth("json-401"), async (c) => {
   // ...
 });
 ```
+
+### Route Input Validation
+
+Use the custom `validator` middleware from `src/lib/validator.ts` with Zod schemas for all route inputs. Inline schemas directly in the validator call:
+
+```typescript
+import { z } from "zod";
+import { validator } from "../lib/validator";
+
+// Inline schema directly in validator call
+app.get(
+  "/articles",
+  requireAuth("redirect"),
+  validator(
+    "query",
+    z.object({
+      status: z.enum(["all", "archived"]).optional().default("all"),
+      tag: z
+        .string()
+        .min(1, "Tag cannot be empty")
+        .transform((val) => val.toLowerCase().trim())
+        .optional(),
+    }),
+  ),
+  async (c) => {
+    const { status, tag } = c.req.valid("query");
+    // ...
+  },
+);
+```
+
+**Validation patterns:**
+
+- **Inline schemas**: Always inline schemas directly in the `validator()` call - don't create separate variables
+- **Shared schemas**: Only for truly common schemas (like `articleIdParam`), put in `src/schemas/common.ts`
+- **Input sanitization**: Use `.trim()` and `.toLowerCase()` transforms where appropriate
+- **Prevent injection**: Reject special characters (e.g., `%` in search queries used with SQL LIKE)
+- **Error handling**: Invalid input throws `ValidationError`, caught by global error handler
+
+```typescript
+// Shared schema for article ID (used in many routes)
+// src/schemas/common.ts
+import { z } from "zod";
+
+export const articleIdParam = z.object({
+  id: z.string().uuid("Invalid article ID format"),
+});
+
+// Usage in route
+import { articleIdParam } from "../schemas/common";
+
+app.get(
+  "/articles/:id",
+  requireAuth("redirect"),
+  validator("param", articleIdParam),
+  async (c) => {
+    const { id } = c.req.valid("param");
+    // ...
+  },
+);
+```
+
+**Validation targets:**
+- `"query"` - URL query parameters (`?key=value`)
+- `"param"` - URL path parameters (`/:id`)
+- `"form"` - Form data (POST bodies)
 
 ### HTMX Responses
 

@@ -1,9 +1,10 @@
 import { Hono } from "hono";
+import { z } from "zod";
 import { AuthError } from "../components/auth/AuthError";
 import { AuthPolling } from "../components/auth/AuthPolling";
 import { config } from "../lib/config";
 import { clearSession, setSession } from "../lib/session";
-import { schemas, zValidator } from "../lib/validator";
+import { validator } from "../lib/validator";
 import {
   createAuthToken,
   getAuthTokenStatus,
@@ -49,7 +50,12 @@ auth.post("/auth/telegram", async (c) => {
  */
 auth.get(
   "/auth/check/:token",
-  zValidator("param", schemas.authToken),
+  validator(
+    "param",
+    z.object({
+      token: z.string().min(1, "Token is required"),
+    }),
+  ),
   async (c) => {
     const { token } = c.req.valid("param");
 

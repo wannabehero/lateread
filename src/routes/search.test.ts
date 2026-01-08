@@ -260,9 +260,9 @@ describe("routes/search", () => {
 
       const html = await res.text();
 
-      // Whitespace-only query gets trimmed in service, returns all articles
-      // (query param exists but search pattern is empty after trim)
-      expect(html).toContain("Some Article");
+      // Whitespace-only query gets trimmed to empty string, treated as no query
+      expect(html).toContain("Enter a search query to find articles");
+      expect(html).not.toContain("Some Article");
     });
   });
 

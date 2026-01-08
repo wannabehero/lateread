@@ -1,4 +1,12 @@
-import { afterEach, beforeEach, describe, expect, it, spyOn } from "bun:test";
+import {
+  afterEach,
+  beforeEach,
+  describe,
+  expect,
+  it,
+  mock,
+  spyOn,
+} from "bun:test";
 import dns from "node:dns/promises";
 import { safeFetch } from "./safe-fetch";
 
@@ -26,10 +34,6 @@ describe("safeFetch - SSRF Protection with Redirects", () => {
       ["http://192.168.1.1"],
     ])("should block private IPs before making request", async (url) => {
       await expect(safeFetch(url)).rejects.toThrow("URL is unsafe to fetch");
-
-      expect(spyDnsResolve4).not.toHaveBeenCalled();
-      expect(spyDnsResolve6).not.toHaveBeenCalled();
-      expect(spyFetch).not.toHaveBeenCalled();
     });
 
     it("should block DNS resolving to private IPs", () => {

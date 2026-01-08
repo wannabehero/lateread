@@ -12,6 +12,7 @@ import type { Hono } from "hono";
 import { db, resetDatabase } from "../../test/bootstrap";
 import {
   createArticle,
+  createAuthHeaders,
   createCompletedArticle,
   createUser,
   parseHtml,
@@ -29,7 +30,7 @@ import type { AppContext } from "../types/context";
 describe("routes/api", () => {
   let app: Hono<AppContext>;
   let testUserId: string;
-  let spyGetSession: ReturnType<typeof spyOn>;
+  let authHeaders: HeadersInit;
 
   beforeEach(async () => {
     resetDatabase();
@@ -38,20 +39,11 @@ describe("routes/api", () => {
     const user = await createUser(db);
     testUserId = user.id;
 
-    // Spy on getSession to return our test userId
-    // This simulates an authenticated user session
-    const sessionModule = await import("../lib/session");
-    spyGetSession = spyOn(sessionModule, "getSession");
-    spyGetSession.mockReturnValue({ userId: testUserId });
+    // Create auth headers with valid session cookie
+    authHeaders = createAuthHeaders(testUserId);
 
     // Create the actual production app with all middleware
-    // The spied session will make this user authenticated
     app = createApp();
-  });
-
-  afterEach(() => {
-    // Restore the spy after each test
-    spyGetSession.mockRestore();
   });
 
   describe("POST /api/articles/:id/read", () => {
@@ -59,6 +51,7 @@ describe("routes/api", () => {
       const article = await createCompletedArticle(db, testUserId);
 
       const res = await app.request(`/api/articles/${article.id}/read`, {
+        headers: authHeaders,
         method: "POST",
       });
 
@@ -77,6 +70,7 @@ describe("routes/api", () => {
 
     it("should return 404 when article does not exist", async () => {
       const res = await app.request("/api/articles/non-existent-id/read", {
+        headers: authHeaders,
         method: "POST",
       });
 
@@ -97,6 +91,7 @@ describe("routes/api", () => {
       const article = await createCompletedArticle(db, otherUser.id);
 
       const res = await app.request(`/api/articles/${article.id}/read`, {
+        headers: authHeaders,
         method: "POST",
       });
 
@@ -126,11 +121,13 @@ describe("routes/api", () => {
 
       // Mark as read first time
       await app.request(`/api/articles/${article.id}/read`, {
+        headers: authHeaders,
         method: "POST",
       });
 
       // Mark as read second time
       const res = await app.request(`/api/articles/${article.id}/read`, {
+        headers: authHeaders,
         method: "POST",
       });
 
@@ -145,6 +142,7 @@ describe("routes/api", () => {
       });
 
       const res = await app.request(`/api/articles/${article.id}/archive`, {
+        headers: authHeaders,
         method: "POST",
       });
 
@@ -169,11 +167,13 @@ describe("routes/api", () => {
 
       // Archive it first
       await app.request(`/api/articles/${article.id}/archive`, {
+        headers: authHeaders,
         method: "POST",
       });
 
       // Now unarchive it
       const res = await app.request(`/api/articles/${article.id}/archive`, {
+        headers: authHeaders,
         method: "POST",
       });
 
@@ -210,6 +210,7 @@ describe("routes/api", () => {
       const article = await createCompletedArticle(db, testUserId);
 
       const res = await app.request(`/api/articles/${article.id}/archive`, {
+        headers: authHeaders,
         method: "POST",
       });
 
@@ -226,6 +227,7 @@ describe("routes/api", () => {
       await createCompletedArticle(db, testUserId); // Another unarchived article
 
       const res = await app.request(`/api/articles/${article1.id}/archive`, {
+        headers: authHeaders,
         method: "POST",
       });
 
@@ -238,6 +240,7 @@ describe("routes/api", () => {
 
     it("should return 404 when article does not exist", async () => {
       const res = await app.request("/api/articles/non-existent-id/archive", {
+        headers: authHeaders,
         method: "POST",
       });
 
@@ -252,6 +255,7 @@ describe("routes/api", () => {
       const article = await createCompletedArticle(db, otherUser.id);
 
       const res = await app.request(`/api/articles/${article.id}/archive`, {
+        headers: authHeaders,
         method: "POST",
       });
 
@@ -289,6 +293,7 @@ describe("routes/api", () => {
       spyGetOrGenerateSummary.mockResolvedValue(mockSummary);
 
       const res = await app.request(`/api/articles/${article.id}/summarize`, {
+        headers: authHeaders,
         method: "POST",
       });
 
@@ -326,6 +331,7 @@ describe("routes/api", () => {
       spyGetOrGenerateSummary.mockResolvedValue(mockSummary);
 
       await app.request(`/api/articles/${article.id}/summarize`, {
+        headers: authHeaders,
         method: "POST",
       });
 
@@ -345,6 +351,7 @@ describe("routes/api", () => {
       });
 
       const res = await app.request("/api/articles/non-existent-id/summarize", {
+        headers: authHeaders,
         method: "POST",
       });
 
@@ -363,6 +370,7 @@ describe("routes/api", () => {
       });
 
       const res = await app.request(`/api/articles/${article.id}/summarize`, {
+        headers: authHeaders,
         method: "POST",
       });
 
@@ -378,6 +386,7 @@ describe("routes/api", () => {
       );
 
       const res = await app.request(`/api/articles/${article.id}/summarize`, {
+        headers: authHeaders,
         method: "POST",
       });
 
@@ -394,7 +403,9 @@ describe("routes/api", () => {
       await createCompletedArticle(db, testUserId); // status: "completed"
       await createArticle(db, testUserId, { status: "failed" });
 
-      const res = await app.request("/api/articles/processing-count");
+      const res = await app.request("/api/articles/processing-count", {
+        headers: authHeaders,
+      });
 
       expect(res.status).toBe(200);
       expect(res.headers.get("content-type")).toContain("text/html");
@@ -409,7 +420,9 @@ describe("routes/api", () => {
       await createCompletedArticle(db, testUserId); // status: "completed"
       await createArticle(db, testUserId, { status: "failed" });
 
-      const res = await app.request("/api/articles/processing-count");
+      const res = await app.request("/api/articles/processing-count", {
+        headers: authHeaders,
+      });
 
       expect(res.status).toBe(200);
 
@@ -428,7 +441,9 @@ describe("routes/api", () => {
       await createArticle(db, otherUser.id, { status: "pending" });
       await createArticle(db, otherUser.id, { status: "processing" });
 
-      const res = await app.request("/api/articles/processing-count");
+      const res = await app.request("/api/articles/processing-count", {
+        headers: authHeaders,
+      });
 
       const html = await res.text();
       expect(html).toContain("1 article processing");
@@ -442,7 +457,9 @@ describe("routes/api", () => {
       );
       spyCountArticlesByStatus.mockRejectedValue(new Error("Database error"));
 
-      const res = await app.request("/api/articles/processing-count");
+      const res = await app.request("/api/articles/processing-count", {
+        headers: authHeaders,
+      });
 
       expect(res.status).toBe(200);
 
@@ -495,7 +512,9 @@ describe("routes/api", () => {
 
       spyGetTTSProvider.mockReturnValue(mockTTSProvider);
 
-      const res = await app.request(`/api/articles/${article.id}/tts`);
+      const res = await app.request(`/api/articles/${article.id}/tts`, {
+        headers: authHeaders,
+      });
 
       expect(res.status).toBe(200);
       expect(res.headers.get("content-type")).toBe("audio/mpeg");
@@ -546,7 +565,9 @@ describe("routes/api", () => {
 
       spyGetTTSProvider.mockReturnValue(mockTTSProvider);
 
-      await app.request(`/api/articles/${article.id}/tts`);
+      await app.request(`/api/articles/${article.id}/tts`, {
+        headers: authHeaders,
+      });
 
       const calledWith = (mockTTSProvider.generateStream as any).mock
         .calls[0]?.[0];
@@ -566,7 +587,9 @@ describe("routes/api", () => {
       const htmlContent = "<div></div><p></p>";
       spyGetArticleContent.mockResolvedValue(htmlContent);
 
-      const res = await app.request(`/api/articles/${article.id}/tts`);
+      const res = await app.request(`/api/articles/${article.id}/tts`, {
+        headers: authHeaders,
+      });
 
       expect(res.status).toBe(400);
       const json = await res.json();
@@ -577,7 +600,9 @@ describe("routes/api", () => {
     });
 
     it("should return 404 when article does not exist", async () => {
-      const res = await app.request("/api/articles/non-existent-id/tts");
+      const res = await app.request("/api/articles/non-existent-id/tts", {
+        headers: authHeaders,
+      });
 
       expect(res.status).toBe(404);
       expect(spyGetArticleContent).not.toHaveBeenCalled();
@@ -588,7 +613,9 @@ describe("routes/api", () => {
       const otherUser = await createUser(db);
       const article = await createCompletedArticle(db, otherUser.id);
 
-      const res = await app.request(`/api/articles/${article.id}/tts`);
+      const res = await app.request(`/api/articles/${article.id}/tts`, {
+        headers: authHeaders,
+      });
 
       expect(res.status).toBe(404);
       expect(spyGetArticleContent).not.toHaveBeenCalled();
@@ -616,7 +643,9 @@ describe("routes/api", () => {
 
       spyGetTTSProvider.mockReturnValue(mockTTSProvider);
 
-      await app.request(`/api/articles/${article.id}/tts`);
+      await app.request(`/api/articles/${article.id}/tts`, {
+        headers: authHeaders,
+      });
 
       expect(mockTTSProvider.generateStream).toHaveBeenCalledWith(
         "Contenido en español",
@@ -645,7 +674,9 @@ describe("routes/api", () => {
 
       spyGetTTSProvider.mockReturnValue(mockTTSProvider);
 
-      await app.request(`/api/articles/${article.id}/tts`);
+      await app.request(`/api/articles/${article.id}/tts`, {
+        headers: authHeaders,
+      });
 
       expect(mockTTSProvider.generateStream).toHaveBeenCalledWith(
         "Content",
@@ -665,6 +696,7 @@ describe("routes/api", () => {
       formData.append("fontSize", String(fontSize));
 
       const res = await app.request("/api/preferences/reader", {
+        headers: authHeaders,
         method: "POST",
         body: formData,
       });
@@ -698,6 +730,7 @@ describe("routes/api", () => {
       formData.append("fontSize", String(fontSize));
 
       const res = await app.request("/api/preferences/reader", {
+        headers: authHeaders,
         method: "POST",
         body: formData,
       });
@@ -717,6 +750,7 @@ describe("routes/api", () => {
       formData.append("fontSize", String(fontSize));
 
       const res = await app.request("/api/preferences/reader", {
+        headers: authHeaders,
         method: "POST",
         body: formData,
       });
@@ -728,17 +762,6 @@ describe("routes/api", () => {
   });
 
   describe("Authentication", () => {
-    let unauthenticatedApp: Hono<AppContext>;
-
-    beforeEach(() => {
-      // Override the parent spy to return null (unauthenticated)
-      spyGetSession.mockReturnValue(null);
-
-      // Create the actual production app WITHOUT authenticated session
-      // This tests the real authentication behavior
-      unauthenticatedApp = createApp();
-    });
-
     it.each([
       ["POST", "/api/articles/some-id/read"],
       ["POST", "/api/articles/some-id/archive"],
@@ -757,7 +780,7 @@ describe("routes/api", () => {
         options.body = formData;
       }
 
-      const res = await unauthenticatedApp.request(path, options);
+      const res = await app.request(path, options);
 
       expect(res.status).toBe(401);
       const json = await res.json();
@@ -774,6 +797,7 @@ describe("routes/api", () => {
 
       // API routes return JSON by default due to /api/ path check
       const res = await app.request(`/api/articles/${article.id}/read`, {
+        headers: authHeaders,
         method: "POST",
       });
 
@@ -799,6 +823,7 @@ describe("routes/api", () => {
       const res = await app.request(`/api/articles/${article.id}/read`, {
         method: "POST",
         headers: {
+          ...authHeaders,
           "HX-Request": "true",
         },
       });
@@ -822,6 +847,7 @@ describe("routes/api", () => {
       formData.append("fontSize", "16");
 
       const res = await app.request("/api/preferences/reader", {
+        headers: authHeaders,
         method: "POST",
         body: formData,
       });
@@ -846,6 +872,7 @@ describe("routes/api", () => {
       );
 
       const res = await app.request(`/api/articles/${article.id}/summarize`, {
+        headers: authHeaders,
         method: "POST",
       });
 

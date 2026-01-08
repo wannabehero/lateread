@@ -4,6 +4,7 @@ import { db, resetDatabase } from "../../test/bootstrap";
 import {
   addTagToArticle,
   createArticle,
+  createAuthHeaders,
   createCompletedArticle,
   createSubscription,
   createTag,
@@ -19,7 +20,7 @@ import type { AppContext } from "../types/context";
 describe("routes/articles", () => {
   let app: Hono<AppContext>;
   let testUserId: string;
-  let spyGetSession: ReturnType<typeof spyOn>;
+  let authHeaders: HeadersInit;
 
   beforeEach(async () => {
     resetDatabase();
@@ -28,22 +29,16 @@ describe("routes/articles", () => {
     const user = await createUser(db);
     testUserId = user.id;
 
-    // Spy on getSession to return our test userId
-    const sessionModule = await import("../lib/session");
-    spyGetSession = spyOn(sessionModule, "getSession");
-    spyGetSession.mockReturnValue({ userId: testUserId });
+    // Create auth headers with valid session cookie
+    authHeaders = createAuthHeaders(testUserId);
 
     // Create the actual production app with all middleware
     app = createApp();
   });
 
-  afterEach(() => {
-    spyGetSession.mockRestore();
-  });
-
   describe("GET /articles", () => {
     it("should render empty state when no articles exist", async () => {
-      const res = await app.request("/articles");
+      const res = await app.request("/articles", { headers: authHeaders });
       const html = await res.text();
       const doc = parseHtml(html);
 
@@ -63,7 +58,7 @@ describe("routes/articles", () => {
         title: "Test Article 2",
       });
 
-      const res = await app.request("/articles");
+      const res = await app.request("/articles", { headers: authHeaders });
       const html = await res.text();
       const doc = parseHtml(html);
 
@@ -90,7 +85,7 @@ describe("routes/articles", () => {
         archived: true,
       });
 
-      const res = await app.request("/articles?status=archived");
+      const res = await app.request("/articles?status=archived", { headers: authHeaders });
       const html = await res.text();
 
       expect(res.status).toBe(200);
@@ -110,7 +105,7 @@ describe("routes/articles", () => {
         archived: true,
       });
 
-      const res = await app.request("/articles");
+      const res = await app.request("/articles", { headers: authHeaders });
       const html = await res.text();
 
       expect(res.status).toBe(200);
@@ -134,7 +129,7 @@ describe("routes/articles", () => {
       await addTagToArticle(db, article1.id, tag1.id);
       await addTagToArticle(db, article2.id, tag2.id);
 
-      const res = await app.request("/articles?tag=technology");
+      const res = await app.request("/articles?tag=technology", { headers: authHeaders });
       const html = await res.text();
 
       expect(res.status).toBe(200);
@@ -150,7 +145,7 @@ describe("routes/articles", () => {
       await createCompletedArticle(db, testUserId); // completed
       await createArticle(db, testUserId, { status: "failed" });
 
-      const res = await app.request("/articles");
+      const res = await app.request("/articles", { headers: authHeaders });
       const html = await res.text();
 
       expect(res.status).toBe(200);
@@ -163,7 +158,7 @@ describe("routes/articles", () => {
       await createArticle(db, testUserId, { status: "pending" });
       await createCompletedArticle(db, testUserId, { archived: true });
 
-      const res = await app.request("/articles?status=archived");
+      const res = await app.request("/articles?status=archived", { headers: authHeaders });
       const html = await res.text();
 
       expect(res.status).toBe(200);
@@ -182,7 +177,7 @@ describe("routes/articles", () => {
         title: "Other User Article",
       });
 
-      const res = await app.request("/articles");
+      const res = await app.request("/articles", { headers: authHeaders });
       const html = await res.text();
 
       expect(res.status).toBe(200);
@@ -193,7 +188,7 @@ describe("routes/articles", () => {
     });
 
     it("should render full HTML page with layout", async () => {
-      const res = await app.request("/articles");
+      const res = await app.request("/articles", { headers: authHeaders });
       const html = await res.text();
       const doc = parseHtml(html);
 
@@ -216,7 +211,7 @@ describe("routes/articles", () => {
       });
       await addTagToArticle(db, article.id, tag.id);
 
-      const res = await app.request("/articles");
+      const res = await app.request("/articles", { headers: authHeaders });
       const html = await res.text();
 
       expect(res.status).toBe(200);
@@ -248,7 +243,7 @@ describe("routes/articles", () => {
       const htmlContent = "<p>Article content here</p>";
       spyGetArticleContent.mockResolvedValue(htmlContent);
 
-      const res = await app.request(`/articles/${article.id}`);
+      const res = await app.request(`/articles/${article.id}`, { headers: authHeaders });
       const html = await res.text();
       const doc = parseHtml(html);
 
@@ -280,7 +275,7 @@ describe("routes/articles", () => {
 
       spyGetArticleContent.mockResolvedValue("<p>Content</p>");
 
-      const res = await app.request(`/articles/${article.id}`);
+      const res = await app.request(`/articles/${article.id}`, { headers: authHeaders });
       const html = await res.text();
 
       expect(res.status).toBe(200);
@@ -302,7 +297,7 @@ describe("routes/articles", () => {
 
       spyGetArticleContent.mockResolvedValue("<p>Content</p>");
 
-      const res = await app.request(`/articles/${article.id}`);
+      const res = await app.request(`/articles/${article.id}`, { headers: authHeaders });
       const html = await res.text();
       const doc = parseHtml(html);
 
@@ -324,7 +319,7 @@ describe("routes/articles", () => {
       const spyIsLLMAvailable = spyOn(llm, "isLLMAvailable");
       spyIsLLMAvailable.mockReturnValue(true);
 
-      const res = await app.request(`/articles/${article.id}`);
+      const res = await app.request(`/articles/${article.id}`, { headers: authHeaders });
       const html = await res.text();
       const doc = parseHtml(html);
 
@@ -348,7 +343,7 @@ describe("routes/articles", () => {
       const spyIsTTSAvailable = spyOn(tts, "isTTSAvailable");
       spyIsTTSAvailable.mockReturnValue(true);
 
-      const res = await app.request(`/articles/${article.id}`);
+      const res = await app.request(`/articles/${article.id}`, { headers: authHeaders });
       const html = await res.text();
       const doc = parseHtml(html);
 
@@ -373,7 +368,7 @@ describe("routes/articles", () => {
       const spyIsLLMAvailable = spyOn(llm, "isLLMAvailable");
       spyIsLLMAvailable.mockReturnValue(false);
 
-      const res = await app.request(`/articles/${article.id}`);
+      const res = await app.request(`/articles/${article.id}`, { headers: authHeaders });
       const html = await res.text();
       const doc = parseHtml(html);
 
@@ -394,7 +389,7 @@ describe("routes/articles", () => {
       const spyIsTTSAvailable = spyOn(tts, "isTTSAvailable");
       spyIsTTSAvailable.mockReturnValue(true);
 
-      const res = await app.request(`/articles/${article.id}`);
+      const res = await app.request(`/articles/${article.id}`, { headers: authHeaders });
       const html = await res.text();
       const doc = parseHtml(html);
 
@@ -413,7 +408,7 @@ describe("routes/articles", () => {
 
       spyGetArticleContent.mockResolvedValue("<p>Content</p>");
 
-      const res = await app.request(`/articles/${article.id}`);
+      const res = await app.request(`/articles/${article.id}`, { headers: authHeaders });
       const html = await res.text();
       const doc = parseHtml(html);
 
@@ -434,7 +429,7 @@ describe("routes/articles", () => {
 
       spyGetArticleContent.mockResolvedValue("<p>Content</p>");
 
-      const res = await app.request(`/articles/${article.id}`);
+      const res = await app.request(`/articles/${article.id}`, { headers: authHeaders });
       const html = await res.text();
       const doc = parseHtml(html);
 
@@ -451,7 +446,7 @@ describe("routes/articles", () => {
 
       spyGetArticleContent.mockResolvedValue("<p>Content</p>");
 
-      const res = await app.request(`/articles/${article.id}`);
+      const res = await app.request(`/articles/${article.id}`, { headers: authHeaders });
       const html = await res.text();
       const doc = parseHtml(html);
 
@@ -472,7 +467,7 @@ describe("routes/articles", () => {
 
       spyGetArticleContent.mockResolvedValue("<p>Content</p>");
 
-      const res = await app.request(`/articles/${article.id}`);
+      const res = await app.request(`/articles/${article.id}`, { headers: authHeaders });
       const html = await res.text();
       const doc = parseHtml(html);
 
@@ -486,7 +481,7 @@ describe("routes/articles", () => {
     it("should return 404 when article does not exist", async () => {
       spyGetArticleContent.mockResolvedValue("<p>Content</p>");
 
-      const res = await app.request("/articles/non-existent-id");
+      const res = await app.request("/articles/non-existent-id", { headers: authHeaders });
 
       expect(res.status).toBe(404);
 
@@ -500,7 +495,7 @@ describe("routes/articles", () => {
 
       spyGetArticleContent.mockResolvedValue("<p>Content</p>");
 
-      const res = await app.request(`/articles/${article.id}`);
+      const res = await app.request(`/articles/${article.id}`, { headers: authHeaders });
 
       expect(res.status).toBe(404);
 
@@ -513,7 +508,7 @@ describe("routes/articles", () => {
 
       spyGetArticleContent.mockResolvedValue("<p>Content</p>");
 
-      const res = await app.request(`/articles/${article.id}`);
+      const res = await app.request(`/articles/${article.id}`, { headers: authHeaders });
       const html = await res.text();
       const doc = parseHtml(html);
 
@@ -529,7 +524,7 @@ describe("routes/articles", () => {
 
       spyGetArticleContent.mockResolvedValue("<p>Content</p>");
 
-      const res = await app.request(`/articles/${article.id}`);
+      const res = await app.request(`/articles/${article.id}`, { headers: authHeaders });
       const html = await res.text();
       const doc = parseHtml(html);
 
@@ -545,7 +540,7 @@ describe("routes/articles", () => {
 
       spyGetArticleContent.mockResolvedValue("<p>Content</p>");
 
-      const res = await app.request(`/articles/${article.id}`);
+      const res = await app.request(`/articles/${article.id}`, { headers: authHeaders });
       const html = await res.text();
       const doc = parseHtml(html);
 
@@ -565,7 +560,7 @@ describe("routes/articles", () => {
 
       spyGetArticleContent.mockResolvedValue("<p>Content</p>");
 
-      const res = await app.request(`/articles/${article.id}`);
+      const res = await app.request(`/articles/${article.id}`, { headers: authHeaders });
       const html = await res.text();
       const doc = parseHtml(html);
 
@@ -583,25 +578,15 @@ describe("routes/articles", () => {
   });
 
   describe("Authentication", () => {
-    let unauthenticatedApp: Hono<AppContext>;
-
-    beforeEach(() => {
-      // Override the parent spy to return null (unauthenticated)
-      spyGetSession.mockReturnValue(null);
-
-      // Create app without authenticated session
-      unauthenticatedApp = createApp();
-    });
-
     it("should redirect to home when accessing /articles without auth", async () => {
-      const res = await unauthenticatedApp.request("/articles");
+      const res = await app.request("/articles");
 
       expect(res.status).toBe(302);
       expect(res.headers.get("location")).toBe("/");
     });
 
     it("should redirect to home when accessing /articles/:id without auth", async () => {
-      const res = await unauthenticatedApp.request("/articles/some-id");
+      const res = await app.request("/articles/some-id");
 
       expect(res.status).toBe(302);
       expect(res.headers.get("location")).toBe("/");

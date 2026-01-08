@@ -3,6 +3,7 @@ import type { drizzle } from "drizzle-orm/bun-sqlite";
 import { Window } from "happy-dom";
 import * as schema from "../src/db/schema";
 import type { Logger } from "../src/lib/logger/types";
+import { createSessionCookie, getSessionCookieName } from "../src/lib/session";
 
 type DB = ReturnType<typeof drizzle<typeof schema>>;
 /**
@@ -218,4 +219,20 @@ export function parseHtml(html: string): Document {
   const window = new Window();
   window.document.write(html);
   return window.document as unknown as Document;
+}
+
+/**
+ * Create headers with a valid session cookie for authenticated requests
+ * Use this in tests to authenticate requests without mocking
+ *
+ * @example
+ * const headers = createAuthHeaders(testUserId);
+ * const res = await app.request("/articles", { headers });
+ */
+export function createAuthHeaders(userId: string): HeadersInit {
+  const sessionCookie = createSessionCookie(userId);
+  const cookieName = getSessionCookieName();
+  return {
+    Cookie: `${cookieName}=${sessionCookie}`,
+  };
 }

@@ -860,29 +860,38 @@ describe("routes/api", () => {
       expect(json.context).toBeDefined();
     });
 
-    it("should handle InternalError with 500 status", async () => {
-      const article = await createCompletedArticle(db, testUserId);
+    describe("InternalError handling", () => {
+      let spyGetOrGenerateSummary: ReturnType<typeof spyOn>;
 
-      // Spy on getOrGenerateSummary to throw an unexpected error
-      const spyGetOrGenerateSummary = spyOn(
-        summariesService,
-        "getOrGenerateSummary",
-      );
-      spyGetOrGenerateSummary.mockRejectedValue(
-        new Error("Unexpected database error"),
-      );
-
-      const res = await app.request(`/api/articles/${article.id}/summarize`, {
-        headers: authHeaders,
-        method: "POST",
+      beforeEach(() => {
+        spyGetOrGenerateSummary = spyOn(
+          summariesService,
+          "getOrGenerateSummary",
+        );
       });
 
-      expect(res.status).toBe(500);
-      const json = await res.json();
-      expect(json.error).toBe("An unexpected error occurred");
-      expect(json.statusCode).toBe(500);
+      afterEach(() => {
+        spyGetOrGenerateSummary.mockRestore();
+      });
 
-      spyGetOrGenerateSummary.mockRestore();
+      it("should handle InternalError with 500 status", async () => {
+        const article = await createCompletedArticle(db, testUserId);
+
+        // Mock to throw an unexpected error
+        spyGetOrGenerateSummary.mockRejectedValue(
+          new Error("Unexpected database error"),
+        );
+
+        const res = await app.request(`/api/articles/${article.id}/summarize`, {
+          headers: authHeaders,
+          method: "POST",
+        });
+
+        expect(res.status).toBe(500);
+        const json = await res.json();
+        expect(json.error).toBe("An unexpected error occurred");
+        expect(json.statusCode).toBe(500);
+      });
     });
   });
 });

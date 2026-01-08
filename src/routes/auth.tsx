@@ -3,6 +3,7 @@ import { AuthError } from "../components/auth/AuthError";
 import { AuthPolling } from "../components/auth/AuthPolling";
 import { config } from "../lib/config";
 import { clearSession, setSession } from "../lib/session";
+import { schemas, zValidator } from "../lib/validator";
 import {
   createAuthToken,
   getAuthTokenStatus,
@@ -46,38 +47,42 @@ auth.post("/auth/telegram", async (c) => {
 /**
  * GET /auth/check/:token - Check auth token status and return HTMX fragment
  */
-auth.get("/auth/check/:token", async (c) => {
-  const token = c.req.param("token");
+auth.get(
+  "/auth/check/:token",
+  zValidator("param", schemas.authToken),
+  async (c) => {
+    const { token } = c.req.valid("param");
 
-  const status = await getAuthTokenStatus(token);
+    const status = await getAuthTokenStatus(token);
 
-  if (status.status === "success") {
-    // Set session cookie
-    setSession(c, { userId: status.userId });
+    if (status.status === "success") {
+      // Set session cookie
+      setSession(c, { userId: status.userId });
 
-    // Use hx-redirect header to trigger client-side redirect
-    c.header("hx-redirect", "/");
+      // Use hx-redirect header to trigger client-side redirect
+      c.header("hx-redirect", "/");
 
-    return c.html(
-      <div id="auth-polling">
-        <p>Authentication successful! Redirecting...</p>
-      </div>,
-    );
-  }
+      return c.html(
+        <div id="auth-polling">
+          <p>Authentication successful! Redirecting...</p>
+        </div>,
+      );
+    }
 
-  if (status.status === "expired") {
-    // Token expired - show error
-    return c.html(
-      <AuthError
-        message="Authentication session expired. Please try again."
-        buttonText="Login with Telegram"
-      />,
-    );
-  }
+    if (status.status === "expired") {
+      // Token expired - show error
+      return c.html(
+        <AuthError
+          message="Authentication session expired. Please try again."
+          buttonText="Login with Telegram"
+        />,
+      );
+    }
 
-  // Still pending - continue polling
-  return c.html(<AuthPolling token={token} />);
-});
+    // Still pending - continue polling
+    return c.html(<AuthPolling token={token} />);
+  },
+);
 
 /**
  * POST /auth/logout - Clear session

@@ -69,7 +69,9 @@ describe("routes/api", () => {
     });
 
     it("should return 404 when article does not exist", async () => {
-      const res = await app.request("/api/articles/non-existent-id/read", {
+      // Use a valid UUID that doesn't exist in the database
+      const nonExistentId = "00000000-0000-0000-0000-000000000000";
+      const res = await app.request(`/api/articles/${nonExistentId}/read`, {
         headers: authHeaders,
         method: "POST",
       });
@@ -81,9 +83,21 @@ describe("routes/api", () => {
         statusCode: 404,
         context: {
           resource: "Article",
-          id: "non-existent-id",
+          id: nonExistentId,
         },
       });
+    });
+
+    it("should return 400 for invalid article ID format", async () => {
+      const res = await app.request("/api/articles/invalid-id/read", {
+        headers: authHeaders,
+        method: "POST",
+      });
+
+      expect(res.status).toBe(400);
+      const json = await res.json();
+      expect(json.error).toBe("Validation failed");
+      expect(json.context.fields.errors.id).toBe("Invalid article ID format");
     });
 
     it("should return 404 when article belongs to different user", async () => {
@@ -161,12 +175,26 @@ describe("routes/api", () => {
     });
 
     it("should return 404 when article does not exist", async () => {
-      const res = await app.request("/api/articles/non-existent-id", {
+      // Use a valid UUID that doesn't exist in the database
+      const nonExistentId = "00000000-0000-0000-0000-000000000000";
+      const res = await app.request(`/api/articles/${nonExistentId}`, {
         method: "DELETE",
         headers: authHeaders,
       });
 
       expect(res.status).toBe(404);
+    });
+
+    it("should return 400 for invalid article ID format on delete", async () => {
+      const res = await app.request("/api/articles/invalid-id", {
+        method: "DELETE",
+        headers: authHeaders,
+      });
+
+      expect(res.status).toBe(400);
+      const json = await res.json();
+      expect(json.error).toBe("Validation failed");
+      expect(json.context.fields.errors.id).toBe("Invalid article ID format");
     });
 
     it("should return 404 when article belongs to different user", async () => {
@@ -317,7 +345,9 @@ describe("routes/api", () => {
     });
 
     it("should return 404 when article does not exist", async () => {
-      const res = await app.request("/api/articles/non-existent-id/archive", {
+      // Use a valid UUID that doesn't exist in the database
+      const nonExistentId = "00000000-0000-0000-0000-000000000000";
+      const res = await app.request(`/api/articles/${nonExistentId}/archive`, {
         headers: authHeaders,
         method: "POST",
       });
@@ -326,6 +356,18 @@ describe("routes/api", () => {
       const json = await res.json();
       expect(json.error).toBe("Article not found");
       expect(json.statusCode).toBe(404);
+    });
+
+    it("should return 400 for invalid article ID format on archive", async () => {
+      const res = await app.request("/api/articles/invalid-id/archive", {
+        headers: authHeaders,
+        method: "POST",
+      });
+
+      expect(res.status).toBe(400);
+      const json = await res.json();
+      expect(json.error).toBe("Validation failed");
+      expect(json.context.fields.errors.id).toBe("Invalid article ID format");
     });
 
     it("should return 404 when article belongs to different user", async () => {
@@ -428,12 +470,36 @@ describe("routes/api", () => {
         long: "Summary",
       });
 
-      const res = await app.request("/api/articles/non-existent-id/summarize", {
+      // Use a valid UUID that doesn't exist in the database
+      const nonExistentId = "00000000-0000-0000-0000-000000000000";
+      const res = await app.request(
+        `/api/articles/${nonExistentId}/summarize`,
+        {
+          headers: authHeaders,
+          method: "POST",
+        },
+      );
+
+      expect(res.status).toBe(404);
+      expect(spyGetOrGenerateSummary).not.toHaveBeenCalled();
+    });
+
+    it("should return 400 for invalid article ID format on summarize", async () => {
+      spyGetOrGenerateSummary.mockResolvedValue({
+        oneSentence: "Summary",
+        oneParagraph: "Summary",
+        long: "Summary",
+      });
+
+      const res = await app.request("/api/articles/invalid-id/summarize", {
         headers: authHeaders,
         method: "POST",
       });
 
-      expect(res.status).toBe(404);
+      expect(res.status).toBe(400);
+      const json = await res.json();
+      expect(json.error).toBe("Validation failed");
+      expect(json.context.fields.errors.id).toBe("Invalid article ID format");
       expect(spyGetOrGenerateSummary).not.toHaveBeenCalled();
     });
 
@@ -678,11 +744,26 @@ describe("routes/api", () => {
     });
 
     it("should return 404 when article does not exist", async () => {
-      const res = await app.request("/api/articles/non-existent-id/tts", {
+      // Use a valid UUID that doesn't exist in the database
+      const nonExistentId = "00000000-0000-0000-0000-000000000000";
+      const res = await app.request(`/api/articles/${nonExistentId}/tts`, {
         headers: authHeaders,
       });
 
       expect(res.status).toBe(404);
+      expect(spyGetArticleContent).not.toHaveBeenCalled();
+      expect(spyGetTTSProvider).not.toHaveBeenCalled();
+    });
+
+    it("should return 400 for invalid article ID format on tts", async () => {
+      const res = await app.request("/api/articles/invalid-id/tts", {
+        headers: authHeaders,
+      });
+
+      expect(res.status).toBe(400);
+      const json = await res.json();
+      expect(json.error).toBe("Validation failed");
+      expect(json.context.fields.errors.id).toBe("Invalid article ID format");
       expect(spyGetArticleContent).not.toHaveBeenCalled();
       expect(spyGetTTSProvider).not.toHaveBeenCalled();
     });
@@ -799,10 +880,15 @@ describe("routes/api", () => {
     });
 
     it.each([
-      ["invalid-font", 16, "Invalid font family"],
-      ["sans", 13, "Font size must be between 14 and 24"],
-      ["sans", 25, "Font size must be between 14 and 24"],
-    ])("should return 400 for fontFamily=%s, fontSize=%i", async (fontFamily, fontSize, expectedError) => {
+      [
+        "invalid-font",
+        16,
+        "fontFamily",
+        "Font family must be 'sans', 'serif', or 'new-york'",
+      ],
+      ["sans", 13, "fontSize", "Font size must be at least 14"],
+      ["sans", 25, "fontSize", "Font size must be at most 24"],
+    ])("should return 400 for fontFamily=%s, fontSize=%i", async (fontFamily, fontSize, errorField, expectedError) => {
       const formData = new FormData();
       formData.append("fontFamily", fontFamily);
       formData.append("fontSize", String(fontSize));
@@ -815,8 +901,9 @@ describe("routes/api", () => {
 
       expect(res.status).toBe(400);
       const json = await res.json();
-      expect(json.error).toBe(expectedError);
+      expect(json.error).toBe("Validation failed");
       expect(json.statusCode).toBe(400);
+      expect(json.context.fields.errors[errorField]).toBe(expectedError);
     });
 
     it.each([
@@ -933,9 +1020,12 @@ describe("routes/api", () => {
 
       expect(res.status).toBe(400);
       const json = await res.json();
-      expect(json.error).toBe("Invalid font family");
+      expect(json.error).toBe("Validation failed");
       expect(json.statusCode).toBe(400);
       expect(json.context).toBeDefined();
+      expect(json.context.fields.errors.fontFamily).toBe(
+        "Font family must be 'sans', 'serif', or 'new-york'",
+      );
     });
 
     describe("InternalError handling", () => {

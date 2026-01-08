@@ -98,13 +98,14 @@ export const ReaderView: FC<ReaderViewProps> = ({
           "hx-swap": "none",
         })}
       >
-        {!article.archived && (
-          <div class="reader-actions">
+        <div class="reader-actions">
+          <share-copy-button data-url={article.url} data-title={displayTitle} />
+          {!article.archived && (
             <button
               type="button"
               hx-post={`/api/articles/${article.id}/archive?redirect=true`}
               hx-swap="delete"
-              hx-target="closest .reader-actions"
+              hx-target="this"
               hx-disabled-elt="this"
               title="Archive"
             >
@@ -119,8 +120,8 @@ export const ReaderView: FC<ReaderViewProps> = ({
                 <span class="spinner"></span>
               </span>
             </button>
-          </div>
-        )}
+          )}
+        </div>
       </footer>
     </div>
   );

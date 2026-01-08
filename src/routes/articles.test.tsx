@@ -85,7 +85,9 @@ describe("routes/articles", () => {
         archived: true,
       });
 
-      const res = await app.request("/articles?status=archived", { headers: authHeaders });
+      const res = await app.request("/articles?status=archived", {
+        headers: authHeaders,
+      });
       const html = await res.text();
 
       expect(res.status).toBe(200);
@@ -129,7 +131,9 @@ describe("routes/articles", () => {
       await addTagToArticle(db, article1.id, tag1.id);
       await addTagToArticle(db, article2.id, tag2.id);
 
-      const res = await app.request("/articles?tag=technology", { headers: authHeaders });
+      const res = await app.request("/articles?tag=technology", {
+        headers: authHeaders,
+      });
       const html = await res.text();
 
       expect(res.status).toBe(200);
@@ -158,7 +162,9 @@ describe("routes/articles", () => {
       await createArticle(db, testUserId, { status: "pending" });
       await createCompletedArticle(db, testUserId, { archived: true });
 
-      const res = await app.request("/articles?status=archived", { headers: authHeaders });
+      const res = await app.request("/articles?status=archived", {
+        headers: authHeaders,
+      });
       const html = await res.text();
 
       expect(res.status).toBe(200);
@@ -243,7 +249,9 @@ describe("routes/articles", () => {
       const htmlContent = "<p>Article content here</p>";
       spyGetArticleContent.mockResolvedValue(htmlContent);
 
-      const res = await app.request(`/articles/${article.id}`, { headers: authHeaders });
+      const res = await app.request(`/articles/${article.id}`, {
+        headers: authHeaders,
+      });
       const html = await res.text();
       const doc = parseHtml(html);
 
@@ -275,7 +283,9 @@ describe("routes/articles", () => {
 
       spyGetArticleContent.mockResolvedValue("<p>Content</p>");
 
-      const res = await app.request(`/articles/${article.id}`, { headers: authHeaders });
+      const res = await app.request(`/articles/${article.id}`, {
+        headers: authHeaders,
+      });
       const html = await res.text();
 
       expect(res.status).toBe(200);
@@ -297,7 +307,9 @@ describe("routes/articles", () => {
 
       spyGetArticleContent.mockResolvedValue("<p>Content</p>");
 
-      const res = await app.request(`/articles/${article.id}`, { headers: authHeaders });
+      const res = await app.request(`/articles/${article.id}`, {
+        headers: authHeaders,
+      });
       const html = await res.text();
       const doc = parseHtml(html);
 
@@ -319,7 +331,9 @@ describe("routes/articles", () => {
       const spyIsLLMAvailable = spyOn(llm, "isLLMAvailable");
       spyIsLLMAvailable.mockReturnValue(true);
 
-      const res = await app.request(`/articles/${article.id}`, { headers: authHeaders });
+      const res = await app.request(`/articles/${article.id}`, {
+        headers: authHeaders,
+      });
       const html = await res.text();
       const doc = parseHtml(html);
 
@@ -343,7 +357,9 @@ describe("routes/articles", () => {
       const spyIsTTSAvailable = spyOn(tts, "isTTSAvailable");
       spyIsTTSAvailable.mockReturnValue(true);
 
-      const res = await app.request(`/articles/${article.id}`, { headers: authHeaders });
+      const res = await app.request(`/articles/${article.id}`, {
+        headers: authHeaders,
+      });
       const html = await res.text();
       const doc = parseHtml(html);
 
@@ -368,7 +384,9 @@ describe("routes/articles", () => {
       const spyIsLLMAvailable = spyOn(llm, "isLLMAvailable");
       spyIsLLMAvailable.mockReturnValue(false);
 
-      const res = await app.request(`/articles/${article.id}`, { headers: authHeaders });
+      const res = await app.request(`/articles/${article.id}`, {
+        headers: authHeaders,
+      });
       const html = await res.text();
       const doc = parseHtml(html);
 
@@ -389,7 +407,9 @@ describe("routes/articles", () => {
       const spyIsTTSAvailable = spyOn(tts, "isTTSAvailable");
       spyIsTTSAvailable.mockReturnValue(true);
 
-      const res = await app.request(`/articles/${article.id}`, { headers: authHeaders });
+      const res = await app.request(`/articles/${article.id}`, {
+        headers: authHeaders,
+      });
       const html = await res.text();
       const doc = parseHtml(html);
 
@@ -408,7 +428,9 @@ describe("routes/articles", () => {
 
       spyGetArticleContent.mockResolvedValue("<p>Content</p>");
 
-      const res = await app.request(`/articles/${article.id}`, { headers: authHeaders });
+      const res = await app.request(`/articles/${article.id}`, {
+        headers: authHeaders,
+      });
       const html = await res.text();
       const doc = parseHtml(html);
 
@@ -429,14 +451,15 @@ describe("routes/articles", () => {
 
       spyGetArticleContent.mockResolvedValue("<p>Content</p>");
 
-      const res = await app.request(`/articles/${article.id}`, { headers: authHeaders });
+      const res = await app.request(`/articles/${article.id}`, {
+        headers: authHeaders,
+      });
       const html = await res.text();
-      const doc = parseHtml(html);
 
       expect(res.status).toBe(200);
 
-      // Should not show archive button
-      expect(doc.querySelector(".reader-actions")).toBeNull();
+      // Should not show archive button (but reader-actions div still exists for share button)
+      expect(html).not.toContain(`/api/articles/${article.id}/archive`);
     });
 
     it("should mark article as read when footer intersects", async () => {
@@ -446,7 +469,9 @@ describe("routes/articles", () => {
 
       spyGetArticleContent.mockResolvedValue("<p>Content</p>");
 
-      const res = await app.request(`/articles/${article.id}`, { headers: authHeaders });
+      const res = await app.request(`/articles/${article.id}`, {
+        headers: authHeaders,
+      });
       const html = await res.text();
       const doc = parseHtml(html);
 
@@ -467,7 +492,9 @@ describe("routes/articles", () => {
 
       spyGetArticleContent.mockResolvedValue("<p>Content</p>");
 
-      const res = await app.request(`/articles/${article.id}`, { headers: authHeaders });
+      const res = await app.request(`/articles/${article.id}`, {
+        headers: authHeaders,
+      });
       const html = await res.text();
       const doc = parseHtml(html);
 
@@ -481,7 +508,9 @@ describe("routes/articles", () => {
     it("should return 404 when article does not exist", async () => {
       spyGetArticleContent.mockResolvedValue("<p>Content</p>");
 
-      const res = await app.request("/articles/non-existent-id", { headers: authHeaders });
+      const res = await app.request("/articles/non-existent-id", {
+        headers: authHeaders,
+      });
 
       expect(res.status).toBe(404);
 
@@ -495,7 +524,9 @@ describe("routes/articles", () => {
 
       spyGetArticleContent.mockResolvedValue("<p>Content</p>");
 
-      const res = await app.request(`/articles/${article.id}`, { headers: authHeaders });
+      const res = await app.request(`/articles/${article.id}`, {
+        headers: authHeaders,
+      });
 
       expect(res.status).toBe(404);
 
@@ -508,7 +539,9 @@ describe("routes/articles", () => {
 
       spyGetArticleContent.mockResolvedValue("<p>Content</p>");
 
-      const res = await app.request(`/articles/${article.id}`, { headers: authHeaders });
+      const res = await app.request(`/articles/${article.id}`, {
+        headers: authHeaders,
+      });
       const html = await res.text();
       const doc = parseHtml(html);
 
@@ -524,7 +557,9 @@ describe("routes/articles", () => {
 
       spyGetArticleContent.mockResolvedValue("<p>Content</p>");
 
-      const res = await app.request(`/articles/${article.id}`, { headers: authHeaders });
+      const res = await app.request(`/articles/${article.id}`, {
+        headers: authHeaders,
+      });
       const html = await res.text();
       const doc = parseHtml(html);
 
@@ -540,7 +575,9 @@ describe("routes/articles", () => {
 
       spyGetArticleContent.mockResolvedValue("<p>Content</p>");
 
-      const res = await app.request(`/articles/${article.id}`, { headers: authHeaders });
+      const res = await app.request(`/articles/${article.id}`, {
+        headers: authHeaders,
+      });
       const html = await res.text();
       const doc = parseHtml(html);
 
@@ -560,7 +597,9 @@ describe("routes/articles", () => {
 
       spyGetArticleContent.mockResolvedValue("<p>Content</p>");
 
-      const res = await app.request(`/articles/${article.id}`, { headers: authHeaders });
+      const res = await app.request(`/articles/${article.id}`, {
+        headers: authHeaders,
+      });
       const html = await res.text();
       const doc = parseHtml(html);
 

@@ -239,95 +239,10 @@
   margin: 0;
 }
 
-/* Reader Font Controls */
-.reader-controls {
-  margin: 0;
-  padding: 0.75rem 1rem;
-}
-
-.reader-controls-section {
-  display: flex;
-  flex-direction: column;
-  gap: 0.75rem;
-}
-
-.reader-controls-label {
-  font-size: 0.85rem;
-  font-weight: 600;
-  color: var(--pico-muted-color);
-  margin: 0;
-  display: block;
-}
-
-.reader-controls-group {
-  display: flex;
-  gap: 0.5rem;
-  flex-wrap: nowrap;
-  align-items: center;
-  justify-content: center;
-}
-
-.reader-size-controls {
-  justify-content: center;
-}
-
-.reader-control-btn {
-  padding: 0.4rem 0.75rem;
-  font-size: 0.85rem;
-  margin: 0;
-  background: transparent;
-  border: 1px solid var(--pico-muted-border-color);
-  color: var(--pico-contrast);
-  transition: all 0.2s ease;
-  white-space: nowrap;
-}
-
-.reader-control-btn:hover {
-  background: color-mix(in srgb, var(--pico-primary) 10%, transparent);
-  border-color: var(--pico-primary);
-}
-
-.reader-control-btn.active {
-  background: var(--pico-primary);
-  border-color: var(--pico-primary);
-  color: white;
-}
-
-.reader-control-btn:disabled {
-  opacity: 0.5;
-  cursor: not-allowed;
-}
-
-.reader-font-size-display {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  min-width: 55px;
-  padding: 0.4rem 0.6rem;
-  font-weight: 600;
-  font-size: 0.85rem;
-  color: var(--pico-contrast);
-}
-
-.reader-size-controls .reader-control-btn {
-  flex: 0 0 auto;
-  min-width: 36px;
-}
-
-/* Hide Apple fonts on non-Apple platforms (controlled by JS) */
-.reader-control-btn[data-apple-only].hidden {
-  display: none;
-}
-
 /* Reader Settings Dropdown Styling */
 .reader-settings-dropdown {
   min-width: 300px;
   padding: 0.5rem;
-}
-
-.reader-settings-dropdown .reader-controls {
-  padding: 0.5rem;
-  min-width: auto;
 }
 
 /* Responsive adjustments */
@@ -363,24 +278,10 @@
   .reader-settings-dropdown {
     min-width: 280px;
   }
-
-  .reader-controls-group {
-    flex-wrap: wrap;
-  }
 }
 
 @media (max-width: 480px) {
   .reader-header h1 {
     font-size: 1.3rem;
-  }
-
-  .reader-control-btn {
-    padding: 0.5rem 0.85rem;
-    font-size: 0.9rem;
-  }
-
-  .reader-font-size-display {
-    font-size: 0.9rem;
-    min-width: 60px;
   }
 }

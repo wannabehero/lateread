@@ -75,6 +75,31 @@ bun dev
 
 ## Deployment
 
+### Automated Deployment (GitHub Actions + Railway)
+
+This project includes automated deployment to Railway via GitHub Actions. To set it up:
+
+1. **Create a Railway project token:**
+   - Go to your Railway project dashboard
+   - Navigate to **Settings** → **Tokens**
+   - Create a new project token
+
+2. **Add GitHub secrets:**
+   - In your GitHub repository, go to **Settings** → **Secrets and variables** → **Actions**
+   - Add a secret named `RAILWAY_TOKEN` with your project token value
+
+3. **Configure the service ID (optional):**
+   - If deploying to a specific service, add a repository variable named `RAILWAY_SERVICE_ID`
+   - Find your service ID in the Railway dashboard URL: `https://railway.app/project/{project-id}/service/{service-id}`
+   - If not set, the workflow will deploy without specifying a service
+
+4. **Push to main branch:**
+   - The workflow automatically deploys when you push to the `main` branch
+
+The workflow configuration is in `.github/workflows/railway-deploy.yml`.
+
+### Manual Deployment
+
 1. Configure env vars for the platform you're deploying to
 2. Build docker image
 ```sh

@@ -19,8 +19,8 @@ describe("safeFetch - SSRF Protection with Redirects", () => {
       ["http://localhost:8080"],
       ["http://127.0.0.1"],
       ["http://192.168.1.1"],
-    ])("should block private IPs before making request", (url) => {
-      expect(safeFetch(url)).rejects.toThrow("URL is unsafe to fetch");
+    ])("should block private IPs before making request", async (url) => {
+      await expect(safeFetch(url)).rejects.toThrow("URL is unsafe to fetch");
 
       expect(spyDnsResolve4).not.toHaveBeenCalled();
       expect(spyDnsResolve6).not.toHaveBeenCalled();

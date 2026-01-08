@@ -33,7 +33,7 @@ describe("retry.service", () => {
   });
 
   afterEach(() => {
-    mock.clearAllMocks();
+    setSystemTime(); // Reset system time
   });
 
   describe("getStuckArticles", () => {
@@ -421,6 +421,21 @@ describe("retry.service", () => {
   });
 
   describe("retryFailedArticles", () => {
+    let spySpawnArticleWorker: ReturnType<
+      typeof spyOn<typeof worker, "spawnArticleWorker">
+    >;
+
+    beforeEach(() => {
+      spySpawnArticleWorker = spyOn(
+        worker,
+        "spawnArticleWorker",
+      ).mockImplementation(() => {});
+    });
+
+    afterEach(() => {
+      spySpawnArticleWorker.mockRestore();
+    });
+
     it("should spawn workers for all stuck articles", async () => {
       const user = await createUser(db);
 
@@ -445,9 +460,6 @@ describe("retry.service", () => {
           updatedAt: OLD,
         })
         .returning();
-
-      const spySpawnArticleWorker = spyOn(worker, "spawnArticleWorker");
-      spySpawnArticleWorker.mockImplementation(() => {});
 
       await retryFailedArticles();
 
@@ -483,9 +495,6 @@ describe("retry.service", () => {
         })
         .returning();
 
-      const spySpawnArticleWorker = spyOn(worker, "spawnArticleWorker");
-      spySpawnArticleWorker.mockImplementation(() => {});
-
       await retryFailedArticles();
 
       const [updated1] = await db
@@ -505,9 +514,6 @@ describe("retry.service", () => {
     });
 
     it("should handle case with no stuck or exhausted articles", async () => {
-      const spySpawnArticleWorker = spyOn(worker, "spawnArticleWorker");
-      spySpawnArticleWorker.mockImplementation(() => {});
-
       await retryFailedArticles();
 
       expect(spySpawnArticleWorker).not.toHaveBeenCalled();
@@ -538,9 +544,6 @@ describe("retry.service", () => {
           processingAttempts: config.MAX_RETRY_ATTEMPTS,
         })
         .returning();
-
-      const spySpawnArticleWorker = spyOn(worker, "spawnArticleWorker");
-      spySpawnArticleWorker.mockImplementation(() => {});
 
       await retryFailedArticles();
 

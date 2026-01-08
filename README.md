@@ -75,6 +75,26 @@ bun dev
 
 ## Deployment
 
+### Automated Deployment to Railway (GitHub Actions)
+
+The repository includes a GitHub Actions workflow that automatically deploys to Railway on push to main.
+
+**Setup:**
+
+1. Get your Railway token:
+   ```sh
+   railway login
+   railway whoami --token
+   ```
+
+2. Add the following secrets to your GitHub repository (Settings → Secrets and variables → Actions):
+   - `RAILWAY_TOKEN`: Your Railway API token
+   - `RAILWAY_SERVICE`: Your Railway service name (e.g., `lateread`)
+
+3. Push to main - deployment will trigger automatically
+
+### Manual Deployment
+
 1. Configure env vars for the platform you're deploying to
 2. Build docker image
 ```sh

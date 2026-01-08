@@ -1,17 +1,22 @@
-import { afterEach, describe, expect, it, spyOn } from "bun:test";
+import { afterEach, beforeEach, describe, expect, it, spyOn } from "bun:test";
 import dns from "node:dns/promises";
 import { safeFetch } from "./safe-fetch";
 
 describe("safeFetch - SSRF Protection with Redirects", () => {
-  const spyDnsResolve4 = spyOn(dns, "resolve4");
-  const spyDnsResolve6 = spyOn(dns, "resolve6");
+  let spyDnsResolve4: ReturnType<typeof spyOn<typeof dns, "resolve4">>;
+  let spyDnsResolve6: ReturnType<typeof spyOn<typeof dns, "resolve6">>;
+  let spyFetch: ReturnType<typeof spyOn<typeof globalThis, "fetch">>;
 
-  const spyFetch = spyOn(globalThis, "fetch");
+  beforeEach(() => {
+    spyDnsResolve4 = spyOn(dns, "resolve4");
+    spyDnsResolve6 = spyOn(dns, "resolve6");
+    spyFetch = spyOn(globalThis, "fetch");
+  });
 
   afterEach(() => {
-    spyDnsResolve4.mockReset();
-    spyDnsResolve6.mockReset();
-    spyFetch.mockReset();
+    spyDnsResolve4.mockRestore();
+    spyDnsResolve6.mockRestore();
+    spyFetch.mockRestore();
   });
 
   describe("Basic URL validation", () => {

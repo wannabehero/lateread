@@ -462,6 +462,29 @@ describe("routes/articles", () => {
       expect(html).not.toContain(`/api/articles/${article.id}/archive`);
     });
 
+    it("should show delete button in reader view", async () => {
+      const article = await createCompletedArticle(db, testUserId);
+
+      spyGetArticleContent.mockResolvedValue("<p>Content</p>");
+
+      const res = await app.request(`/articles/${article.id}`, {
+        headers: authHeaders,
+      });
+      const html = await res.text();
+      const doc = parseHtml(html);
+
+      expect(res.status).toBe(200);
+
+      // Check for delete button
+      const deleteButton = doc.querySelector(".delete-button");
+      expect(deleteButton).toBeTruthy();
+      expect(deleteButton?.getAttribute("hx-delete")).toBe(
+        `/api/articles/${article.id}`,
+      );
+      expect(deleteButton?.getAttribute("hx-confirm")).toBeTruthy();
+      expect(html).toContain("trash-2.svg");
+    });
+
     it("should mark article as read when footer intersects", async () => {
       const article = await createCompletedArticle(db, testUserId, {
         readAt: null,

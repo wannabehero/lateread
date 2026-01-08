@@ -135,6 +135,83 @@ describe("routes/api", () => {
     });
   });
 
+  describe("DELETE /api/articles/:id", () => {
+    it("should delete an article and redirect to articles list", async () => {
+      const article = await createCompletedArticle(db, testUserId, {
+        title: "Article to Delete",
+      });
+
+      const res = await app.request(`/api/articles/${article.id}`, {
+        method: "DELETE",
+        headers: authHeaders,
+      });
+
+      expect(res.status).toBe(204);
+      expect(res.headers.get("x-toast-message")).toBe("Article deleted");
+      expect(res.headers.get("hx-location")).toBe("/articles");
+
+      // Verify article is deleted from database
+      const [deletedArticle] = await db
+        .select()
+        .from(articles)
+        .where(eq(articles.id, article.id))
+        .limit(1);
+
+      expect(deletedArticle).toBeUndefined();
+    });
+
+    it("should return 404 when article does not exist", async () => {
+      const res = await app.request("/api/articles/non-existent-id", {
+        method: "DELETE",
+        headers: authHeaders,
+      });
+
+      expect(res.status).toBe(404);
+    });
+
+    it("should return 404 when article belongs to different user", async () => {
+      const otherUser = await createUser(db);
+      const article = await createCompletedArticle(db, otherUser.id, {
+        title: "Other User Article",
+      });
+
+      const res = await app.request(`/api/articles/${article.id}`, {
+        method: "DELETE",
+        headers: authHeaders,
+      });
+
+      expect(res.status).toBe(404);
+
+      // Verify article still exists
+      const [existingArticle] = await db
+        .select()
+        .from(articles)
+        .where(eq(articles.id, article.id))
+        .limit(1);
+
+      expect(existingArticle).toBeDefined();
+    });
+
+    it("should return 401 when not authenticated", async () => {
+      const article = await createCompletedArticle(db, testUserId);
+
+      const res = await app.request(`/api/articles/${article.id}`, {
+        method: "DELETE",
+      });
+
+      expect(res.status).toBe(401);
+
+      // Verify article still exists
+      const [existingArticle] = await db
+        .select()
+        .from(articles)
+        .where(eq(articles.id, article.id))
+        .limit(1);
+
+      expect(existingArticle).toBeDefined();
+    });
+  });
+
   describe("POST /api/articles/:id/archive", () => {
     it("should archive article and return toast header", async () => {
       const article = await createCompletedArticle(db, testUserId, {
@@ -765,6 +842,7 @@ describe("routes/api", () => {
   describe("Authentication", () => {
     it.each([
       ["POST", "/api/articles/some-id/read"],
+      ["DELETE", "/api/articles/some-id"],
       ["POST", "/api/articles/some-id/archive"],
       ["POST", "/api/articles/some-id/summarize"],
       ["GET", "/api/articles/processing-count"],

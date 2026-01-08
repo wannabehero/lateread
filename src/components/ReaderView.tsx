@@ -121,6 +121,27 @@ export const ReaderView: FC<ReaderViewProps> = ({
               </span>
             </button>
           )}
+          <span class="spacer" />
+          <button
+            type="button"
+            hx-delete={`/api/articles/${article.id}`}
+            hx-swap="none"
+            hx-disabled-elt="this"
+            hx-confirm="Are you sure you want to delete this article? This action cannot be undone."
+            class="delete-button"
+            title="Delete"
+          >
+            <span class="button-text">
+              <img
+                src="/public/assets/trash-2.svg"
+                alt="Delete"
+                class="button-icon"
+              />
+            </span>
+            <span class="button-loading">
+              <span class="spinner"></span>
+            </span>
+          </button>
         </div>
       </footer>
     </div>

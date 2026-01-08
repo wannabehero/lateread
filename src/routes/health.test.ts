@@ -1,4 +1,12 @@
-import { beforeEach, describe, expect, it, mock, spyOn } from "bun:test";
+import {
+  beforeEach,
+  describe,
+  expect,
+  it,
+  mock,
+  setSystemTime,
+  spyOn,
+} from "bun:test";
 import { sql } from "drizzle-orm";
 import type { Hono } from "hono";
 import { resetDatabase } from "../../test/bootstrap";
@@ -10,6 +18,8 @@ describe("routes/health", () => {
   let app: Hono<AppContext>;
 
   beforeEach(() => {
+    // Reset system time in case other tests froze it
+    setSystemTime();
     resetDatabase();
     app = createApp();
   });

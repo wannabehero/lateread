@@ -30,6 +30,10 @@ describe("routes/auth", () => {
     app = createApp();
   });
 
+  afterEach(() => {
+    setSystemTime(); // Reset system time to avoid polluting other tests
+  });
+
   describe("POST /auth/telegram", () => {
     it("should create auth token with proper HTMX fragment and database record", async () => {
       const res = await app.request("/auth/telegram", {

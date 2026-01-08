@@ -1,7 +1,8 @@
-import { afterEach, beforeEach, describe, expect, it, spyOn } from "bun:test";
+import { beforeEach, describe, expect, it } from "bun:test";
 import type { Hono } from "hono";
 import { db, resetDatabase } from "../../test/bootstrap";
 import {
+  createAuthHeaders,
   createCompletedArticle,
   createTag,
   createUser,
@@ -14,7 +15,7 @@ import type { AppContext } from "../types/context";
 describe("routes/search", () => {
   let app: Hono<AppContext>;
   let testUserId: string;
-  let spyGetSession: ReturnType<typeof spyOn>;
+  let authHeaders: HeadersInit;
 
   beforeEach(async () => {
     resetDatabase();
@@ -23,23 +24,18 @@ describe("routes/search", () => {
     const user = await createUser(db);
     testUserId = user.id;
 
-    // Spy on getSession to return our test userId
-    const sessionModule = await import("../lib/session");
-    spyGetSession = spyOn(sessionModule, "getSession");
-    spyGetSession.mockReturnValue({ userId: testUserId });
+    // Create auth headers with valid session cookie
+    authHeaders = createAuthHeaders(testUserId);
 
     // Create the actual production app with all middleware
     app = createApp();
   });
 
-  afterEach(() => {
-    // Restore the spy after each test
-    spyGetSession.mockRestore();
-  });
-
   describe("GET /search - Full Page", () => {
     it("should render search page with empty state when no query", async () => {
-      const res = await app.request("/search");
+      const res = await app.request("/search", {
+        headers: authHeaders,
+      });
 
       expect(res.status).toBe(200);
       expect(res.headers.get("content-type")).toContain("text/html");
@@ -73,7 +69,9 @@ describe("routes/search", () => {
         description: "Getting started with Python",
       });
 
-      const res = await app.request("/search?q=typescript");
+      const res = await app.request("/search?q=typescript", {
+        headers: authHeaders,
+      });
 
       expect(res.status).toBe(200);
 
@@ -104,7 +102,9 @@ describe("routes/search", () => {
         title: "JavaScript Tutorial",
       });
 
-      const res = await app.request("/search?q=python");
+      const res = await app.request("/search?q=python", {
+        headers: authHeaders,
+      });
 
       expect(res.status).toBe(200);
 
@@ -135,7 +135,9 @@ describe("routes/search", () => {
         description: "Backend development",
       });
 
-      const res = await app.request("/search?q=javascript");
+      const res = await app.request("/search?q=javascript", {
+        headers: authHeaders,
+      });
 
       expect(res.status).toBe(200);
 
@@ -152,7 +154,9 @@ describe("routes/search", () => {
         title: "TypeScript Tutorial",
       });
 
-      const res = await app.request("/search?q=TYPESCRIPT");
+      const res = await app.request("/search?q=TYPESCRIPT", {
+        headers: authHeaders,
+      });
 
       expect(res.status).toBe(200);
 
@@ -165,7 +169,9 @@ describe("routes/search", () => {
         title: "C++ Programming",
       });
 
-      const res = await app.request("/search?q=C%2B%2B");
+      const res = await app.request("/search?q=C%2B%2B", {
+        headers: authHeaders,
+      });
 
       expect(res.status).toBe(200);
 
@@ -186,7 +192,9 @@ describe("routes/search", () => {
         title: "TypeScript Tutorial",
       });
 
-      const res = await app.request("/search?q=typescript");
+      const res = await app.request("/search?q=typescript", {
+        headers: authHeaders,
+      });
 
       expect(res.status).toBe(200);
 
@@ -208,7 +216,9 @@ describe("routes/search", () => {
         archived: true,
       });
 
-      const res = await app.request("/search?q=typescript");
+      const res = await app.request("/search?q=typescript", {
+        headers: authHeaders,
+      });
 
       expect(res.status).toBe(200);
 
@@ -224,7 +234,9 @@ describe("routes/search", () => {
         title: "Some Article",
       });
 
-      const res = await app.request("/search?q=");
+      const res = await app.request("/search?q=", {
+        headers: authHeaders,
+      });
 
       expect(res.status).toBe(200);
 
@@ -240,7 +252,9 @@ describe("routes/search", () => {
         title: "Some Article",
       });
 
-      const res = await app.request("/search?q=+++");
+      const res = await app.request("/search?q=+++", {
+        headers: authHeaders,
+      });
 
       expect(res.status).toBe(200);
 
@@ -260,6 +274,7 @@ describe("routes/search", () => {
 
       const res = await app.request("/search?q=typescript", {
         headers: {
+          ...authHeaders,
           "hx-request": "true",
           "hx-target": "search-results",
         },
@@ -290,6 +305,7 @@ describe("routes/search", () => {
 
       const res = await app.request("/search?q=typescript", {
         headers: {
+          ...authHeaders,
           "hx-request": "true",
           // Missing hx-target or wrong target
         },
@@ -313,6 +329,7 @@ describe("routes/search", () => {
 
       const res = await app.request("/search?q=python", {
         headers: {
+          ...authHeaders,
           "hx-request": "true",
           "hx-target": "search-results",
         },
@@ -334,6 +351,7 @@ describe("routes/search", () => {
     it("should return partial with empty state when no query", async () => {
       const res = await app.request("/search", {
         headers: {
+          ...authHeaders,
           "hx-request": "true",
           "hx-target": "search-results",
         },
@@ -364,6 +382,7 @@ describe("routes/search", () => {
 
       const res = await app.request("/search?q=typescript", {
         headers: {
+          ...authHeaders,
           "hx-request": "true",
           "hx-target": "search-results",
         },
@@ -388,18 +407,9 @@ describe("routes/search", () => {
   });
 
   describe("Authentication", () => {
-    let unauthenticatedApp: Hono<AppContext>;
-
-    beforeEach(() => {
-      // Override the parent spy to return null (unauthenticated)
-      spyGetSession.mockReturnValue(null);
-
-      // Create app without authenticated session
-      unauthenticatedApp = createApp();
-    });
-
     it("should redirect to home when not authenticated", async () => {
-      const res = await unauthenticatedApp.request("/search");
+      // Make request without auth headers
+      const res = await app.request("/search");
 
       // requireAuth("redirect") redirects to "/"
       expect(res.status).toBe(302);
@@ -407,7 +417,8 @@ describe("routes/search", () => {
     });
 
     it("should redirect for HTMX requests when not authenticated", async () => {
-      const res = await unauthenticatedApp.request("/search?q=test", {
+      // Make HTMX request without auth headers
+      const res = await app.request("/search?q=test", {
         headers: {
           "hx-request": "true",
           "hx-target": "search-results",
@@ -426,7 +437,9 @@ describe("routes/search", () => {
         title: "TypeScript Guide",
       });
 
-      const res = await app.request("/search?q=typescript");
+      const res = await app.request("/search?q=typescript", {
+        headers: authHeaders,
+      });
 
       expect(res.status).toBe(200);
 
@@ -446,7 +459,9 @@ describe("routes/search", () => {
       });
 
       // Extra parameters should be ignored
-      const res = await app.request("/search?q=typescript&extra=param");
+      const res = await app.request("/search?q=typescript&extra=param", {
+        headers: authHeaders,
+      });
 
       expect(res.status).toBe(200);
 
@@ -459,7 +474,9 @@ describe("routes/search", () => {
         title: "Web Development & Design",
       });
 
-      const res = await app.request("/search?q=Web+Development+%26+Design");
+      const res = await app.request("/search?q=Web+Development+%26+Design", {
+        headers: authHeaders,
+      });
 
       expect(res.status).toBe(200);
 
@@ -472,7 +489,9 @@ describe("routes/search", () => {
         title: "TypeScript Guide",
       });
 
-      const res = await app.request("/search?q=++typescript++");
+      const res = await app.request("/search?q=++typescript++", {
+        headers: authHeaders,
+      });
 
       expect(res.status).toBe(200);
 
@@ -488,7 +507,9 @@ describe("routes/search", () => {
         description: "Learn the basics",
       });
 
-      const res = await app.request("/search?q=fundamentals");
+      const res = await app.request("/search?q=fundamentals", {
+        headers: authHeaders,
+      });
 
       expect(res.status).toBe(200);
 
@@ -502,7 +523,9 @@ describe("routes/search", () => {
         description: "Introduction to TypeScript",
       });
 
-      const res = await app.request("/search?q=typescript");
+      const res = await app.request("/search?q=typescript", {
+        headers: authHeaders,
+      });
 
       expect(res.status).toBe(200);
 
@@ -523,7 +546,9 @@ describe("routes/search", () => {
         { articleId: article.id, tagId: tag2.id },
       ]);
 
-      const res = await app.request("/search?q=typescript");
+      const res = await app.request("/search?q=typescript", {
+        headers: authHeaders,
+      });
 
       expect(res.status).toBe(200);
 
@@ -538,7 +563,9 @@ describe("routes/search", () => {
         title: "TypeScript Programming",
       });
 
-      const res = await app.request("/search?q=program");
+      const res = await app.request("/search?q=program", {
+        headers: authHeaders,
+      });
 
       expect(res.status).toBe(200);
 
@@ -552,7 +579,9 @@ describe("routes/search", () => {
         title: "Completed TypeScript Guide",
       });
 
-      const res = await app.request("/search?q=typescript");
+      const res = await app.request("/search?q=typescript", {
+        headers: authHeaders,
+      });
 
       expect(res.status).toBe(200);
 

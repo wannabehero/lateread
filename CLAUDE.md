@@ -514,39 +514,62 @@ describe("myTest", () => {
 For testing routes that render JSX, use Hono's built-in request testing with happy-dom for DOM assertions:
 
 ```typescript
-import { describe, expect, it } from "bun:test";
-import { Hono } from "hono";
-import { parseHtml } from "../../test/fixtures";  // Shared DOM parsing utility
-import type { AppContext } from "../../types/context";
+import { beforeEach, describe, expect, it } from "bun:test";
+import type { Hono } from "hono";
+import { db, resetDatabase } from "../../test/bootstrap";
+import {
+  createAuthHeaders,
+  createCompletedArticle,
+  createUser,
+  parseHtml,
+} from "../../test/fixtures";
+import { createApp } from "../app";
+import type { AppContext } from "../types/context";
 
-describe("myRoute", () => {
-  it("should render page correctly", async () => {
-    const app = new Hono<AppContext>();
+describe("routes/search", () => {
+  let app: Hono<AppContext>;
+  let testUserId: string;
+  let authHeaders: HeadersInit;
 
-    // Add middleware to set context variables
-    app.use("*", async (c, next) => {
-      c.set("userId", "user-123");
-      return next();
+  beforeEach(async () => {
+    resetDatabase();
+
+    // Create test user
+    const user = await createUser(db);
+    testUserId = user.id;
+
+    // Create auth headers with valid session cookie
+    authHeaders = createAuthHeaders(testUserId);
+
+    // Create the actual production app with all middleware
+    app = createApp();
+  });
+
+  it("should render search page with results", async () => {
+    await createCompletedArticle(db, testUserId, {
+      title: "TypeScript Guide",
     });
 
-    app.get("/test", myRouteHandler);
+    const res = await app.request("/search?q=typescript", {
+      headers: authHeaders,
+    });
 
-    // Use Hono's built-in request method
-    const res = await app.request("/test");
     const html = await res.text();
     const doc = parseHtml(html);
 
     expect(res.status).toBe(200);
-    expect(doc.querySelector(".my-element")).toBeTruthy();
-    expect(doc.querySelector("title")?.textContent).toBe("Expected Title");
+    expect(doc.querySelector("#search-input")).toBeTruthy();
+    expect(html).toContain("TypeScript Guide");
   });
 });
 ```
 
 **Route testing best practices:**
-- Use `app.request()` instead of making real HTTP calls
+- Use `createApp()` to test the full production app with all middleware
+- Use `createAuthHeaders(userId)` to authenticate test requests
 - Use `parseHtml()` from `test/fixtures` for DOM assertions (uses happy-dom)
-- Set context variables via middleware in tests
+- Pass `headers: authHeaders` to authenticated routes
+- Don't pass headers for unauthenticated tests
 - happy-dom is faster and lighter than jsdom for test assertions
 
 ### Testing with Dates (setSystemTime)

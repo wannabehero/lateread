@@ -196,6 +196,7 @@ describe("routes/api", () => {
       const res = await app.request(
         `/api/articles/${article.id}/archive?redirect=true`,
         {
+          headers: authHeaders,
           method: "POST",
         },
       );
@@ -527,10 +528,10 @@ describe("routes/api", () => {
         article.url,
       );
 
-      // Verify TTS provider was called with plain text (htmlToPlainText trims whitespace)
+      // Verify TTS provider was called with plain text and article language
       expect(mockTTSProvider.generateStream).toHaveBeenCalledWith(
         "This is article content for TTS.",
-        null,
+        "en",
       );
 
       // Verify stream contains data
@@ -649,7 +650,7 @@ describe("routes/api", () => {
 
       expect(mockTTSProvider.generateStream).toHaveBeenCalledWith(
         "Contenido en español",
-        null,
+        "es",
       );
     });
 

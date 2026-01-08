@@ -1,3 +1,5 @@
+import htmx from "htmx.org";
+
 /**
  * Reader Controls Web Component
  *
@@ -216,9 +218,7 @@ class ReaderControls extends HTMLElement {
     `;
 
     // Process HTMX on shadow root for HTMX to recognize the form
-    if (window.htmx) {
-      window.htmx.process(this.shadowRoot);
-    }
+    htmx.process(this.shadowRoot);
   }
 
   getStyles() {

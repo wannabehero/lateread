@@ -232,6 +232,7 @@
 
 .reader-actions {
   display: flex;
+  width: 100%;
   gap: 0.5rem;
 }
 
@@ -240,13 +241,18 @@
 }
 
 .reader-actions .spacer {
-  flex: 1;
+  flex-grow: 1;
 }
 
 .reader-actions .delete-button {
-  --pico-background-color: var(--pico-del-color);
-  --pico-border-color: var(--pico-del-color);
-  --pico-color: var(--pico-primary-inverse);
+  background-color: var(--pico-del-color);
+  border-color: var(--pico-del-color);
+  color: var(--pico-primary-inverse);
+}
+
+.reader-actions .delete-button:hover {
+  background-color: color-mix(in srgb, var(--pico-del-color) 80%, black);
+  border-color: color-mix(in srgb, var(--pico-del-color) 80%, black);
 }
 
 /* Reader Settings Dropdown Styling */

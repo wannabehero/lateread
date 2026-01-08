@@ -87,6 +87,7 @@ api.delete("/api/articles/:id", requireAuth("json-401"), async (c) => {
   await deleteArticle(articleId, userId);
 
   c.header("x-toast-message", "Article deleted");
+  c.header("hx-trigger", "scrollToTop");
   c.header("hx-location", "/articles");
   return c.body(null, 204);
 });

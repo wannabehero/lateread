@@ -1,6 +1,5 @@
 import { type Context, Hono } from "hono";
 import { ArticleList } from "../components/ArticleList";
-import { ReaderControls } from "../components/ReaderControls";
 import { ReaderView } from "../components/ReaderView";
 import { isLLMAvailable } from "../lib/llm";
 import { isTTSAvailable } from "../lib/tts";
@@ -91,7 +90,11 @@ articlesRouter.get("/articles/:id", requireAuth("redirect"), async (c) => {
           />
         </button>
         <div class="nav-dropdown reader-settings-dropdown">
-          <ReaderControls preferences={preferences} />
+          <reader-controls
+            data-font-family={preferences.fontFamily}
+            data-font-size={preferences.fontSize.toString()}
+            data-api-url="/api/preferences/reader"
+          />
         </div>
       </div>
     </div>

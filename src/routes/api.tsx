@@ -9,6 +9,7 @@ import { requireAuth } from "../middleware/auth";
 import {
   countArticles,
   countArticlesByStatus,
+  deleteArticle,
   getArticleWithTagsById,
   markArticleAsRead,
   toggleArticleArchive,
@@ -72,6 +73,22 @@ api.post("/api/articles/:id/archive", requireAuth("json-401"), async (c) => {
       )}
     </>,
   );
+});
+
+/**
+ * DELETE /api/articles/:id - Delete an article
+ */
+api.delete("/api/articles/:id", requireAuth("json-401"), async (c) => {
+  const userId = c.get("userId");
+  const articleId = c.req.param("id");
+
+  c.var.logger.info("Deleting article", { articleId, userId });
+
+  await deleteArticle(articleId, userId);
+
+  c.header("x-toast-message", "Article deleted");
+  c.header("hx-location", "/articles");
+  return c.body(null, 204);
 });
 
 /**

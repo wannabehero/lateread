@@ -363,3 +363,26 @@ export async function createArticle(params: {
 
   return article;
 }
+
+/**
+ * Delete an article
+ * Returns true if the article was deleted
+ */
+export async function deleteArticle(
+  articleId: string,
+  userId: string,
+): Promise<void> {
+  // Verify article exists and belongs to user
+  const [article] = await db
+    .select()
+    .from(articles)
+    .where(and(eq(articles.id, articleId), eq(articles.userId, userId)))
+    .limit(1);
+
+  if (!article) {
+    throw new NotFoundError("Article", articleId);
+  }
+
+  // Delete the article (cascade will handle related records)
+  await db.delete(articles).where(eq(articles.id, articleId));
+}

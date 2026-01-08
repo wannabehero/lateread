@@ -12,6 +12,7 @@ import {
   countArticles,
   countArticlesByStatus,
   createArticle,
+  deleteArticle,
   getArticleById,
   getArticlesWithTags,
   getArticleWithTagsById,
@@ -257,6 +258,78 @@ describe("articles.service", () => {
 
       expect(error).not.toBeNull();
       expect(error?.message).toContain("not found");
+    });
+  });
+
+  describe("deleteArticle", () => {
+    it("should delete an article", async () => {
+      const user = await createUser(db);
+      const article = await createCompletedArticle(db, user.id, {
+        title: "Article to Delete",
+      });
+
+      await deleteArticle(article.id, user.id);
+
+      // Verify article no longer exists
+      let error: Error | null = null;
+      try {
+        await getArticleById(article.id);
+      } catch (e) {
+        error = e as Error;
+      }
+
+      expect(error).toBeInstanceOf(NotFoundError);
+    });
+
+    it("should delete article with tags", async () => {
+      const user = await createUser(db);
+      const article = await createCompletedArticle(db, user.id);
+      const tag = await createTag(db, user.id, "test-tag");
+      await addTagToArticle(db, article.id, tag.id);
+
+      await deleteArticle(article.id, user.id);
+
+      // Verify article no longer exists
+      let error: Error | null = null;
+      try {
+        await getArticleById(article.id);
+      } catch (e) {
+        error = e as Error;
+      }
+
+      expect(error).toBeInstanceOf(NotFoundError);
+    });
+
+    it("should throw NotFoundError for non-existent article", async () => {
+      const user = await createUser(db);
+
+      let error: Error | null = null;
+      try {
+        await deleteArticle("non-existent-id", user.id);
+      } catch (e) {
+        error = e as Error;
+      }
+
+      expect(error).toBeInstanceOf(NotFoundError);
+    });
+
+    it("should throw NotFoundError when article belongs to different user", async () => {
+      const user1 = await createUser(db);
+      const user2 = await createUser(db);
+      const article = await createCompletedArticle(db, user1.id);
+
+      let error: Error | null = null;
+      try {
+        await deleteArticle(article.id, user2.id);
+      } catch (e) {
+        error = e as Error;
+      }
+
+      expect(error).toBeInstanceOf(NotFoundError);
+
+      // Verify article still exists
+      const existingArticle = await getArticleById(article.id);
+      expect(existingArticle).toBeDefined();
     });
   });
 

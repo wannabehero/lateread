@@ -4,16 +4,11 @@ import { formatRelativeTime } from "../lib/date";
 
 interface ArticleCardProps {
   article: Article & { tags: Tag[] };
-  displayActions?: boolean;
 }
 
-export const ArticleCard: FC<ArticleCardProps> = ({
-  article,
-  displayActions = true,
-}) => {
+export const ArticleCard: FC<ArticleCardProps> = ({ article }) => {
   const displayTitle = article.title || article.url;
   const isRead = article.readAt !== null;
-  const isArchived = article.archived;
 
   return (
     <article class={`article-card ${isRead ? "read" : ""}`}>
@@ -43,31 +38,6 @@ export const ArticleCard: FC<ArticleCardProps> = ({
             )}
           </small>
         </p>
-
-        {displayActions && (
-          <div class="article-actions">
-            <button
-              type="button"
-              hx-post={`/api/articles/${article.id}/archive`}
-              hx-swap="delete"
-              hx-target="closest .article-card"
-              hx-disabled-elt="this"
-              class="archive-button"
-              title={isArchived ? "Unarchive" : "Archive"}
-            >
-              <span class="button-text">
-                <img
-                  src={`/public/assets/${isArchived ? "archive-restore" : "archive"}.svg`}
-                  alt={isArchived ? "Unarchive" : "Archive"}
-                  class="button-icon"
-                />
-              </span>
-              <span class="button-loading">
-                <span class="spinner"></span>
-              </span>
-            </button>
-          </div>
-        )}
       </div>
     </article>
   );

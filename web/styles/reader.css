@@ -239,6 +239,16 @@
   margin: 0;
 }
 
+.reader-actions .spacer {
+  flex: 1;
+}
+
+.reader-actions .delete-button {
+  --pico-background-color: var(--pico-del-color);
+  --pico-border-color: var(--pico-del-color);
+  --pico-color: var(--pico-primary-inverse);
+}
+
 /* Reader Settings Dropdown Styling */
 .reader-settings-dropdown {
   min-width: 300px;

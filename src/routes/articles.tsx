@@ -20,10 +20,13 @@ import { renderWithLayout } from "./utils/render";
 
 const articlesRouter = new Hono<AppContext>();
 
-export async function renderArticlesList(c: Context<AppContext>) {
-  const userId = c.get("userId");
-
-  const { status, tag } = c.req.valid("query");
+export async function renderArticlesList(
+  c: Context<AppContext>,
+  userId: string,
+  options?: { status?: "all" | "archived"; tag?: string },
+) {
+  const status = options?.status ?? "all";
+  const tag = options?.tag;
   const archived = status === "archived";
 
   const [articlesWithTags, processingCount] = await Promise.all([
@@ -70,7 +73,9 @@ articlesRouter.get(
     }),
   ),
   async (c) => {
-    return renderArticlesList(c);
+    const userId = c.get("userId");
+    const { status, tag } = c.req.valid("query");
+    return renderArticlesList(c, userId, { status, tag });
   },
 );
 

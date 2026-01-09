@@ -531,11 +531,33 @@ describe("routes/articles", () => {
     it("should return 404 when article does not exist", async () => {
       spyGetArticleContent.mockResolvedValue("<p>Content</p>");
 
-      const res = await app.request("/articles/non-existent-id", {
+      // Use a valid UUID that doesn't exist in the database
+      const nonExistentId = "00000000-0000-0000-0000-000000000000";
+      const res = await app.request(`/articles/${nonExistentId}`, {
         headers: authHeaders,
       });
 
       expect(res.status).toBe(404);
+
+      // Should not call getArticleContent
+      expect(spyGetArticleContent).not.toHaveBeenCalled();
+    });
+
+    it("should return 400 for invalid article ID format", async () => {
+      spyGetArticleContent.mockResolvedValue("<p>Content</p>");
+
+      const res = await app.request("/articles/invalid-id", {
+        headers: authHeaders,
+      });
+
+      expect(res.status).toBe(400);
+
+      // Page routes return HTML error pages, not JSON
+      const html = await res.text();
+      const doc = parseHtml(html);
+
+      expect(doc.querySelector(".error-page")).toBeTruthy();
+      expect(html).toContain("Validation failed");
 
       // Should not call getArticleContent
       expect(spyGetArticleContent).not.toHaveBeenCalled();

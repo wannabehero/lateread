@@ -155,7 +155,7 @@ export const ReaderView: FC<ReaderViewProps> = ({
               <img
                 src={`/public/assets/thumbs-${article.rating === 1 ? "up" : "down"}.svg`}
                 alt={article.rating === 1 ? "Liked" : "Disliked"}
-                class="button-icon"
+                class="rating-icon"
               />
             </span>
           )}

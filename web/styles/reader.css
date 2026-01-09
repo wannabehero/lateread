@@ -280,7 +280,13 @@
 .reader-actions .rating-indicator {
   display: flex;
   align-items: center;
-  padding: 0.5rem;
+  padding: 0.5rem 0.75rem;
+}
+
+.reader-actions .rating-indicator .rating-icon {
+  width: 20px;
+  height: 20px;
+  opacity: 0.6;
 }
 
 /* Reader Settings Dropdown Styling */

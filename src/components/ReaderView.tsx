@@ -109,6 +109,7 @@ export const ReaderView: FC<ReaderViewProps> = ({
             <>
               <button
                 type="button"
+                class="dislike-button"
                 hx-post={`/api/articles/${article.id}/rate?rating=-1`}
                 hx-swap="none"
                 hx-disabled-elt="this"
@@ -127,6 +128,7 @@ export const ReaderView: FC<ReaderViewProps> = ({
               </button>
               <button
                 type="button"
+                class="like-button"
                 hx-post={`/api/articles/${article.id}/rate?rating=1`}
                 hx-swap="none"
                 hx-disabled-elt="this"

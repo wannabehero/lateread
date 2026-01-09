@@ -1,6 +1,6 @@
 import type { FC } from "hono/jsx";
 import type { Article, Tag } from "../db/types";
-import { formatRelativeTime } from "../lib/date";
+import { formatReadingTime, formatRelativeTime } from "../lib/date";
 import { TagBadge } from "./TagBadge";
 
 interface ReaderViewProps {
@@ -32,6 +32,11 @@ export const ReaderView: FC<ReaderViewProps> = ({
           {article.createdAt && (
             <span class="article-date">
               Added {formatRelativeTime(article.createdAt)}
+            </span>
+          )}
+          {article.readingTimeSeconds && (
+            <span class="reading-time">
+              {formatReadingTime(article.readingTimeSeconds)}
             </span>
           )}
           <a href={article.url} target="_blank" rel="noopener noreferrer">

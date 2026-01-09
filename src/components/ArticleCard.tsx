@@ -1,6 +1,6 @@
 import type { FC } from "hono/jsx";
 import type { Article, Tag } from "../db/types";
-import { formatRelativeTime } from "../lib/date";
+import { formatReadingTime, formatRelativeTime } from "../lib/date";
 
 interface ArticleCardProps {
   article: Article & { tags: Tag[] };
@@ -30,10 +30,21 @@ export const ArticleCard: FC<ArticleCardProps> = ({ article }) => {
         <p class="article-meta">
           <small>
             {article.siteName && <span>{article.siteName}</span>}
-            {article.siteName && article.createdAt && <span> • </span>}
+            {article.siteName &&
+              (article.createdAt || article.readingTimeSeconds) && (
+                <span> • </span>
+              )}
             {article.createdAt && (
               <span class="article-date">
                 {formatRelativeTime(article.createdAt)}
+              </span>
+            )}
+            {article.createdAt && article.readingTimeSeconds && (
+              <span> • </span>
+            )}
+            {article.readingTimeSeconds && (
+              <span class="reading-time">
+                {formatReadingTime(article.readingTimeSeconds)}
               </span>
             )}
           </small>

@@ -58,3 +58,24 @@ export function formatRelativeTime(timestamp: Date | null): string {
   const day = date.getDate();
   return `${month} ${day}, ${year}`;
 }
+
+/**
+ * Format reading time in seconds as a human-readable string
+ * Examples: "< 1 min read", "5 min read", "1 hr 30 min read"
+ */
+export function formatReadingTime(seconds: number | null): string | null {
+  if (!seconds) return null;
+
+  // Show "< 1 min read" for anything less than 60 seconds
+  if (seconds < 60) return "< 1 min read";
+
+  const minutes = Math.round(seconds / 60);
+
+  if (minutes < 60) return `${minutes} min read`;
+
+  const hours = Math.floor(minutes / 60);
+  const remainingMinutes = minutes % 60;
+
+  if (remainingMinutes === 0) return `${hours} hr read`;
+  return `${hours} hr ${remainingMinutes} min read`;
+}

@@ -309,6 +309,12 @@ class ReaderControls extends HTMLElement {
         vertical-align: middle;
       }
 
+      @media (prefers-color-scheme: dark) {
+        .inverted > .button-icon {
+          filter: invert(1);
+        }
+      }
+
       @media (max-width: 768px) {
         .reader-controls-group {
           flex-wrap: wrap;

@@ -26,6 +26,35 @@ export interface GetArticlesFilters {
 }
 
 /**
+ * Rate an article and archive it.
+ * Returns the new rating.
+ */
+export async function rateArticle(
+  articleId: string,
+  userId: string,
+  rating: number,
+): Promise<number> {
+  // Verify article exists and belongs to user
+  const [article] = await db
+    .select()
+    .from(articles)
+    .where(and(eq(articles.id, articleId), eq(articles.userId, userId)))
+    .limit(1);
+
+  if (!article) {
+    throw new NotFoundError("Article", articleId);
+  }
+
+  // Set rating and archive
+  await db
+    .update(articles)
+    .set({ rating, archived: true })
+    .where(eq(articles.id, articleId));
+
+  return rating;
+}
+
+/**
  * Build WHERE conditions for article queries
  * Handles: userId, status, archived, tag filtering, and search (database + cached content)
  */

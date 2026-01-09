@@ -421,7 +421,7 @@ describe("routes/articles", () => {
       spyIsTTSAvailable.mockRestore();
     });
 
-    it("should show archive button for unarchived articles", async () => {
+    it("should show like and dislike buttons for unarchived articles", async () => {
       const article = await createCompletedArticle(db, testUserId, {
         archived: false,
       });
@@ -436,15 +436,23 @@ describe("routes/articles", () => {
 
       expect(res.status).toBe(200);
 
-      // Check for archive button
+      // Check for like and dislike buttons
       expect(doc.querySelector(".reader-actions")).toBeTruthy();
-      expect(html).toContain(
-        `/api/articles/${article.id}/archive?redirect=true`,
+      const likeButton = doc.querySelector('button[title="Like"]');
+      const dislikeButton = doc.querySelector('button[title="Dislike"]');
+
+      expect(likeButton).toBeTruthy();
+      expect(likeButton?.getAttribute("hx-post")).toBe(
+        `/api/articles/${article.id}/rate?rating=1`,
       );
-      expect(html).toContain("Archive");
+
+      expect(dislikeButton).toBeTruthy();
+      expect(dislikeButton?.getAttribute("hx-post")).toBe(
+        `/api/articles/${article.id}/rate?rating=-1`,
+      );
     });
 
-    it("should not show archive button for archived articles", async () => {
+    it("should not show like and dislike buttons for archived articles", async () => {
       const article = await createCompletedArticle(db, testUserId, {
         archived: true,
       });
@@ -455,11 +463,16 @@ describe("routes/articles", () => {
         headers: authHeaders,
       });
       const html = await res.text();
+      const doc = parseHtml(html);
 
       expect(res.status).toBe(200);
 
-      // Should not show archive button (but reader-actions div still exists for share button)
-      expect(html).not.toContain(`/api/articles/${article.id}/archive`);
+      // Check that like and dislike buttons are not present
+      const likeButton = doc.querySelector('button[title="Like"]');
+      const dislikeButton = doc.querySelector('button[title="Dislike"]');
+
+      expect(likeButton).toBeNull();
+      expect(dislikeButton).toBeNull();
     });
 
     it("should show delete button in reader view", async () => {

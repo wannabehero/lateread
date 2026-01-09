@@ -42,6 +42,8 @@ export const ReaderView: FC<ReaderViewProps> = ({
           <a href={article.url} target="_blank" rel="noopener noreferrer">
             View Original
           </a>
+          {article.rating === 1 && <span class="rating">👍</span>}
+          {article.rating === -1 && <span class="rating">👎</span>}
         </div>
 
         {article.tags.length > 0 && (
@@ -106,25 +108,46 @@ export const ReaderView: FC<ReaderViewProps> = ({
         <div class="reader-actions">
           <share-copy-button data-url={article.url} data-title={displayTitle} />
           {!article.archived && (
-            <button
-              type="button"
-              hx-post={`/api/articles/${article.id}/archive?redirect=true`}
-              hx-swap="delete"
-              hx-target="this"
-              hx-disabled-elt="this"
-              title="Archive"
-            >
-              <span class="button-text">
-                <img
-                  src="/public/assets/archive.svg"
-                  alt="Archive"
-                  class="button-icon"
-                />
-              </span>
-              <span class="button-loading">
-                <span class="spinner"></span>
-              </span>
-            </button>
+            <>
+              <button
+                type="button"
+                hx-post={`/api/articles/${article.id}/rate?rating=1`}
+                hx-swap="delete"
+                hx-target="this"
+                hx-disabled-elt="this"
+                title="Like"
+              >
+                <span class="button-text">
+                  <img
+                    src="/public/assets/thumb-up.svg"
+                    alt="Like"
+                    class="button-icon"
+                  />
+                </span>
+                <span class="button-loading">
+                  <span class="spinner"></span>
+                </span>
+              </button>
+              <button
+                type="button"
+                hx-post={`/api/articles/${article.id}/rate?rating=-1`}
+                hx-swap="delete"
+                hx-target="this"
+                hx-disabled-elt="this"
+                title="Dislike"
+              >
+                <span class="button-text">
+                  <img
+                    src="/public/assets/thumb-down.svg"
+                    alt="Dislike"
+                    class="button-icon"
+                  />
+                </span>
+                <span class="button-loading">
+                  <span class="spinner"></span>
+                </span>
+              </button>
+            </>
           )}
           <span class="spacer" />
           <button

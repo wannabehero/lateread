@@ -1,8 +1,8 @@
 {
   "version": "6",
   "dialect": "sqlite",
-  "id": "03c3fe1e-f3fc-4e21-bf9e-6fbc9bf01f8d",
-  "prevId": "88c340c9-93be-4bd7-a89b-0dd5888d08df",
+  "id": "bfe8c4e0-dc35-4b2d-913b-b884360cae31",
+  "prevId": "03c3fe1e-f3fc-4e21-bf9e-6fbc9bf01f8d",
   "tables": {
     "article_summaries": {
       "name": "article_summaries",
@@ -214,6 +214,14 @@
           "notNull": true,
           "autoincrement": false,
           "default": false
+        },
+        "rating": {
+          "name": "rating",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false,
+          "default": 0
         },
         "processing_attempts": {
           "name": "processing_attempts",

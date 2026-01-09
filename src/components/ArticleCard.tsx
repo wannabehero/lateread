@@ -47,6 +47,8 @@ export const ArticleCard: FC<ArticleCardProps> = ({ article }) => {
                 {formatReadingTime(article.readingTimeSeconds)}
               </span>
             )}
+            {article.rating === 1 && <span class="rating"> • 👍</span>}
+            {article.rating === -1 && <span class="rating"> • 👎</span>}
           </small>
         </p>
       </div>

@@ -14,6 +14,7 @@ import {
   deleteArticle,
   getArticleWithTagsById,
   markArticleAsRead,
+  rateArticle,
   toggleArticleArchive,
 } from "../services/articles.service";
 import { getArticleContent } from "../services/content.service";
@@ -101,6 +102,36 @@ api.post(
 /**
  * DELETE /api/articles/:id - Delete an article
  */
+api.post(
+  "/api/articles/:id/rate",
+  requireAuth("json-401"),
+  validator("param", articleIdParam),
+  validator(
+    "query",
+    z.object({
+      rating: z.coerce
+        .number()
+        .int()
+        .min(-1, "Rating must be -1 or 1")
+        .max(1, "Rating must be -1 or 1"),
+    }),
+  ),
+  async (c) => {
+    const userId = c.get("userId");
+    const { id: articleId } = c.req.valid("param");
+    const { rating } = c.req.valid("query");
+
+    c.var.logger.info("Rating article", { articleId, userId, rating });
+
+    await rateArticle(articleId, userId, rating);
+
+    c.header("x-toast-message", "Article rated and archived");
+    c.header("hx-trigger", "scrollToTop");
+    c.header("hx-location", "/articles");
+    return c.body(null, 204);
+  },
+);
+
 api.delete(
   "/api/articles/:id",
   requireAuth("json-401"),

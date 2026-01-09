@@ -17,6 +17,7 @@ import {
   getArticlesWithTags,
   getArticleWithTagsById,
   markArticleAsRead,
+  rateArticle,
   toggleArticleArchive,
   updateArticleCompleted,
   updateArticleProcessing,
@@ -162,6 +163,37 @@ describe("articles.service", () => {
       let error: Error | null = null;
       try {
         await getArticleWithTagsById("non-existent-id", user.id);
+      } catch (e) {
+        error = e as Error;
+      }
+
+      expect(error).not.toBeNull();
+      expect(error?.message).toContain("not found");
+    });
+  });
+
+  describe("rateArticle", () => {
+    it("should set rating and archive the article", async () => {
+      const user = await createUser(db);
+      const article = await createCompletedArticle(db, user.id);
+
+      expect(article.rating).toBe(0);
+      expect(article.archived).toBe(false);
+
+      const newRating = await rateArticle(article.id, user.id, 1);
+      expect(newRating).toBe(1);
+
+      const updated = await getArticleWithTagsById(article.id, user.id);
+      expect(updated.rating).toBe(1);
+      expect(updated.archived).toBe(true);
+    });
+
+    it("should throw error for non-existent article", async () => {
+      const user = await createUser(db);
+
+      let error: Error | null = null;
+      try {
+        await rateArticle("non-existent-id", user.id, 1);
       } catch (e) {
         error = e as Error;
       }

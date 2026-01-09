@@ -63,8 +63,9 @@ articlesRouter.get(
         .default("all"),
       tag: z
         .string()
+        .trim()
         .min(1, "Tag cannot be empty")
-        .transform((val) => val.toLowerCase().trim())
+        .toLowerCase()
         .optional(),
     }),
   ),

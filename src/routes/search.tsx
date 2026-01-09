@@ -20,8 +20,8 @@ searchRouter.get(
     z.object({
       q: z
         .string()
+        .trim()
         .max(500, "Search query too long")
-        .transform((val) => val.trim())
         .refine((val) => !val.includes("%"), {
           message: "Search query contains invalid characters",
         })

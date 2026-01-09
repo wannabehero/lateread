@@ -185,11 +185,15 @@ export async function updateArticleCompleted({
   tags,
   metadata,
   language,
+  wordCount,
+  readingTimeSeconds,
 }: {
   id: string;
   tags: Tag[];
   metadata: Pick<Article, "title" | "description" | "imageUrl" | "siteName">;
   language: string;
+  wordCount: number;
+  readingTimeSeconds: number;
 }) {
   await db.transaction(async (tx) => {
     await tx
@@ -200,6 +204,8 @@ export async function updateArticleCompleted({
         imageUrl: metadata.imageUrl,
         siteName: metadata.siteName,
         language: language,
+        wordCount,
+        readingTimeSeconds,
         status: "completed",
         processedAt: new Date(),
         updatedAt: new Date(),

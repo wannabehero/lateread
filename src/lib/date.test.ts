@@ -1,5 +1,5 @@
 import { beforeEach, describe, expect, it, setSystemTime } from "bun:test";
-import { formatRelativeTime } from "./date";
+import { formatReadingTime, formatRelativeTime } from "./date";
 
 describe("formatRelativeTime", () => {
   // Fix the current time to a known value for consistent testing
@@ -220,5 +220,79 @@ describe("formatRelativeTime", () => {
       const date = new Date(timestamp);
       expect(formatRelativeTime(date)).toBe("2 hours ago");
     });
+  });
+});
+
+describe("formatReadingTime", () => {
+  it("should return null for null input", () => {
+    expect(formatReadingTime(null)).toBeNull();
+  });
+
+  it("should return null for 0 seconds", () => {
+    expect(formatReadingTime(0)).toBeNull();
+  });
+
+  it("should format less than 1 minute", () => {
+    expect(formatReadingTime(30)).toBe("< 1 min read");
+    expect(formatReadingTime(45)).toBe("< 1 min read");
+    expect(formatReadingTime(59)).toBe("< 1 min read");
+  });
+
+  it("should format exactly 1 minute", () => {
+    expect(formatReadingTime(60)).toBe("1 min read");
+  });
+
+  it("should format minutes (less than 1 hour)", () => {
+    expect(formatReadingTime(120)).toBe("2 min read"); // 2 minutes
+    expect(formatReadingTime(300)).toBe("5 min read"); // 5 minutes
+    expect(formatReadingTime(600)).toBe("10 min read"); // 10 minutes
+    expect(formatReadingTime(1800)).toBe("30 min read"); // 30 minutes
+    expect(formatReadingTime(3540)).toBe("59 min read"); // 59 minutes
+  });
+
+  it("should format exactly 1 hour", () => {
+    expect(formatReadingTime(3600)).toBe("1 hr read");
+  });
+
+  it("should format hours without remaining minutes", () => {
+    expect(formatReadingTime(7200)).toBe("2 hr read"); // 2 hours
+    expect(formatReadingTime(10800)).toBe("3 hr read"); // 3 hours
+  });
+
+  it("should format hours with remaining minutes", () => {
+    expect(formatReadingTime(5400)).toBe("1 hr 30 min read"); // 1.5 hours
+    expect(formatReadingTime(7380)).toBe("2 hr 3 min read"); // 2 hours 3 minutes
+    expect(formatReadingTime(9000)).toBe("2 hr 30 min read"); // 2.5 hours
+    expect(formatReadingTime(12600)).toBe("3 hr 30 min read"); // 3.5 hours
+  });
+
+  it("should round seconds to nearest minute", () => {
+    // 119 seconds = 1.98 minutes, should round to 2 min
+    expect(formatReadingTime(119)).toBe("2 min read");
+
+    // 121 seconds = 2.02 minutes, should round to 2 min
+    expect(formatReadingTime(121)).toBe("2 min read");
+
+    // 150 seconds = 2.5 minutes, should round to 3 min (uses Math.round)
+    expect(formatReadingTime(150)).toBe("3 min read");
+  });
+
+  it("should handle typical article reading times", () => {
+    // 225 words at 225 WPM = 60 seconds = 1 min
+    expect(formatReadingTime(60)).toBe("1 min read");
+
+    // 1000 words at 225 WPM = 267 seconds = 4 min
+    expect(formatReadingTime(267)).toBe("4 min read");
+
+    // 2250 words at 225 WPM = 600 seconds = 10 min
+    expect(formatReadingTime(600)).toBe("10 min read");
+  });
+
+  it("should handle very long articles", () => {
+    // 10 hours
+    expect(formatReadingTime(36000)).toBe("10 hr read");
+
+    // 12 hours 45 minutes
+    expect(formatReadingTime(45900)).toBe("12 hr 45 min read");
   });
 });

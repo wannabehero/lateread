@@ -91,6 +91,8 @@ export const articles = sqliteTable(
     updatedAt: integer("updated_at", { mode: "timestamp" })
       .notNull()
       .default(sql`(unixepoch())`),
+    wordCount: integer("word_count"),
+    readingTimeSeconds: integer("reading_time_seconds"),
   },
   (table) => [
     index("articles_user_id_idx").on(table.userId),

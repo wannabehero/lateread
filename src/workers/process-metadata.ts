@@ -4,6 +4,7 @@ import { contentCache } from "../lib/content-cache";
 import { getLLMProvider } from "../lib/llm";
 import { defaultLogger, type Logger } from "../lib/logger";
 import { extractCleanContent } from "../lib/readability";
+import { calculateReadingStats } from "../lib/reading-time";
 import { withTimeout } from "../lib/timeout";
 import {
   getArticleById,
@@ -163,6 +164,13 @@ export async function processArticle(article: Article, logger: Logger) {
     .filter((p) => p.status === "fulfilled")
     .map((p) => p.value);
 
+  // Calculate reading statistics
+  const readingStats = calculateReadingStats(htmlContent);
+  logger.info("Calculated reading stats", {
+    wordCount: readingStats.wordCount,
+    readingTimeSeconds: readingStats.readingTimeSeconds,
+  });
+
   // Step 6: Cache clean HTML content (if not already cached)
   if (!(await contentCache.exists(article.userId, article.id))) {
     await contentCache.set(article.userId, article.id, htmlContent);
@@ -177,5 +185,7 @@ export async function processArticle(article: Article, logger: Logger) {
     tags,
     metadata,
     language,
+    wordCount: readingStats.wordCount,
+    readingTimeSeconds: readingStats.readingTimeSeconds,
   });
 }

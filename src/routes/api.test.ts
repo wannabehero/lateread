@@ -386,6 +386,155 @@ describe("routes/api", () => {
     });
   });
 
+  describe("POST /api/articles/:id/rate", () => {
+    it("should rate article as liked and archive it", async () => {
+      const article = await createCompletedArticle(db, testUserId, {
+        archived: false,
+      });
+
+      const res = await app.request(
+        `/api/articles/${article.id}/rate?rating=1`,
+        {
+          headers: authHeaders,
+          method: "POST",
+        },
+      );
+
+      expect(res.status).toBe(204);
+      expect(res.headers.get("x-toast-message")).toBe("Article liked");
+      expect(res.headers.get("hx-location")).toBe("/articles");
+      expect(res.headers.get("hx-trigger")).toBe("scrollToTop");
+
+      // Verify database state
+      const [updatedArticle] = await db
+        .select()
+        .from(articles)
+        .where(eq(articles.id, article.id))
+        .limit(1);
+
+      expect(updatedArticle?.rating).toBe(1);
+      expect(updatedArticle?.archived).toBe(true);
+    });
+
+    it("should rate article as disliked and archive it", async () => {
+      const article = await createCompletedArticle(db, testUserId, {
+        archived: false,
+      });
+
+      const res = await app.request(
+        `/api/articles/${article.id}/rate?rating=-1`,
+        {
+          headers: authHeaders,
+          method: "POST",
+        },
+      );
+
+      expect(res.status).toBe(204);
+      expect(res.headers.get("x-toast-message")).toBe("Article disliked");
+      expect(res.headers.get("hx-location")).toBe("/articles");
+      expect(res.headers.get("hx-trigger")).toBe("scrollToTop");
+
+      // Verify database state
+      const [updatedArticle] = await db
+        .select()
+        .from(articles)
+        .where(eq(articles.id, article.id))
+        .limit(1);
+
+      expect(updatedArticle?.rating).toBe(-1);
+      expect(updatedArticle?.archived).toBe(true);
+    });
+
+    it("should return 400 for missing rating param", async () => {
+      const article = await createCompletedArticle(db, testUserId);
+
+      const res = await app.request(`/api/articles/${article.id}/rate`, {
+        headers: authHeaders,
+        method: "POST",
+      });
+
+      expect(res.status).toBe(400);
+      const json = await res.json();
+      expect(json.error).toBe("Validation failed");
+    });
+
+    it("should return 400 for invalid rating value", async () => {
+      const article = await createCompletedArticle(db, testUserId);
+
+      const res = await app.request(
+        `/api/articles/${article.id}/rate?rating=5`,
+        {
+          headers: authHeaders,
+          method: "POST",
+        },
+      );
+
+      expect(res.status).toBe(400);
+      const json = await res.json();
+      expect(json.error).toBe("Validation failed");
+      expect(json.context.fields.errors.rating).toBe(
+        "Rating must be '-1' or '1'",
+      );
+    });
+
+    it("should return 404 when article does not exist", async () => {
+      const nonExistentId = "00000000-0000-0000-0000-000000000000";
+      const res = await app.request(
+        `/api/articles/${nonExistentId}/rate?rating=1`,
+        {
+          headers: authHeaders,
+          method: "POST",
+        },
+      );
+
+      expect(res.status).toBe(404);
+      const json = await res.json();
+      expect(json.error).toBe("Article not found");
+    });
+
+    it("should return 400 for invalid article ID format", async () => {
+      const res = await app.request("/api/articles/invalid-id/rate?rating=1", {
+        headers: authHeaders,
+        method: "POST",
+      });
+
+      expect(res.status).toBe(400);
+      const json = await res.json();
+      expect(json.error).toBe("Validation failed");
+      expect(json.context.fields.errors.id).toBe("Invalid article ID format");
+    });
+
+    it("should return 404 when article belongs to different user", async () => {
+      const otherUser = await createUser(db);
+      const article = await createCompletedArticle(db, otherUser.id);
+
+      const res = await app.request(
+        `/api/articles/${article.id}/rate?rating=1`,
+        {
+          headers: authHeaders,
+          method: "POST",
+        },
+      );
+
+      expect(res.status).toBe(404);
+      const json = await res.json();
+      expect(json.error).toBe("Article not found");
+    });
+
+    it("should return 401 when not authenticated", async () => {
+      const article = await createCompletedArticle(db, testUserId);
+
+      const res = await app.request(
+        `/api/articles/${article.id}/rate?rating=1`,
+        {
+          method: "POST",
+        },
+      );
+
+      expect(res.status).toBe(401);
+    });
+  });
+
   describe("POST /api/articles/:id/summarize", () => {
     let spyGetOrGenerateSummary: ReturnType<
       typeof spyOn<typeof summariesService, "getOrGenerateSummary">
@@ -931,6 +1080,7 @@ describe("routes/api", () => {
       ["POST", "/api/articles/some-id/read"],
       ["DELETE", "/api/articles/some-id"],
       ["POST", "/api/articles/some-id/archive"],
+      ["POST", "/api/articles/some-id/rate?rating=1"],
       ["POST", "/api/articles/some-id/summarize"],
       ["GET", "/api/articles/processing-count"],
       ["GET", "/api/articles/some-id/tts"],

@@ -81,6 +81,7 @@ export const articles = sqliteTable(
       .notNull()
       .default("pending"),
     archived: integer("archived", { mode: "boolean" }).notNull().default(false),
+    rating: integer("rating").notNull().default(0), // -1 = dislike, 0 = none, 1 = like
     processingAttempts: integer("processing_attempts").notNull().default(0),
     lastError: text("last_error"),
     createdAt: integer("created_at", { mode: "timestamp" })
@@ -98,6 +99,7 @@ export const articles = sqliteTable(
     index("articles_user_id_idx").on(table.userId),
     index("articles_status_idx").on(table.status),
     index("articles_archived_idx").on(table.archived),
+    index("articles_rating_idx").on(table.rating),
     index("articles_created_at_idx").on(table.createdAt),
   ],
 );

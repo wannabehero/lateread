@@ -1,8 +1,8 @@
 {
   "version": "6",
   "dialect": "sqlite",
-  "id": "03c3fe1e-f3fc-4e21-bf9e-6fbc9bf01f8d",
-  "prevId": "88c340c9-93be-4bd7-a89b-0dd5888d08df",
+  "id": "9b0a1625-5c1e-4efc-9d28-dfbbb678ce37",
+  "prevId": "03c3fe1e-f3fc-4e21-bf9e-6fbc9bf01f8d",
   "tables": {
     "article_summaries": {
       "name": "article_summaries",
@@ -215,6 +215,14 @@
           "autoincrement": false,
           "default": false
         },
+        "rating": {
+          "name": "rating",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false,
+          "default": 0
+        },
         "processing_attempts": {
           "name": "processing_attempts",
           "type": "integer",
@@ -289,6 +297,11 @@
         "articles_archived_idx": {
           "name": "articles_archived_idx",
           "columns": ["archived"],
+          "isUnique": false
+        },
+        "articles_rating_idx": {
+          "name": "articles_rating_idx",
+          "columns": ["rating"],
           "isUnique": false
         },
         "articles_created_at_idx": {

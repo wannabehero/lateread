@@ -300,6 +300,24 @@ body {
   }
 }
 
+/* Rating Indicator */
+.rating-indicator {
+  display: inline-flex;
+  align-items: center;
+}
+
+.rating-icon {
+  width: 16px;
+  height: 16px;
+  opacity: 0.7;
+}
+
+@media (prefers-color-scheme: dark) {
+  .rating-icon {
+    filter: invert(1);
+  }
+}
+
 /* Tag Badge Styling */
 .tag-badge {
   display: inline-block;

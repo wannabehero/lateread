@@ -47,6 +47,23 @@ export const ArticleCard: FC<ArticleCardProps> = ({ article }) => {
                 {formatReadingTime(article.readingTimeSeconds)}
               </span>
             )}
+            {article.rating !== 0 && (
+              <>
+                {(article.createdAt || article.readingTimeSeconds) && (
+                  <span> • </span>
+                )}
+                <span
+                  class="rating-indicator"
+                  title={article.rating === 1 ? "Liked" : "Disliked"}
+                >
+                  <img
+                    src={`/public/assets/thumbs-${article.rating === 1 ? "up" : "down"}.svg`}
+                    alt={article.rating === 1 ? "Liked" : "Disliked"}
+                    class="rating-icon"
+                  />
+                </span>
+              </>
+            )}
           </small>
         </p>
       </div>

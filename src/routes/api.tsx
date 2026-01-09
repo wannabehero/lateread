@@ -14,6 +14,7 @@ import {
   deleteArticle,
   getArticleWithTagsById,
   markArticleAsRead,
+  rateArticle,
   toggleArticleArchive,
 } from "../services/articles.service";
 import { getArticleContent } from "../services/content.service";
@@ -95,6 +96,40 @@ api.post(
         )}
       </>,
     );
+  },
+);
+
+/**
+ * POST /api/articles/:id/rate - Rate and archive article
+ */
+api.post(
+  "/api/articles/:id/rate",
+  requireAuth("json-401"),
+  validator("param", articleIdParam),
+  validator(
+    "query",
+    z.object({
+      rating: z
+        .enum(["-1", "1"], { message: "Rating must be '-1' or '1'" })
+        .transform((v) => Number.parseInt(v) as -1 | 1),
+    }),
+  ),
+  async (c) => {
+    const userId = c.get("userId");
+    const { id: articleId } = c.req.valid("param");
+    const { rating } = c.req.valid("query");
+
+    c.var.logger.info("Rating article", { articleId, userId, rating });
+
+    await rateArticle(articleId, userId, rating);
+
+    c.header(
+      "x-toast-message",
+      rating === 1 ? "Article liked" : "Article disliked",
+    );
+    c.header("hx-trigger", "scrollToTop");
+    c.header("hx-location", "/articles");
+    return c.body(null, 204);
   },
 );
 

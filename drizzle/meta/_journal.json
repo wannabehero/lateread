@@ -36,6 +36,13 @@
       "when": 1767961028056,
       "tag": "0004_thick_blue_shield",
       "breakpoints": true
+    },
+    {
+      "idx": 5,
+      "version": "6",
+      "when": 1767966320793,
+      "tag": "0005_colossal_corsair",
+      "breakpoints": true
     }
   ]
 }

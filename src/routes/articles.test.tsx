@@ -421,7 +421,7 @@ describe("routes/articles", () => {
       spyIsTTSAvailable.mockRestore();
     });
 
-    it("should show archive button for unarchived articles", async () => {
+    it("should show rating buttons for unarchived articles", async () => {
       const article = await createCompletedArticle(db, testUserId, {
         archived: false,
       });
@@ -436,15 +436,15 @@ describe("routes/articles", () => {
 
       expect(res.status).toBe(200);
 
-      // Check for archive button
+      // Check for rating buttons
       expect(doc.querySelector(".reader-actions")).toBeTruthy();
-      expect(html).toContain(
-        `/api/articles/${article.id}/archive?redirect=true`,
-      );
-      expect(html).toContain("Archive");
+      expect(html).toContain(`/api/articles/${article.id}/rate?rating=1`);
+      expect(html).toContain(`/api/articles/${article.id}/rate?rating=-1`);
+      expect(html).toContain("Like");
+      expect(html).toContain("Dislike");
     });
 
-    it("should not show archive button for archived articles", async () => {
+    it("should not show rating buttons for archived articles", async () => {
       const article = await createCompletedArticle(db, testUserId, {
         archived: true,
       });
@@ -458,8 +458,8 @@ describe("routes/articles", () => {
 
       expect(res.status).toBe(200);
 
-      // Should not show archive button (but reader-actions div still exists for share button)
-      expect(html).not.toContain(`/api/articles/${article.id}/archive`);
+      // Should not show rating buttons (but reader-actions div still exists for share button)
+      expect(html).not.toContain(`/api/articles/${article.id}/rate`);
     });
 
     it("should show delete button in reader view", async () => {

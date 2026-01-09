@@ -17,6 +17,7 @@ import {
   getArticlesWithTags,
   getArticleWithTagsById,
   markArticleAsRead,
+  rateArticle,
   toggleArticleArchive,
   updateArticleCompleted,
   updateArticleProcessing,
@@ -252,6 +253,66 @@ describe("articles.service", () => {
       let error: Error | null = null;
       try {
         await toggleArticleArchive("non-existent-id", user.id);
+      } catch (e) {
+        error = e as Error;
+      }
+
+      expect(error).not.toBeNull();
+      expect(error?.message).toContain("not found");
+    });
+  });
+
+  describe("rateArticle", () => {
+    it("should rate an article as liked and archive it", async () => {
+      const user = await createUser(db);
+      const article = await createCompletedArticle(db, user.id);
+
+      expect(article.rating).toBe(0);
+      expect(article.archived).toBe(false);
+
+      await rateArticle(article.id, user.id, 1);
+
+      const updated = await getArticleWithTagsById(article.id, user.id);
+      expect(updated.rating).toBe(1);
+      expect(updated.archived).toBe(true);
+    });
+
+    it("should rate an article as disliked and archive it", async () => {
+      const user = await createUser(db);
+      const article = await createCompletedArticle(db, user.id);
+
+      expect(article.rating).toBe(0);
+      expect(article.archived).toBe(false);
+
+      await rateArticle(article.id, user.id, -1);
+
+      const updated = await getArticleWithTagsById(article.id, user.id);
+      expect(updated.rating).toBe(-1);
+      expect(updated.archived).toBe(true);
+    });
+
+    it("should throw error for non-existent article", async () => {
+      const user = await createUser(db);
+
+      let error: Error | null = null;
+      try {
+        await rateArticle("non-existent-id", user.id, 1);
+      } catch (e) {
+        error = e as Error;
+      }
+
+      expect(error).not.toBeNull();
+      expect(error?.message).toContain("not found");
+    });
+
+    it("should throw error for article belonging to different user", async () => {
+      const user1 = await createUser(db);
+      const user2 = await createUser(db);
+      const article = await createCompletedArticle(db, user1.id);
+
+      let error: Error | null = null;
+      try {
+        await rateArticle(article.id, user2.id, 1);
       } catch (e) {
         error = e as Error;
       }

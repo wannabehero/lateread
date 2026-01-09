@@ -29,23 +29,37 @@ export const ArticleCard: FC<ArticleCardProps> = ({ article }) => {
 
         <p class="article-meta">
           <small>
-            {article.siteName && <span>{article.siteName}</span>}
-            {article.siteName &&
-              (article.createdAt || article.readingTimeSeconds) && (
+            {article.siteName && (
+              <>
+                <span>{article.siteName}</span>
                 <span> • </span>
-              )}
-            {article.createdAt && (
-              <span class="article-date">
-                {formatRelativeTime(article.createdAt)}
-              </span>
+              </>
             )}
-            {article.createdAt && article.readingTimeSeconds && (
-              <span> • </span>
-            )}
+            <span class="article-date">
+              {formatRelativeTime(article.createdAt)}
+            </span>
             {article.readingTimeSeconds && (
-              <span class="reading-time">
-                {formatReadingTime(article.readingTimeSeconds)}
-              </span>
+              <>
+                <span> • </span>
+                <span class="reading-time">
+                  {formatReadingTime(article.readingTimeSeconds)}
+                </span>
+              </>
+            )}
+            {article.rating !== 0 && (
+              <>
+                <span> • </span>
+                <span
+                  class="rating-indicator"
+                  title={article.rating === 1 ? "Liked" : "Disliked"}
+                >
+                  <img
+                    src={`/public/assets/thumbs-${article.rating === 1 ? "up" : "down"}.svg`}
+                    alt={article.rating === 1 ? "Liked" : "Disliked"}
+                    class="rating-icon"
+                  />
+                </span>
+              </>
             )}
           </small>
         </p>

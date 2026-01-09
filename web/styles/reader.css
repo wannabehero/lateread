@@ -255,6 +255,12 @@
   border-color: color-mix(in srgb, var(--pico-del-color) 80%, black);
 }
 
+.reader-actions .rating-indicator {
+  display: flex;
+  align-items: center;
+  padding: 0.5rem;
+}
+
 /* Reader Settings Dropdown Styling */
 .reader-settings-dropdown {
   min-width: 300px;

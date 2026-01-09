@@ -106,25 +106,56 @@ export const ReaderView: FC<ReaderViewProps> = ({
         <div class="reader-actions">
           <share-copy-button data-url={article.url} data-title={displayTitle} />
           {!article.archived && (
-            <button
-              type="button"
-              hx-post={`/api/articles/${article.id}/archive?redirect=true`}
-              hx-swap="delete"
-              hx-target="this"
-              hx-disabled-elt="this"
-              title="Archive"
+            <>
+              <button
+                type="button"
+                hx-post={`/api/articles/${article.id}/rate?rating=-1`}
+                hx-swap="none"
+                hx-disabled-elt="this"
+                title="Dislike"
+              >
+                <span class="button-text">
+                  <img
+                    src="/public/assets/thumbs-down.svg"
+                    alt="Dislike"
+                    class="button-icon"
+                  />
+                </span>
+                <span class="button-loading">
+                  <span class="spinner"></span>
+                </span>
+              </button>
+              <button
+                type="button"
+                hx-post={`/api/articles/${article.id}/rate?rating=1`}
+                hx-swap="none"
+                hx-disabled-elt="this"
+                title="Like"
+              >
+                <span class="button-text">
+                  <img
+                    src="/public/assets/thumbs-up.svg"
+                    alt="Like"
+                    class="button-icon"
+                  />
+                </span>
+                <span class="button-loading">
+                  <span class="spinner"></span>
+                </span>
+              </button>
+            </>
+          )}
+          {article.archived && article.rating !== 0 && (
+            <span
+              class="rating-indicator"
+              title={article.rating === 1 ? "Liked" : "Disliked"}
             >
-              <span class="button-text">
-                <img
-                  src="/public/assets/archive.svg"
-                  alt="Archive"
-                  class="button-icon"
-                />
-              </span>
-              <span class="button-loading">
-                <span class="spinner"></span>
-              </span>
-            </button>
+              <img
+                src={`/public/assets/thumbs-${article.rating === 1 ? "up" : "down"}.svg`}
+                alt={article.rating === 1 ? "Liked" : "Disliked"}
+                class="button-icon"
+              />
+            </span>
           )}
           <span class="spacer" />
           <button

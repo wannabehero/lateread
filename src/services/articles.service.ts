@@ -319,6 +319,32 @@ export async function toggleArticleArchive(
 }
 
 /**
+ * Rate and archive an article
+ */
+export async function rateArticle(
+  articleId: string,
+  userId: string,
+  rating: -1 | 1,
+): Promise<void> {
+  // Verify article exists and belongs to user
+  const [article] = await db
+    .select()
+    .from(articles)
+    .where(and(eq(articles.id, articleId), eq(articles.userId, userId)))
+    .limit(1);
+
+  if (!article) {
+    throw new NotFoundError("Article", articleId);
+  }
+
+  // Set rating and archive in one update
+  await db
+    .update(articles)
+    .set({ rating, archived: true })
+    .where(eq(articles.id, articleId));
+}
+
+/**
  * Count articles by status for a user
  */
 export async function countArticlesByStatus(

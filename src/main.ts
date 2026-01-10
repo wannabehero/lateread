@@ -6,11 +6,15 @@ import { startBot, stopBot } from "./bot/index";
 import { startCrons } from "./cron";
 import { runMigrations } from "./lib/db";
 import { defaultLogger } from "./lib/logger";
+import { initQueue, stopQueue } from "./lib/queue";
 
 const logger = defaultLogger.child({ module: "main" });
 
 // Run database migrations
 runMigrations();
+
+// Initialize article processing queue
+initQueue();
 
 // Create Hono app with all middleware and routes
 const app = createApp();
@@ -38,6 +42,7 @@ startCrons();
 process.on("SIGINT", async () => {
   logger.info("Shutting down...");
   await stopBot();
+  await stopQueue();
   server.stop();
   process.exit(0);
 });

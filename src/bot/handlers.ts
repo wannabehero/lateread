@@ -2,7 +2,7 @@ import type { Bot, Context } from "grammy";
 import { config } from "../lib/config";
 import { contentCache } from "../lib/content-cache";
 import { defaultLogger } from "../lib/logger";
-import { addArticleJob } from "../lib/queue";
+import { spawnArticleWorker } from "../lib/worker";
 import { createArticle } from "../services/articles.service";
 import { claimAuthToken } from "../services/auth.service";
 import { getTelegramUserByTelegramId } from "../services/telegram-users.service";
@@ -134,7 +134,7 @@ export function registerHandlers(bot: Bot<BotContext>) {
 
     ctx.logger.info("Article created", { article: article.id });
 
-    await queueArticleForProcessing(ctx, article.id);
+    await processArticleWithWorker(ctx, article.id);
   });
 }
 
@@ -186,20 +186,53 @@ function getMessageText(ctx: Context): string {
 }
 
 /**
- * Add article to processing queue
+ * Process article with worker and reaction callbacks
  */
-async function queueArticleForProcessing(
+async function processArticleWithWorker(
   ctx: BotContext,
   articleId: string,
 ): Promise<void> {
+  // Spawn worker (non-blocking)
+  if (!ctx.chat || !ctx.message) {
+    ctx.logger.info("No chat or message found for worker callbacks");
+    return;
+  }
+
   try {
     await ctx.react("👀");
   } catch (error) {
     ctx.logger.error("Failed to add reaction", { error });
   }
 
-  ctx.logger.info("Adding article to queue", { article: articleId });
-  addArticleJob(articleId);
+  const chatId = ctx.chat.id;
+  const messageId = ctx.message.message_id;
+
+  ctx.logger.info("Spawning worker for article", { article: articleId });
+  spawnArticleWorker({
+    articleId,
+    onSuccess: async () => {
+      try {
+        await ctx.api.setMessageReaction(chatId, messageId, [
+          { type: "emoji", emoji: "👍" },
+        ]);
+      } catch (error) {
+        ctx.logger.error("Failed to update Telegram reaction", {
+          error,
+        });
+      }
+    },
+    onFailure: async () => {
+      try {
+        await ctx.api.setMessageReaction(chatId, messageId, [
+          { type: "emoji", emoji: "👎" },
+        ]);
+      } catch (error) {
+        ctx.logger.error("Failed to update Telegram reaction", {
+          error,
+        });
+      }
+    },
+  });
 }
 
 /**
@@ -248,7 +281,7 @@ async function handleLongMessage(
   }
 
   // Process with worker
-  await queueArticleForProcessing(ctx, article.id);
+  await processArticleWithWorker(ctx, article.id);
 }
 
 /**

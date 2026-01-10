@@ -13,9 +13,6 @@ const logger = defaultLogger.child({ module: "main" });
 // Run database migrations
 runMigrations();
 
-// Initialize article processing queue
-initQueue();
-
 // Create Hono app with all middleware and routes
 const app = createApp();
 
@@ -37,6 +34,9 @@ logger.info(`Telegram bot: @${config.BOT_USERNAME}`);
 
 // Start cron jobs
 startCrons();
+
+// Initialize article processing queue (after server is ready)
+initQueue();
 
 // Graceful shutdown
 process.on("SIGINT", async () => {

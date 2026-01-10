@@ -1,3 +1,4 @@
+import { mkdirSync } from "node:fs";
 import path from "node:path";
 import bunline, { type Queue } from "bunline";
 import { config } from "./config";
@@ -44,6 +45,15 @@ export function initQueue(): void {
   }
 
   const dbPath = getQueueDbPath();
+  const dbDir = path.dirname(dbPath);
+
+  // Ensure queue database directory exists
+  try {
+    mkdirSync(dbDir, { recursive: true });
+  } catch {
+    // Directory might already exist
+  }
+
   logger.info("Initializing article queue", { dbPath });
 
   articleQueue = bunline.createQueue<ArticleJobData>("article-processing", {

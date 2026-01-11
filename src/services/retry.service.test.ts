@@ -13,7 +13,7 @@ import { db, resetDatabase } from "../../test/bootstrap";
 import { createUser } from "../../test/fixtures";
 import { articles } from "../db/schema";
 import { config } from "../lib/config";
-import * as worker from "../lib/worker";
+import * as queue from "../lib/queue";
 import {
   getExhaustedArticles,
   getStuckArticles,
@@ -421,22 +421,19 @@ describe("retry.service", () => {
   });
 
   describe("retryFailedArticles", () => {
-    let spySpawnArticleWorker: ReturnType<
-      typeof spyOn<typeof worker, "spawnArticleWorker">
-    >;
+    let spyAddArticleJob: ReturnType<typeof spyOn<typeof queue, "addArticleJob">>;
 
     beforeEach(() => {
-      spySpawnArticleWorker = spyOn(
-        worker,
-        "spawnArticleWorker",
-      ).mockImplementation(() => {});
+      spyAddArticleJob = spyOn(queue, "addArticleJob").mockImplementation(
+        () => {},
+      );
     });
 
     afterEach(() => {
-      spySpawnArticleWorker.mockRestore();
+      spyAddArticleJob.mockRestore();
     });
 
-    it("should spawn workers for all stuck articles", async () => {
+    it("should add all stuck articles to queue", async () => {
       const user = await createUser(db);
 
       const [article1] = await db
@@ -463,13 +460,9 @@ describe("retry.service", () => {
 
       await retryFailedArticles();
 
-      expect(spySpawnArticleWorker).toHaveBeenCalledTimes(2);
-      expect(spySpawnArticleWorker).toHaveBeenCalledWith({
-        articleId: article1?.id,
-      });
-      expect(spySpawnArticleWorker).toHaveBeenCalledWith({
-        articleId: article2?.id,
-      });
+      expect(spyAddArticleJob).toHaveBeenCalledTimes(2);
+      expect(spyAddArticleJob).toHaveBeenCalledWith(article1?.id);
+      expect(spyAddArticleJob).toHaveBeenCalledWith(article2?.id);
     });
 
     it("should mark all exhausted articles as error", async () => {
@@ -516,7 +509,7 @@ describe("retry.service", () => {
     it("should handle case with no stuck or exhausted articles", async () => {
       await retryFailedArticles();
 
-      expect(spySpawnArticleWorker).not.toHaveBeenCalled();
+      expect(spyAddArticleJob).not.toHaveBeenCalled();
     });
 
     it("should handle mixed scenario with both stuck and exhausted articles", async () => {
@@ -547,11 +540,9 @@ describe("retry.service", () => {
 
       await retryFailedArticles();
 
-      // Should spawn worker for stuck article
-      expect(spySpawnArticleWorker).toHaveBeenCalledTimes(1);
-      expect(spySpawnArticleWorker).toHaveBeenCalledWith({
-        articleId: stuckArticle?.id,
-      });
+      // Should add stuck article to queue
+      expect(spyAddArticleJob).toHaveBeenCalledTimes(1);
+      expect(spyAddArticleJob).toHaveBeenCalledWith(stuckArticle?.id);
 
       // Should mark exhausted article as error
       const [updated] = await db

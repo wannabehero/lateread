@@ -1,15 +1,25 @@
 import path from "node:path";
 import bunline, { type Queue } from "bunline";
+import { bot } from "../bot";
 import { config } from "./config";
 import { defaultLogger } from "./logger";
 
 const logger = defaultLogger.child({ module: "queue" });
 
 /**
+ * Telegram message context for reaction feedback
+ */
+export interface TelegramContext {
+  chatId: number;
+  messageId: number;
+}
+
+/**
  * Job data for article processing
  */
 export interface ArticleJobData {
   articleId: string;
+  telegram?: TelegramContext;
 }
 
 // Queue instance (singleton)
@@ -53,6 +63,42 @@ export function initQueue(): void {
     lockDuration: config.PROCESSING_TIMEOUT_SECONDS * 1000 + 5000, // Processing timeout + buffer
   });
 
+  // Subscribe to job completion events for message feedback
+  articleQueue.on("job:completed", async (job) => {
+    const { telegram, articleId } = job.data;
+    if (telegram) {
+      try {
+        await bot.api.setMessageReaction(telegram.chatId, telegram.messageId, [
+          { type: "emoji", emoji: "👍" },
+        ]);
+        logger.info("Updated reaction to success", { articleId });
+      } catch (error) {
+        logger.warn("Failed to update reaction", { articleId, error });
+      }
+    }
+  });
+
+  articleQueue.on("job:exhausted", async (job, error) => {
+    const { telegram, articleId } = job.data;
+    if (telegram) {
+      try {
+        await bot.api.setMessageReaction(telegram.chatId, telegram.messageId, [
+          { type: "emoji", emoji: "👎" },
+        ]);
+        logger.info("Updated reaction to failure", { articleId });
+      } catch (reactionError) {
+        logger.warn("Failed to update reaction", {
+          articleId,
+          error: reactionError,
+        });
+      }
+    }
+    logger.error("Article processing exhausted all retries", {
+      articleId,
+      error: String(error),
+    });
+  });
+
   // Start processing with worker thread
   const workerPath = new URL("../workers/article-worker.ts", import.meta.url)
     .pathname;
@@ -63,17 +109,20 @@ export function initQueue(): void {
 /**
  * Add an article to the processing queue
  */
-export function addArticleJob(articleId: string): void {
+export function addArticleJob(
+  articleId: string,
+  telegram?: TelegramContext,
+): void {
   const queue = getArticleQueue();
   queue.add(
-    { articleId },
+    { articleId, telegram },
     {
       maxRetries: config.MAX_RETRY_ATTEMPTS,
       backoffType: "exponential",
       backoffDelay: config.RETRY_DELAY_MINUTES * 60 * 1000,
     },
   );
-  logger.info("Added article to queue", { articleId });
+  logger.info("Added article to queue", { articleId, hasTelegram: !!telegram });
 }
 
 /**

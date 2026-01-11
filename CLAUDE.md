@@ -79,7 +79,7 @@ src/
 │   ├── tts.ts           # TTS provider abstraction (ElevenLabs)
 │   ├── readability.ts   # Article content extraction
 │   ├── safe-fetch.ts    # SSRF-validated HTTP requests
-│   └── worker.ts        # Worker spawning utility
+│   └── queue.ts         # Bunline queue for background jobs
 ├── middleware/
 │   ├── auth.ts          # requireAuth("redirect"|"json-401")
 │   ├── session.ts       # Session cookie handling
@@ -107,7 +107,7 @@ src/
 ├── types/
 │   └── context.ts       # AppContext, AppVariables types
 └── workers/
-    └── process-metadata.ts  # Background article processing
+    └── article-worker.ts    # Bunline worker for article processing
 
 web/                     # Frontend assets (bundled to public/)
 ├── scripts/             # JS modules
@@ -299,28 +299,34 @@ export const ArticleCard: FC<ArticleCardProps> = ({ article, isArchived }) => {
 
 ### Workers
 
-Background processing with fire-and-forget pattern:
+Background processing using bunline queue:
 
 ```typescript
-// Spawning a worker (from bot handler)
-import { spawnArticleWorker } from "../lib/worker";
+// Adding a job to the queue (from bot handler)
+import { addArticleJob } from "../lib/queue";
 
-spawnArticleWorker({
-  articleId,
-  onSuccess: (id) => logger.info("Processed", { articleId: id }),
-  onFailure: (id, error) => logger.error("Failed", { articleId: id, error }),
-});
+addArticleJob(articleId);
 
-// Worker file (src/workers/process-metadata.ts)
-self.onmessage = async (event: MessageEvent<{ articleId: string }>) => {
-  const { articleId } = event.data;
+// Worker file (src/workers/article-worker.ts)
+import bunline from "bunline";
+import type { ArticleJobData } from "../lib/queue";
+
+bunline.setupThreadWorker<ArticleJobData>(async (job) => {
+  const { articleId } = job.data;
+  const logger = defaultLogger.child({
+    module: "article-worker",
+    article: articleId,
+    jobId: job.id,
+  });
+
   try {
     // Processing pipeline...
-    self.postMessage({ success: true, articleId });
+    logger.info("Article processing completed successfully");
   } catch (error) {
-    self.postMessage({ success: false, articleId, error: String(error) });
+    // Re-throw to let bunline handle retries
+    throw error;
   }
-};
+});
 ```
 
 ### Error Handling

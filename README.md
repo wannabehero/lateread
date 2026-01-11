@@ -117,7 +117,7 @@ Frontend resources from web/scripts and web/styles get bundled into `public/styl
 
 I've tried bundling the backend code as well, but there're two issues:
 - `jsdom` does some sneaky imports so it needs to be excluded from the bundle and installed as a dep — this can be dealt with by adding `-e jsdom` to the build command.
-- [process-metadata](./src/workers/process-metadata.ts) worker is being spawned via URL so it needs to be available dynamically — I haven't found a way to go around that in a nice way, except for using something else for workers instead of bun's API which I don't want yet.
+- [article-worker](./src/workers/article-worker.ts) worker is being spawned via bunline so it needs to be available dynamically — I haven't found a way to go around that in a nice way yet.
 
 This command was able to build the app with workers being broken:
 ```sh

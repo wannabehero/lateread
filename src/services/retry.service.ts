@@ -3,7 +3,7 @@ import { articles } from "../db/schema";
 import { config } from "../lib/config";
 import { db } from "../lib/db";
 import { defaultLogger } from "../lib/logger";
-import { spawnArticleWorker } from "../lib/worker";
+import { addArticleJob } from "../lib/queue";
 
 const logger = defaultLogger.child({ module: "retry" });
 
@@ -116,7 +116,7 @@ export async function retryFailedArticles(): Promise<void> {
       count: stuckArticles.length,
     });
 
-    // 2. Spawn workers for each stuck article
+    // 2. Add stuck articles to queue for retry
     for (const article of stuckArticles) {
       logger.info("Retrying article", {
         article: article.id,
@@ -124,10 +124,7 @@ export async function retryFailedArticles(): Promise<void> {
         maxAttempts: config.MAX_RETRY_ATTEMPTS,
       });
 
-      // Spawn worker without callbacks (fire and forget)
-      spawnArticleWorker({
-        articleId: article.id,
-      });
+      addArticleJob(article.id);
     }
 
     // 3. Get articles that have exhausted retry attempts

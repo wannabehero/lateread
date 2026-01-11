@@ -1,6 +1,7 @@
 import path from "node:path";
 import bunline, { type Queue } from "bunline";
 import { bot } from "../bot";
+import { markArticleAsError } from "../services/retry.service";
 import { config } from "./config";
 import { defaultLogger } from "./logger";
 
@@ -80,6 +81,13 @@ export function initQueue(): void {
 
   articleQueue.on("job:exhausted", async (job, error) => {
     const { telegram, articleId } = job.data;
+
+    // Mark article as permanently failed
+    await markArticleAsError(
+      articleId,
+      String(error) || "Max retry attempts exceeded",
+    );
+
     if (telegram) {
       try {
         await bot.api.setMessageReaction(telegram.chatId, telegram.messageId, [

@@ -2,7 +2,7 @@ import type { Bot, Context } from "grammy";
 import { config } from "../lib/config";
 import { contentCache } from "../lib/content-cache";
 import { defaultLogger } from "../lib/logger";
-import { addArticleJob } from "../lib/queue";
+import { addArticleJob, type TelegramContext } from "../lib/queue";
 import { createArticle } from "../services/articles.service";
 import { claimAuthToken } from "../services/auth.service";
 import { getTelegramUserByTelegramId } from "../services/telegram-users.service";
@@ -186,6 +186,19 @@ function getMessageText(ctx: Context): string {
 }
 
 /**
+ * Extract telegram context from bot context for message feedback
+ */
+function extractTelegramContext(ctx: BotContext): TelegramContext | undefined {
+  const chatId = ctx.chat?.id;
+  const messageId = ctx.message?.message_id;
+
+  if (chatId && messageId) {
+    return { chatId, messageId };
+  }
+  return undefined;
+}
+
+/**
  * Add article to processing queue
  */
 async function queueArticleForProcessing(
@@ -198,8 +211,12 @@ async function queueArticleForProcessing(
     ctx.logger.error("Failed to add reaction", { error });
   }
 
-  ctx.logger.info("Adding article to queue", { article: articleId });
-  addArticleJob(articleId);
+  const telegram = extractTelegramContext(ctx);
+  ctx.logger.info("Adding article to queue", {
+    article: articleId,
+    hasTelegram: !!telegram,
+  });
+  addArticleJob(articleId, telegram);
 }
 
 /**

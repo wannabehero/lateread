@@ -18,14 +18,7 @@ searchRouter.get(
   validator(
     "query",
     z.object({
-      q: z
-        .string()
-        .trim()
-        .max(500, "Search query too long")
-        .refine((val) => !val.includes("%"), {
-          message: "Search query contains invalid characters",
-        })
-        .optional(),
+      q: z.string().trim().max(500, "Search query too long").optional(),
     }),
   ),
   async (c) => {

@@ -314,6 +314,25 @@ describe("content.service", () => {
       expect(results[0]).toBe(articleId);
     });
 
+    it("should handle search queries starting with hyphen", async () => {
+      const articleId = randomUUID();
+
+      const userCacheDir = join(config.CACHE_DIR, TEST_USER_ID);
+      await mkdir(userCacheDir, { recursive: true });
+
+      await Bun.write(
+        join(userCacheDir, `${articleId}.html`),
+        "<html><body><p>-v option</p></body></html>",
+      );
+
+      // Search for "-v"
+      // If not handled correctly, ripgrep might treat it as a flag
+      const results = await searchCachedArticleIds(TEST_USER_ID, "-v");
+
+      expect(results).toHaveLength(1);
+      expect(results[0]).toBe(articleId);
+    });
+
     it("should handle search queries with special characters", async () => {
       const articleId = randomUUID();
 
@@ -367,6 +386,26 @@ describe("content.service", () => {
       expect(results).toContain(article2Id);
       expect(results).toContain(article3Id);
       expect(results).not.toContain(article4Id);
+    });
+
+    it("should treat regex characters as literals", async () => {
+      const articleId = randomUUID();
+
+      const userCacheDir = join(config.CACHE_DIR, TEST_USER_ID);
+      await mkdir(userCacheDir, { recursive: true });
+
+      await Bun.write(
+        join(userCacheDir, `${articleId}.html`),
+        "<html><body><p>domain.com</p></body></html>",
+      );
+
+      // Search for "domain.com"
+      // If . was treated as wildcard, it would match "domain-com" too
+      // But we want literal match
+      const results = await searchCachedArticleIds(TEST_USER_ID, "domain.com");
+
+      expect(results).toHaveLength(1);
+      expect(results[0]).toBe(articleId);
     });
   });
 });

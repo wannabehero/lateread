@@ -52,17 +52,17 @@ async function buildArticleConditions(
 
   // If search query provided, search database, summaries, and cached content
   if (filters.query?.trim()) {
-    // TODO: this looks like injection, sanitize input
-    const searchPattern = `%${filters.query.trim()}%`;
+    const sanitizedQuery = escapeLikeString(filters.query.trim());
+    const searchPattern = `%${sanitizedQuery}%`;
     const searchConditions: SQL[] = [];
 
     // Search database (title, description, and summaries)
     const dbSearchCondition = or(
-      like(articles.title, searchPattern),
-      like(articles.description, searchPattern),
-      like(articleSummaries.oneSentence, searchPattern),
-      like(articleSummaries.oneParagraph, searchPattern),
-      like(articleSummaries.long, searchPattern),
+      sql`${articles.title} LIKE ${searchPattern} ESCAPE '\\'`,
+      sql`${articles.description} LIKE ${searchPattern} ESCAPE '\\'`,
+      sql`${articleSummaries.oneSentence} LIKE ${searchPattern} ESCAPE '\\'`,
+      sql`${articleSummaries.oneParagraph} LIKE ${searchPattern} ESCAPE '\\'`,
+      sql`${articleSummaries.long} LIKE ${searchPattern} ESCAPE '\\'`,
     );
     if (dbSearchCondition) {
       searchConditions.push(dbSearchCondition);
@@ -394,6 +394,13 @@ export async function createArticle(params: {
   }
 
   return article;
+}
+
+/**
+ * Escapes special characters for LIKE clauses
+ */
+function escapeLikeString(text: string): string {
+  return text.replace(/[\\%_]/g, "\\$&");
 }
 
 /**

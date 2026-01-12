@@ -98,6 +98,10 @@ articlesRouter.get(
           summary: features.summary && isLLMAvailable(),
           tts: features.tts && isTTSAvailable(),
         }}
+        readingPosition={{
+          element: article.readingPositionElement,
+          offset: article.readingPositionOffset,
+        }}
       />
     );
 

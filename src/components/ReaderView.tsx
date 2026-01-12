@@ -11,12 +11,18 @@ interface ReaderViewProps {
     tts: boolean;
     summary: boolean;
   };
+
+  readingPosition?: {
+    element: number | null;
+    offset: number | null;
+  };
 }
 
 export const ReaderView: FC<ReaderViewProps> = ({
   article,
   content,
   features,
+  readingPosition,
 }) => {
   const displayTitle = article.title || article.url;
 
@@ -78,17 +84,24 @@ export const ReaderView: FC<ReaderViewProps> = ({
       )}
 
       {features.tts && (
-        // @ts-ignore: Custom element
+        // @ts-expect-error: Custom element
         <article-player
           src={`/api/articles/${article.id}/tts`}
           title={displayTitle}
         />
       )}
 
-      <div
-        class="reader-content"
-        dangerouslySetInnerHTML={{ __html: content }}
-      />
+      {/* @ts-expect-error: Custom element */}
+      <reader-position
+        article-id={article.id}
+        initial-element={readingPosition?.element?.toString() ?? ""}
+        initial-offset={readingPosition?.offset?.toString() ?? ""}
+      >
+        <div
+          class="reader-content"
+          dangerouslySetInnerHTML={{ __html: content }}
+        />
+      </reader-position>
 
       <footer
         class="reader-footer"

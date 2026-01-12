@@ -94,6 +94,8 @@ export const articles = sqliteTable(
       .default(sql`(unixepoch())`),
     wordCount: integer("word_count"),
     readingTimeSeconds: integer("reading_time_seconds"),
+    readingPositionElement: integer("reading_position_element"),
+    readingPositionOffset: integer("reading_position_offset"),
   },
   (table) => [
     index("articles_user_id_idx").on(table.userId),

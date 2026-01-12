@@ -393,6 +393,35 @@ function escapeLikeString(text: string): string {
 }
 
 /**
+ * Update reading position for an article
+ */
+export async function updateReadingPosition(
+  articleId: string,
+  userId: string,
+  position: { element: number; offset: number },
+): Promise<void> {
+  // Verify article exists and belongs to user
+  const [article] = await db
+    .select()
+    .from(articles)
+    .where(and(eq(articles.id, articleId), eq(articles.userId, userId)))
+    .limit(1);
+
+  if (!article) {
+    throw new NotFoundError("Article", articleId);
+  }
+
+  await db
+    .update(articles)
+    .set({
+      readingPositionElement: position.element,
+      readingPositionOffset: position.offset,
+      updatedAt: new Date(),
+    })
+    .where(eq(articles.id, articleId));
+}
+
+/**
  * Delete an article
  * Returns true if the article was deleted
  */

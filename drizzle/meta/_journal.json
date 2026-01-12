@@ -43,6 +43,13 @@
       "when": 1767966320793,
       "tag": "0005_colossal_corsair",
       "breakpoints": true
+    },
+    {
+      "idx": 6,
+      "version": "6",
+      "when": 1768223692387,
+      "tag": "0006_black_the_phantom",
+      "breakpoints": true
     }
   ]
 }

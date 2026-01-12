@@ -3,7 +3,10 @@ import type { Context, Next } from "hono";
 import type { AppContext } from "../types/context";
 import { requireAuth } from "./auth";
 
-function createMockContext(userId?: string): Context<AppContext> {
+function createMockContext(
+  userId?: string,
+  path = "/articles",
+): Context<AppContext> {
   const context = {
     get: (key: string) => (key === "userId" ? userId : undefined),
     redirect: mock(() => new Response("", { status: 302 })),
@@ -11,6 +14,9 @@ function createMockContext(userId?: string): Context<AppContext> {
       (data: unknown, status?: number) =>
         new Response(JSON.stringify(data), { status }),
     ),
+    req: {
+      path,
+    },
   } as unknown as Context<AppContext>;
   return context;
 }
@@ -23,13 +29,13 @@ describe("middleware/auth", () => {
   });
 
   describe("requireAuth('redirect')", () => {
-    it("should redirect to / when userId is missing", async () => {
-      const c = createMockContext(undefined);
+    it("should redirect to /login with back param when userId is missing", async () => {
+      const c = createMockContext(undefined, "/articles");
       const middleware = requireAuth("redirect");
 
       await middleware(c, mockNext);
 
-      expect(c.redirect).toHaveBeenCalledWith("/");
+      expect(c.redirect).toHaveBeenCalledWith("/login?back=%2Farticles");
       expect(mockNext).not.toHaveBeenCalled();
     });
 
@@ -44,12 +50,12 @@ describe("middleware/auth", () => {
     });
 
     it("should use redirect strategy by default", async () => {
-      const c = createMockContext(undefined);
+      const c = createMockContext(undefined, "/dashboard");
       const middleware = requireAuth(); // No argument
 
       await middleware(c, mockNext);
 
-      expect(c.redirect).toHaveBeenCalledWith("/");
+      expect(c.redirect).toHaveBeenCalledWith("/login?back=%2Fdashboard");
       expect(mockNext).not.toHaveBeenCalled();
     });
   });
@@ -88,12 +94,12 @@ describe("middleware/auth", () => {
 
     it("should treat empty string userId as missing", async () => {
       // Empty string is falsy in JavaScript
-      const c = createMockContext("");
+      const c = createMockContext("", "/settings");
       const middleware = requireAuth("redirect");
 
       await middleware(c, mockNext);
 
-      expect(c.redirect).toHaveBeenCalledWith("/");
+      expect(c.redirect).toHaveBeenCalledWith("/login?back=%2Fsettings");
       expect(mockNext).not.toHaveBeenCalled();
     });
   });

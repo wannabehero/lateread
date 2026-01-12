@@ -1,0 +1,12 @@
+dbs:
+  - path: ${DATABASE_URL}
+    replicas:
+      - type: s3
+        bucket: ${LITESTREAM_REPLICA_BUCKET}
+        path: ${LITESTREAM_REPLICA_PATH}
+        endpoint: https://${CLOUDFLARE_ACCOUNT_ID}.r2.cloudflarestorage.com
+        region: auto
+        access-key-id: ${LITESTREAM_ACCESS_KEY_ID}
+        secret-access-key: ${LITESTREAM_SECRET_ACCESS_KEY}
+        sync-interval: 60s
+        snapshot-interval: 1h

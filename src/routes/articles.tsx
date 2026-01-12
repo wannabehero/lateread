@@ -23,16 +23,14 @@ const articlesRouter = new Hono<AppContext>();
 export async function renderArticlesList(
   c: Context<AppContext>,
   userId: string,
-  options?: { status?: "all" | "archived"; tag?: string },
+  options?: { status?: "all" | "archived" },
 ) {
   const status = options?.status ?? "all";
-  const tag = options?.tag;
   const archived = status === "archived";
 
   const [articlesWithTags, processingCount] = await Promise.all([
     getArticlesWithTags(userId, {
       archived,
-      tag,
     }),
     countArticlesByStatus(userId, ["pending", "processing"]),
   ]);
@@ -41,7 +39,6 @@ export async function renderArticlesList(
     <ArticleList
       articles={articlesWithTags}
       archived={archived}
-      tag={tag}
       processingCount={processingCount}
     />
   );
@@ -64,18 +61,12 @@ articlesRouter.get(
         })
         .optional()
         .default("all"),
-      tag: z
-        .string()
-        .trim()
-        .min(1, "Tag cannot be empty")
-        .toLowerCase()
-        .optional(),
     }),
   ),
   async (c) => {
     const userId = c.get("userId");
-    const { status, tag } = c.req.valid("query");
-    return renderArticlesList(c, userId, { status, tag });
+    const { status } = c.req.valid("query");
+    return renderArticlesList(c, userId, { status });
   },
 );
 

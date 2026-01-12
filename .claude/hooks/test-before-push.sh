@@ -4,8 +4,10 @@ set -o pipefail
 # Extract the bash command from stdin (Claude Code passes tool input as JSON)
 COMMAND=$(jq -r '.tool_input.command // empty' 2>/dev/null)
 
-# Check if this is a git push command
-if [[ "$COMMAND" =~ git[[:space:]]+push ]]; then
+# Check if this is a git push command (anywhere in the command string)
+# Match "git push" with word boundaries to avoid false positives
+# This catches: git push, git commit && git push, git add . && git commit && git push, etc.
+if [[ "$COMMAND" =~ (^|[[:space:];|&])git[[:space:]]+push([[:space:]]|$) ]]; then
     echo "🧪 Detected git push - running tests first..." >&2
 
     # Run bun install and tests

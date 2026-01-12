@@ -706,4 +706,92 @@ describe("articles.service", () => {
       expect(article2.url).toBe("https://example.com/article2");
     });
   });
+
+  describe("search functionality", () => {
+    it("should search articles by title", async () => {
+      const user = await createUser(db);
+      await createCompletedArticle(db, user.id, {
+        title: "Introduction to JavaScript",
+      });
+      await createCompletedArticle(db, user.id, {
+        title: "Python Basics",
+      });
+
+      const results = await getArticlesWithTags(user.id, {
+        query: "JavaScript",
+      });
+
+      expect(results).toHaveLength(1);
+      expect(results[0]?.title).toBe("Introduction to JavaScript");
+    });
+
+    it("should escape special characters in search query", async () => {
+      const user = await createUser(db);
+      await createCompletedArticle(db, user.id, {
+        title: "100% Guaranteed",
+      });
+      await createCompletedArticle(db, user.id, {
+        title: "1000 Guaranteed",
+      });
+
+      // Search for "100%" - should only match the first article
+      // If % was not escaped, it would match both (as wildcards)
+      const results = await getArticlesWithTags(user.id, {
+        query: "100%",
+      });
+
+      expect(results).toHaveLength(1);
+      expect(results[0]?.title).toBe("100% Guaranteed");
+    });
+
+    it("should escape underscore in search query", async () => {
+      const user = await createUser(db);
+      await createCompletedArticle(db, user.id, {
+        title: "test_article",
+      });
+      await createCompletedArticle(db, user.id, {
+        title: "test-article",
+      });
+
+      // Search for "test_article" - should only match the first article
+      // If _ was not escaped, it would match any single character
+      const results = await getArticlesWithTags(user.id, {
+        query: "test_article",
+      });
+
+      expect(results).toHaveLength(1);
+      expect(results[0]?.title).toBe("test_article");
+    });
+
+    it("should handle partial matches with escaped characters", async () => {
+      const user = await createUser(db);
+      await createCompletedArticle(db, user.id, {
+        title: "The 50% Rule",
+      });
+
+      const results = await getArticlesWithTags(user.id, {
+        query: "50%",
+      });
+
+      expect(results).toHaveLength(1);
+      expect(results[0]?.title).toBe("The 50% Rule");
+    });
+
+    it("should escape backslash in search query", async () => {
+      const user = await createUser(db);
+      await createCompletedArticle(db, user.id, {
+        title: "AC\\DC",
+      });
+      await createCompletedArticle(db, user.id, {
+        title: "ACDC",
+      });
+
+      const results = await getArticlesWithTags(user.id, {
+        query: "AC\\DC",
+      });
+
+      expect(results).toHaveLength(1);
+      expect(results[0]?.title).toBe("AC\\DC");
+    });
+  });
 });

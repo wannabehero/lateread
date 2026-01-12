@@ -66,6 +66,8 @@ export async function searchCachedArticleIds(
         "rg",
         "--files-with-matches",
         "--ignore-case",
+        "--fixed-strings",
+        "--",
         searchQuery,
         userCacheDir,
       ],

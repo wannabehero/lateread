@@ -78,16 +78,11 @@ export const ReaderView: FC<ReaderViewProps> = ({
       )}
 
       {features.tts && (
-        <section class="reader-audio">
-          <audio
-            id="article-audio"
-            controls
-            preload="none"
-            src={`/api/articles/${article.id}/tts`}
-            data-title={displayTitle}
-            hx-on-play="setAudioMetadata(this)"
-          />
-        </section>
+        // @ts-ignore: Custom element
+        <article-player
+          src={`/api/articles/${article.id}/tts`}
+          title={displayTitle}
+        />
       )}
 
       <div

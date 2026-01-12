@@ -366,8 +366,8 @@ describe("routes/articles", () => {
       expect(res.status).toBe(200);
 
       // Check for audio player
-      expect(doc.querySelector(".reader-audio")).toBeTruthy();
-      expect(doc.querySelector("audio")?.getAttribute("src")).toBe(
+      expect(doc.querySelector("article-player")).toBeTruthy();
+      expect(doc.querySelector("article-player")?.getAttribute("src")).toBe(
         `/api/articles/${article.id}/tts`,
       );
 
@@ -416,7 +416,7 @@ describe("routes/articles", () => {
       expect(res.status).toBe(200);
 
       // Should not show audio player
-      expect(doc.querySelector(".reader-audio")).toBeNull();
+      expect(doc.querySelector("article-player")).toBeNull();
 
       spyIsTTSAvailable.mockRestore();
     });

@@ -186,7 +186,7 @@ describe("renderWithLayout", () => {
       expect(doc.querySelector(".nav-actions")).toBeTruthy();
       expect(doc.querySelector('a[href="/search"]')).toBeTruthy();
       expect(
-        doc.querySelector('a[href="/articles?status=archived"]'),
+        doc.querySelector('a[href="/archive"]'),
       ).toBeTruthy();
     });
 

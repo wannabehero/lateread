@@ -19,12 +19,7 @@ export async function startBot() {
   registerHandlers(bot);
 
   try {
-    // Only start bot if we have a real token (not "test_token")
-    if (config.TELEGRAM_BOT_TOKEN !== "test_token") {
-      await bot.start();
-    } else {
-      logger.warn("Bot polling skipped (test_token)");
-    }
+    await bot.start();
   } catch (error) {
     logger.error("Failed to start bot", { error });
     throw error;

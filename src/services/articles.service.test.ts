@@ -71,33 +71,6 @@ describe("articles.service", () => {
       expect(archivedArticles[0]?.title).toBe("Archived Article");
     });
 
-    it("should filter by tag", async () => {
-      const user = await createUser(db);
-      const article1 = await createCompletedArticle(db, user.id, {
-        title: "Article 1",
-      });
-      const article2 = await createCompletedArticle(db, user.id, {
-        title: "Article 2",
-      });
-
-      const jsTag = await createTag(db, user.id, "javascript");
-      const pythonTag = await createTag(db, user.id, "python");
-
-      await addTagToArticle(db, article1.id, jsTag.id);
-      await addTagToArticle(db, article2.id, pythonTag.id);
-
-      const jsArticles = await getArticlesWithTags(user.id, {
-        tag: "javascript",
-      });
-      expect(jsArticles).toHaveLength(1);
-      expect(jsArticles[0]?.title).toBe("Article 1");
-
-      const pythonArticles = await getArticlesWithTags(user.id, {
-        tag: "python",
-      });
-      expect(pythonArticles).toHaveLength(1);
-      expect(pythonArticles[0]?.title).toBe("Article 2");
-    });
 
     it("should only return completed articles", async () => {
       const user = await createUser(db);
@@ -421,26 +394,6 @@ describe("articles.service", () => {
       expect(activeCount).toBe(1);
     });
 
-    it("should count articles by tag", async () => {
-      const user = await createUser(db);
-      const article1 = await createCompletedArticle(db, user.id);
-      const article2 = await createCompletedArticle(db, user.id);
-      const article3 = await createCompletedArticle(db, user.id);
-      await createCompletedArticle(db, user.id); // Untagged article
-
-      const jsTag = await createTag(db, user.id, "javascript");
-      const pythonTag = await createTag(db, user.id, "python");
-
-      await addTagToArticle(db, article1.id, jsTag.id);
-      await addTagToArticle(db, article2.id, jsTag.id);
-      await addTagToArticle(db, article3.id, pythonTag.id);
-
-      const jsCount = await countArticles(user.id, { tag: "javascript" });
-      expect(jsCount).toBe(2); // Should only count javascript-tagged articles
-
-      const pythonCount = await countArticles(user.id, { tag: "python" });
-      expect(pythonCount).toBe(1); // Should only count python-tagged article
-    });
 
     it("should return 0 for user with no articles", async () => {
       const user = await createUser(db);

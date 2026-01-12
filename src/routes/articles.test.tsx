@@ -117,31 +117,6 @@ describe("routes/articles", () => {
       expect(html).not.toContain("Archived Article");
     });
 
-    it("should filter articles by tag", async () => {
-      const tag1 = await createTag(db, testUserId, "technology");
-      const tag2 = await createTag(db, testUserId, "science");
-
-      const article1 = await createCompletedArticle(db, testUserId, {
-        title: "Tech Article",
-      });
-      const article2 = await createCompletedArticle(db, testUserId, {
-        title: "Science Article",
-      });
-
-      await addTagToArticle(db, article1.id, tag1.id);
-      await addTagToArticle(db, article2.id, tag2.id);
-
-      const res = await app.request("/articles?tag=technology", {
-        headers: authHeaders,
-      });
-      const html = await res.text();
-
-      expect(res.status).toBe(200);
-
-      // Should show only tech article
-      expect(html).toContain("Tech Article");
-      expect(html).not.toContain("Science Article");
-    });
 
     it("should display processing count for pending and processing articles", async () => {
       await createArticle(db, testUserId, { status: "pending" });

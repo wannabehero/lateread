@@ -21,13 +21,12 @@ type ArticleWithTags = Article & {
 
 export interface GetArticlesFilters {
   archived?: boolean;
-  tag?: string;
   query?: string;
 }
 
 /**
  * Build WHERE conditions for article queries
- * Handles: userId, status, archived, tag filtering, and search (database + cached content)
+ * Handles: userId, status, archived, and search (database + cached content)
  */
 async function buildArticleConditions(
   userId: string,
@@ -40,14 +39,6 @@ async function buildArticleConditions(
 
   if (filters.archived !== undefined) {
     conditions.push(eq(articles.archived, filters.archived));
-  }
-
-  // If filtering by tag, add tag conditions for efficient index usage
-  // Tags are stored lowercase, so normalize the filter
-  // Index: (userId, name) - both columns needed for optimal performance
-  if (filters.tag) {
-    const tagName = filters.tag.toLowerCase();
-    conditions.push(eq(tags.userId, userId), eq(tags.name, tagName));
   }
 
   // If search query provided, search database, summaries, and cached content
@@ -136,8 +127,6 @@ export async function countArticles(
   const [result] = await db
     .select({ count: sql<number>`count(*)` })
     .from(articles)
-    .leftJoin(articleTags, eq(articles.id, articleTags.articleId))
-    .leftJoin(tags, eq(articleTags.tagId, tags.id))
     .leftJoin(articleSummaries, eq(articles.id, articleSummaries.articleId))
     .where(and(...conditions));
 

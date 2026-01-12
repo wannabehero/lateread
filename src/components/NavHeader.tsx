@@ -37,11 +37,7 @@ export const NavHeader: FC<NavHeaderProps> = ({
                 class="nav-icon"
               />
             </a>
-            <a
-              href="/articles?status=archived"
-              class="nav-icon-link"
-              title="Archive"
-            >
+            <a href="/archive" class="nav-icon-link" title="Archive">
               <img
                 src="/public/assets/archive.svg"
                 alt="Archive"

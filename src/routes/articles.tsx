@@ -23,11 +23,8 @@ const articlesRouter = new Hono<AppContext>();
 export async function renderArticlesList(
   c: Context<AppContext>,
   userId: string,
-  options?: { status?: "all" | "archived" },
+  archived: boolean = false,
 ) {
-  const status = options?.status ?? "all";
-  const archived = status === "archived";
-
   const [articlesWithTags, processingCount] = await Promise.all([
     getArticlesWithTags(userId, {
       archived,
@@ -52,23 +49,19 @@ export async function renderArticlesList(
 articlesRouter.get(
   "/articles",
   requireAuth("redirect"),
-  validator(
-    "query",
-    z.object({
-      status: z
-        .enum(["all", "archived"], {
-          message: "Status must be 'all' or 'archived'",
-        })
-        .optional()
-        .default("all"),
-    }),
-  ),
   async (c) => {
     const userId = c.get("userId");
-    const { status } = c.req.valid("query");
-    return renderArticlesList(c, userId, { status });
+    return renderArticlesList(c, userId, false);
   },
 );
+
+/**
+ * GET /archive - List archived articles
+ */
+articlesRouter.get("/archive", requireAuth("redirect"), async (c) => {
+  const userId = c.get("userId");
+  return renderArticlesList(c, userId, true);
+});
 
 /**
  * GET /articles/:id - Read article

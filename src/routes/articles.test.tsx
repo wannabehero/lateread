@@ -75,7 +75,7 @@ describe("routes/articles", () => {
       expect(html).toContain("Test Article 2");
     });
 
-    it("should filter archived articles when status=archived", async () => {
+    it("should render archived articles at /archive", async () => {
       const activeArticle = await createCompletedArticle(db, testUserId, {
         title: "Active Article",
         archived: false,
@@ -85,7 +85,7 @@ describe("routes/articles", () => {
         archived: true,
       });
 
-      const res = await app.request("/articles?status=archived", {
+      const res = await app.request("/archive", {
         headers: authHeaders,
       });
       const html = await res.text();
@@ -136,7 +136,7 @@ describe("routes/articles", () => {
       await createArticle(db, testUserId, { status: "pending" });
       await createCompletedArticle(db, testUserId, { archived: true });
 
-      const res = await app.request("/articles?status=archived", {
+      const res = await app.request("/archive", {
         headers: authHeaders,
       });
       const html = await res.text();

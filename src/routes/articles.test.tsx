@@ -117,7 +117,6 @@ describe("routes/articles", () => {
       expect(html).not.toContain("Archived Article");
     });
 
-
     it("should display processing count for pending and processing articles", async () => {
       await createArticle(db, testUserId, { status: "pending" });
       await createArticle(db, testUserId, { status: "processing" });
@@ -637,18 +636,20 @@ describe("routes/articles", () => {
   });
 
   describe("Authentication", () => {
-    it("should redirect to home when accessing /articles without auth", async () => {
+    it("should redirect to login when accessing /articles without auth", async () => {
       const res = await app.request("/articles");
 
       expect(res.status).toBe(302);
-      expect(res.headers.get("location")).toBe("/");
+      expect(res.headers.get("location")).toBe("/login?back=%2Farticles");
     });
 
-    it("should redirect to home when accessing /articles/:id without auth", async () => {
+    it("should redirect to login when accessing /articles/:id without auth", async () => {
       const res = await app.request("/articles/some-id");
 
       expect(res.status).toBe(302);
-      expect(res.headers.get("location")).toBe("/");
+      expect(res.headers.get("location")).toBe(
+        "/login?back=%2Farticles%2Fsome-id",
+      );
     });
   });
 });

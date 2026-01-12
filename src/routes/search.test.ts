@@ -407,13 +407,13 @@ describe("routes/search", () => {
   });
 
   describe("Authentication", () => {
-    it("should redirect to home when not authenticated", async () => {
+    it("should redirect to login when not authenticated", async () => {
       // Make request without auth headers
       const res = await app.request("/search");
 
-      // requireAuth("redirect") redirects to "/"
+      // requireAuth("redirect") redirects to "/login?back=..."
       expect(res.status).toBe(302);
-      expect(res.headers.get("location")).toBe("/");
+      expect(res.headers.get("location")).toBe("/login?back=%2Fsearch");
     });
 
     it("should redirect for HTMX requests when not authenticated", async () => {
@@ -425,9 +425,9 @@ describe("routes/search", () => {
         },
       });
 
-      // requireAuth("redirect") redirects via HX-Redirect for HTMX
+      // requireAuth("redirect") redirects to login with back param
       expect(res.status).toBe(302);
-      expect(res.headers.get("location")).toBe("/");
+      expect(res.headers.get("location")).toBe("/login?back=%2Fsearch");
     });
   });
 

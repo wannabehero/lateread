@@ -16,6 +16,7 @@ import {
   markArticleAsRead,
   rateArticle,
   toggleArticleArchive,
+  updateReadingPosition,
 } from "../services/articles.service";
 import { getArticleContent } from "../services/content.service";
 import { updateReaderPreferences } from "../services/preferences.service";
@@ -36,6 +37,38 @@ api.post(
     const { id: articleId } = c.req.valid("param");
 
     await markArticleAsRead(articleId, userId);
+
+    return c.body(null, 204);
+  },
+);
+
+/**
+ * POST /api/articles/:id/position - Save reading position
+ */
+api.post(
+  "/api/articles/:id/position",
+  requireAuth("json-401"),
+  validator("param", articleIdParam),
+  validator(
+    "form",
+    z.object({
+      element: z.coerce
+        .number()
+        .int()
+        .min(0, "Element index must be non-negative"),
+      offset: z.coerce
+        .number()
+        .int()
+        .min(0, "Offset must be non-negative")
+        .max(100, "Offset must be at most 100"),
+    }),
+  ),
+  async (c) => {
+    const userId = c.get("userId");
+    const { id: articleId } = c.req.valid("param");
+    const { element, offset } = c.req.valid("form");
+
+    await updateReadingPosition(articleId, userId, { element, offset });
 
     return c.body(null, 204);
   },

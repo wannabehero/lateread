@@ -1075,9 +1075,255 @@ describe("routes/api", () => {
     });
   });
 
+  describe("POST /api/articles/:id/position", () => {
+    it("should save reading position and return 204", async () => {
+      const article = await createCompletedArticle(db, testUserId);
+
+      const formData = new FormData();
+      formData.append("element", "5");
+      formData.append("offset", "30");
+
+      const res = await app.request(`/api/articles/${article.id}/position`, {
+        headers: authHeaders,
+        method: "POST",
+        body: formData,
+      });
+
+      expect(res.status).toBe(204);
+
+      // Verify database state
+      const [updatedArticle] = await db
+        .select()
+        .from(articles)
+        .where(eq(articles.id, article.id))
+        .limit(1);
+
+      expect(updatedArticle?.readingPositionElement).toBe(5);
+      expect(updatedArticle?.readingPositionOffset).toBe(30);
+    });
+
+    it("should accept element=0 and offset=0", async () => {
+      const article = await createCompletedArticle(db, testUserId);
+
+      const formData = new FormData();
+      formData.append("element", "0");
+      formData.append("offset", "0");
+
+      const res = await app.request(`/api/articles/${article.id}/position`, {
+        headers: authHeaders,
+        method: "POST",
+        body: formData,
+      });
+
+      expect(res.status).toBe(204);
+
+      const [updatedArticle] = await db
+        .select()
+        .from(articles)
+        .where(eq(articles.id, article.id))
+        .limit(1);
+
+      expect(updatedArticle?.readingPositionElement).toBe(0);
+      expect(updatedArticle?.readingPositionOffset).toBe(0);
+    });
+
+    it("should accept offset=100 (end of element)", async () => {
+      const article = await createCompletedArticle(db, testUserId);
+
+      const formData = new FormData();
+      formData.append("element", "10");
+      formData.append("offset", "100");
+
+      const res = await app.request(`/api/articles/${article.id}/position`, {
+        headers: authHeaders,
+        method: "POST",
+        body: formData,
+      });
+
+      expect(res.status).toBe(204);
+
+      const [updatedArticle] = await db
+        .select()
+        .from(articles)
+        .where(eq(articles.id, article.id))
+        .limit(1);
+
+      expect(updatedArticle?.readingPositionOffset).toBe(100);
+    });
+
+    it("should return 400 for negative element", async () => {
+      const article = await createCompletedArticle(db, testUserId);
+
+      const formData = new FormData();
+      formData.append("element", "-1");
+      formData.append("offset", "50");
+
+      const res = await app.request(`/api/articles/${article.id}/position`, {
+        headers: authHeaders,
+        method: "POST",
+        body: formData,
+      });
+
+      expect(res.status).toBe(400);
+      const json = await res.json();
+      expect(json.error).toBe("Validation failed");
+    });
+
+    it("should return 400 for offset > 100", async () => {
+      const article = await createCompletedArticle(db, testUserId);
+
+      const formData = new FormData();
+      formData.append("element", "5");
+      formData.append("offset", "101");
+
+      const res = await app.request(`/api/articles/${article.id}/position`, {
+        headers: authHeaders,
+        method: "POST",
+        body: formData,
+      });
+
+      expect(res.status).toBe(400);
+      const json = await res.json();
+      expect(json.error).toBe("Validation failed");
+    });
+
+    it("should return 400 for negative offset", async () => {
+      const article = await createCompletedArticle(db, testUserId);
+
+      const formData = new FormData();
+      formData.append("element", "5");
+      formData.append("offset", "-10");
+
+      const res = await app.request(`/api/articles/${article.id}/position`, {
+        headers: authHeaders,
+        method: "POST",
+        body: formData,
+      });
+
+      expect(res.status).toBe(400);
+      const json = await res.json();
+      expect(json.error).toBe("Validation failed");
+    });
+
+    it("should return 404 when article does not exist", async () => {
+      const nonExistentId = "00000000-0000-0000-0000-000000000000";
+
+      const formData = new FormData();
+      formData.append("element", "5");
+      formData.append("offset", "30");
+
+      const res = await app.request(`/api/articles/${nonExistentId}/position`, {
+        headers: authHeaders,
+        method: "POST",
+        body: formData,
+      });
+
+      expect(res.status).toBe(404);
+      const json = await res.json();
+      expect(json.error).toBe("Article not found");
+    });
+
+    it("should return 400 for invalid article ID format", async () => {
+      const formData = new FormData();
+      formData.append("element", "5");
+      formData.append("offset", "30");
+
+      const res = await app.request("/api/articles/invalid-id/position", {
+        headers: authHeaders,
+        method: "POST",
+        body: formData,
+      });
+
+      expect(res.status).toBe(400);
+      const json = await res.json();
+      expect(json.error).toBe("Validation failed");
+      expect(json.context.fields.errors.id).toBe("Invalid article ID format");
+    });
+
+    it("should return 404 when article belongs to different user", async () => {
+      const otherUser = await createUser(db);
+      const article = await createCompletedArticle(db, otherUser.id);
+
+      const formData = new FormData();
+      formData.append("element", "5");
+      formData.append("offset", "30");
+
+      const res = await app.request(`/api/articles/${article.id}/position`, {
+        headers: authHeaders,
+        method: "POST",
+        body: formData,
+      });
+
+      expect(res.status).toBe(404);
+
+      // Verify position was NOT updated
+      const [unchangedArticle] = await db
+        .select()
+        .from(articles)
+        .where(eq(articles.id, article.id))
+        .limit(1);
+
+      expect(unchangedArticle?.readingPositionElement).toBeNull();
+      expect(unchangedArticle?.readingPositionOffset).toBeNull();
+    });
+
+    it("should return 401 when not authenticated", async () => {
+      const article = await createCompletedArticle(db, testUserId);
+
+      const formData = new FormData();
+      formData.append("element", "5");
+      formData.append("offset", "30");
+
+      const res = await app.request(`/api/articles/${article.id}/position`, {
+        method: "POST",
+        body: formData,
+      });
+
+      expect(res.status).toBe(401);
+    });
+
+    it("should update existing position", async () => {
+      const article = await createCompletedArticle(db, testUserId);
+
+      // Set initial position
+      const formData1 = new FormData();
+      formData1.append("element", "5");
+      formData1.append("offset", "30");
+
+      await app.request(`/api/articles/${article.id}/position`, {
+        headers: authHeaders,
+        method: "POST",
+        body: formData1,
+      });
+
+      // Update position
+      const formData2 = new FormData();
+      formData2.append("element", "10");
+      formData2.append("offset", "75");
+
+      const res = await app.request(`/api/articles/${article.id}/position`, {
+        headers: authHeaders,
+        method: "POST",
+        body: formData2,
+      });
+
+      expect(res.status).toBe(204);
+
+      const [updatedArticle] = await db
+        .select()
+        .from(articles)
+        .where(eq(articles.id, article.id))
+        .limit(1);
+
+      expect(updatedArticle?.readingPositionElement).toBe(10);
+      expect(updatedArticle?.readingPositionOffset).toBe(75);
+    });
+  });
+
   describe("Authentication", () => {
     it.each([
       ["POST", "/api/articles/some-id/read"],
+      ["POST", "/api/articles/some-id/position"],
       ["DELETE", "/api/articles/some-id"],
       ["POST", "/api/articles/some-id/archive"],
       ["POST", "/api/articles/some-id/rate?rating=1"],
@@ -1088,11 +1334,16 @@ describe("routes/api", () => {
     ])("should return 401 for %s %s without auth", async (method, path) => {
       const options: RequestInit = { method };
 
-      // Add form data for POST /api/preferences/reader
+      // Add form data for POST endpoints that require it
       if (path === "/api/preferences/reader") {
         const formData = new FormData();
         formData.append("fontFamily", "sans");
         formData.append("fontSize", "16");
+        options.body = formData;
+      } else if (path === "/api/articles/some-id/position") {
+        const formData = new FormData();
+        formData.append("element", "5");
+        formData.append("offset", "30");
         options.body = formData;
       }
 

@@ -10,6 +10,7 @@ import articlesRoutes from "./routes/articles";
 import authRoutes from "./routes/auth";
 import healthRoutes from "./routes/health";
 import homeRoutes from "./routes/home";
+import loginRoutes from "./routes/login";
 import searchRoutes from "./routes/search";
 import type { AppContext } from "./types/context";
 
@@ -34,6 +35,7 @@ export function createApp(): Hono<AppContext> {
 
   // Register routes
   app.route("/", homeRoutes);
+  app.route("/", loginRoutes);
   app.route("/", authRoutes);
   app.route("/", articlesRoutes);
   app.route("/", searchRoutes);

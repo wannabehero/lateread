@@ -26,14 +26,11 @@ describe("routes/home", () => {
   });
 
   describe("GET / - Unauthenticated", () => {
-    it("should render login page when not authenticated", async () => {
+    it("should redirect to login page when not authenticated", async () => {
       const res = await app.request("/");
 
-      expect(res.status).toBe(200);
-
-      const html = await res.text();
-
-      expect(html).toContain("Login with Telegram");
+      expect(res.status).toBe(302);
+      expect(res.headers.get("Location")).toBe("/login");
     });
   });
 

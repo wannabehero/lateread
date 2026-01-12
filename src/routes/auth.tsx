@@ -19,6 +19,7 @@ const auth = new Hono<AppContext>();
  */
 auth.post("/auth/telegram", async (c) => {
   const result = await createAuthToken();
+  const back = c.req.query("back");
 
   // Return HTMX fragment with polling
   return c.html(
@@ -40,7 +41,7 @@ auth.post("/auth/telegram", async (c) => {
       </p>
 
       {/* Polling element - checks auth status every 2 seconds */}
-      <AuthPolling token={result.token} immediate={true} />
+      <AuthPolling token={result.token} immediate={true} back={back} />
     </div>,
   );
 });
@@ -58,6 +59,7 @@ auth.get(
   ),
   async (c) => {
     const { token } = c.req.valid("param");
+    const back = c.req.query("back");
 
     const status = await getAuthTokenStatus(token);
 
@@ -66,7 +68,8 @@ auth.get(
       setSession(c, { userId: status.userId });
 
       // Use hx-redirect header to trigger client-side redirect
-      c.header("hx-redirect", "/");
+      const redirectUrl = back && back.startsWith("/") ? back : "/";
+      c.header("hx-redirect", redirectUrl);
 
       return c.html(
         <div id="auth-polling">
@@ -81,12 +84,13 @@ auth.get(
         <AuthError
           message="Authentication session expired. Please try again."
           buttonText="Login with Telegram"
+          back={back}
         />,
       );
     }
 
     // Still pending - continue polling
-    return c.html(<AuthPolling token={token} />);
+    return c.html(<AuthPolling token={token} back={back} />);
   },
 );
 

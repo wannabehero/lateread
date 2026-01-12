@@ -16,6 +16,7 @@ const configSchema = z.object({
   // Telegram Bot
   TELEGRAM_BOT_TOKEN: z.string().min(1, "TELEGRAM_BOT_TOKEN is required"),
   BOT_USERNAME: z.string().min(1, "BOT_USERNAME is required"),
+  ADMIN_TELEGRAM_ID: z.coerce.number().optional(),
 
   // LLM (Anthropic Claude)
   ANTHROPIC_API_KEY: z.string().optional(),

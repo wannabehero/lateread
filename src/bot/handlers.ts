@@ -7,6 +7,7 @@ import { createArticle } from "../services/articles.service";
 import { claimAuthToken } from "../services/auth.service";
 import { getTelegramUserByTelegramId } from "../services/telegram-users.service";
 import { extractMessageMetadata, extractUrl } from "./helpers";
+import { onlySuperAdmin } from "./middleware/admin";
 import type { BotContext } from "./types";
 
 /**
@@ -85,6 +86,72 @@ export function registerHandlers(bot: Bot<BotContext>) {
 
   bot.command("ping", async (ctx) => {
     await ctx.reply("Pong!");
+  });
+
+  // /ops command - restricted to super admin
+  bot.command("ops", onlySuperAdmin, async (ctx) => {
+    const rawArgs = typeof ctx.match === "string" ? ctx.match : "";
+    const args = rawArgs.trim().split(/\s+/);
+    const scriptName = args.shift();
+
+    if (!scriptName) {
+      await ctx.reply("Usage: /ops <script-name> [args...]");
+      return;
+    }
+
+    // Security check: prevent path traversal
+    if (
+      scriptName.includes("/") ||
+      scriptName.includes("\\") ||
+      scriptName.includes("..")
+    ) {
+      await ctx.reply("Invalid script name.");
+      return;
+    }
+
+    const scriptPath = `ops/${scriptName}.ts`;
+    const file = Bun.file(scriptPath);
+
+    if (!(await file.exists())) {
+      await ctx.reply(`Script ${scriptName}.ts not found in ops/ directory.`);
+      return;
+    }
+
+    await ctx.reply(`Running ops/${scriptName}.ts...`);
+
+    try {
+      const proc = Bun.spawn(["bun", scriptPath, ...args], {
+        stdout: "pipe",
+        stderr: "pipe",
+      });
+
+      const stdout = await new Response(proc.stdout).text();
+      const stderr = await new Response(proc.stderr).text();
+
+      let output = "";
+      if (stdout) output += `STDOUT:\n${stdout}\n`;
+      if (stderr) output += `STDERR:\n${stderr}\n`;
+
+      if (!output) output = "No output.";
+
+      // Truncate if too long
+      if (output.length > 4000) {
+        output = output.substring(0, 4000) + "\n... (truncated)";
+      }
+
+      // Escape HTML special characters for safety
+      const escapedOutput = output
+        .replace(/&/g, "&amp;")
+        .replace(/</g, "&lt;")
+        .replace(/>/g, "&gt;");
+
+      await ctx.reply(`<pre><code>${escapedOutput}</code></pre>`, {
+        parse_mode: "HTML",
+      });
+    } catch (error) {
+      ctx.logger.error("Failed to execute ops script", { error, scriptName });
+      await ctx.reply(`Error executing script: ${error}`);
+    }
   });
 
   // Handle messages with URLs (text or captions from media)

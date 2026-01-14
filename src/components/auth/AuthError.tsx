@@ -11,7 +11,9 @@ export const AuthError: FC<AuthErrorProps> = ({
   buttonText = "Try Again",
   back,
 }) => {
-  const loginUrl = back ? `/auth/telegram?back=${encodeURIComponent(back)}` : "/auth/telegram";
+  const loginUrl = back
+    ? `/auth/telegram?back=${encodeURIComponent(back)}`
+    : "/auth/telegram";
 
   return (
     <div id="auth-content">

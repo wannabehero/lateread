@@ -46,14 +46,10 @@ export async function renderArticlesList(
 /**
  * GET /articles - List articles
  */
-articlesRouter.get(
-  "/articles",
-  requireAuth("redirect"),
-  async (c) => {
-    const userId = c.get("userId");
-    return renderArticlesList(c, userId, false);
-  },
-);
+articlesRouter.get("/articles", requireAuth("redirect"), async (c) => {
+  const userId = c.get("userId");
+  return renderArticlesList(c, userId, false);
+});
 
 /**
  * GET /archive - List archived articles

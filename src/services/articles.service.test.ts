@@ -71,7 +71,6 @@ describe("articles.service", () => {
       expect(archivedArticles[0]?.title).toBe("Archived Article");
     });
 
-
     it("should only return completed articles", async () => {
       const user = await createUser(db);
 
@@ -393,7 +392,6 @@ describe("articles.service", () => {
       const activeCount = await countArticles(user.id, { archived: false });
       expect(activeCount).toBe(1);
     });
-
 
     it("should return 0 for user with no articles", async () => {
       const user = await createUser(db);

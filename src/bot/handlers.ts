@@ -1,4 +1,5 @@
 import type { Bot, Context } from "grammy";
+import { InputFile } from "grammy";
 import { config } from "../lib/config";
 import { contentCache } from "../lib/content-cache";
 import { defaultLogger } from "../lib/logger";
@@ -216,7 +217,11 @@ export function registerHandlers(bot: Bot<BotContext>) {
         size: backupFile.size,
       });
 
-      await ctx.replyWithDocument(backupFile, {
+      // Read the file into a buffer for Grammy
+      const fileBuffer = await backupFile.arrayBuffer();
+      const buffer = Buffer.from(fileBuffer);
+
+      await ctx.replyWithDocument(new InputFile(buffer, backupFilename), {
         caption: `✅ Database backup created successfully\n\nTimestamp: ${timestamp}\nSize: ${(backupFile.size / 1024 / 1024).toFixed(2)} MB`,
       });
 

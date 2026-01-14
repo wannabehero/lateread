@@ -185,9 +185,7 @@ describe("renderWithLayout", () => {
       // Authenticated users should see nav actions (search, archive, menu)
       expect(doc.querySelector(".nav-actions")).toBeTruthy();
       expect(doc.querySelector('a[href="/search"]')).toBeTruthy();
-      expect(
-        doc.querySelector('a[href="/archive"]'),
-      ).toBeTruthy();
+      expect(doc.querySelector('a[href="/archive"]')).toBeTruthy();
     });
 
     it("should not show nav actions for unauthenticated users", async () => {

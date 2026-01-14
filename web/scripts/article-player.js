@@ -45,9 +45,9 @@ class ArticlePlayer extends HTMLElement {
 
     const src = this.getAttribute("src");
     if (src && audio.src !== src && !src.endsWith(audio.src)) {
-        // audio.src is absolute, this.getAttribute('src') might be relative
-        // We set it if it differs
-        audio.src = src;
+      // audio.src is absolute, this.getAttribute('src') might be relative
+      // We set it if it differs
+      audio.src = src;
     }
 
     // We don't need to put title on the audio element, we use it from this.getAttribute('title') in setAudioMetadata

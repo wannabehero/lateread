@@ -3,7 +3,9 @@ interface LoginProps {
 }
 
 export const Login = ({ back }: LoginProps) => {
-  const loginUrl = back ? `/auth/telegram?back=${encodeURIComponent(back)}` : "/auth/telegram";
+  const loginUrl = back
+    ? `/auth/telegram?back=${encodeURIComponent(back)}`
+    : "/auth/telegram";
 
   return (
     <div class="auth-container">

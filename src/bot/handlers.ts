@@ -154,6 +154,93 @@ export function registerHandlers(bot: Bot<BotContext>) {
     }
   });
 
+  // /backup command - restricted to super admin
+  bot.command("backup", onlySuperAdmin, async (ctx) => {
+    const timestamp = new Date()
+      .toISOString()
+      .replace(/[:.]/g, "-")
+      .replace(/T/, "_")
+      .slice(0, -5); // Format: YYYY-MM-DD_HH-MM-SS
+    const backupFilename = `lateread-backup-${timestamp}.db`;
+    const backupPath = `/tmp/${backupFilename}`;
+
+    ctx.logger.info("Starting database backup", { backupPath });
+
+    await ctx.reply("Creating database backup...");
+
+    try {
+      // Run the backup script
+      const proc = Bun.spawn(["bun", "ops/backup-db.ts", backupPath], {
+        stdout: "pipe",
+        stderr: "pipe",
+      });
+
+      // Wait for process to complete and get exit code
+      const exitCode = await proc.exited;
+
+      // Get output for logging
+      const stdout = await new Response(proc.stdout).text();
+      const stderr = await new Response(proc.stderr).text();
+
+      ctx.logger.info("Backup script completed", {
+        exitCode,
+        stdout: stdout.slice(0, 500),
+        stderr: stderr.slice(0, 500),
+      });
+
+      if (exitCode !== 0) {
+        ctx.logger.error("Backup script failed", {
+          exitCode,
+          stdout,
+          stderr,
+        });
+        await ctx.reply(
+          `❌ Backup failed with exit code ${exitCode}\n\nError:\n${stderr || stdout || "Unknown error"}`,
+        );
+        return;
+      }
+
+      // Check if backup file exists
+      const backupFile = Bun.file(backupPath);
+      if (!(await backupFile.exists())) {
+        ctx.logger.error("Backup file not found after successful script", {
+          backupPath,
+        });
+        await ctx.reply("❌ Backup script succeeded but file not found.");
+        return;
+      }
+
+      // Send the backup file
+      ctx.logger.info("Sending backup file", {
+        path: backupPath,
+        size: backupFile.size,
+      });
+
+      await ctx.replyWithDocument(backupFile, {
+        caption: `✅ Database backup created successfully\n\nTimestamp: ${timestamp}\nSize: ${(backupFile.size / 1024 / 1024).toFixed(2)} MB`,
+      });
+
+      ctx.logger.info("Backup sent successfully");
+
+      // Clean up the backup file
+      try {
+        await Bun.write(backupPath, ""); // Clear contents
+        // Note: We can't easily delete in Bun without shell, but temp files are cleaned by OS
+        ctx.logger.debug("Backup file cleanup initiated");
+      } catch (cleanupError) {
+        ctx.logger.warn("Failed to cleanup backup file", {
+          error: cleanupError,
+        });
+        // Non-critical error, don't fail the operation
+      }
+    } catch (error) {
+      ctx.logger.error("Failed to create backup", { error });
+      await ctx.reply(
+        `❌ Error creating backup: ${error instanceof Error ? error.message : String(error)}`,
+      );
+    }
+  });
+
   // Handle messages with URLs (text or captions from media)
   bot.on([":text", ":caption"], async (ctx) => {
     if (!ctx.message) {

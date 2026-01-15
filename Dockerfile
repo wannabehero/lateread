@@ -21,6 +21,10 @@ RUN apt-get update && \
     apt-get install -y ripgrep wget && \
     wget -qO- "https://github.com/benbjohnson/litestream/releases/download/v${LITESTREAM_VERSION}/litestream-${LITESTREAM_VERSION}-linux-x86_64.tar.gz" | tar xz -C /usr/local/bin && \
     rm -rf /var/lib/apt/lists/*
+
+# Copy Litestream config while still root
+COPY etc/litestream.yml /etc/litestream.yml
+
 RUN chown -R bun:bun /app
 USER bun
 
@@ -30,8 +34,7 @@ RUN bun install --frozen-lockfile --production
 COPY --chown=bun:bun . .
 COPY --chown=bun:bun --from=build /app/public ./public
 
-# Copy Litestream config and entrypoint
-COPY --chown=bun:bun etc/litestream.yml /etc/litestream.yml
+# Copy entrypoint script
 COPY --chown=bun:bun scripts/run.sh /scripts/run.sh
 
 EXPOSE 3000

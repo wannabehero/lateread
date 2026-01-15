@@ -8,12 +8,11 @@ if [ -n "$LITESTREAM_REPLICA_BUCKET" ]; then
   # Restore database from R2 if it doesn't exist locally
   if [ ! -f "$DATABASE_URL" ]; then
     echo "No local database found. Attempting restore from R2..."
-    litestream restore -v -if-replica-exists -o "$DATABASE_URL" \
-      "s3://${LITESTREAM_REPLICA_BUCKET}/${LITESTREAM_REPLICA_PATH}"
+    litestream restore -config /etc/litestream.yml -v -if-replica-exists "$DATABASE_URL"
   fi
 
   # Run app with Litestream replication (litestream as supervisor)
-  exec litestream replicate -exec "bun src/main.ts"
+  exec litestream replicate -config /etc/litestream.yml -exec "bun src/main.ts"
 else
   echo "Litestream backup not configured, running without replication"
   exec bun src/main.ts

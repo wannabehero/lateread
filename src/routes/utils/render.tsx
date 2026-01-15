@@ -9,7 +9,7 @@ import type { AppContext } from "../../types/context";
 function getAssetNames(): { appJs: string; appCss: string } {
   // In test environment, assets aren't built - use fallback values
   // The Head component has defaults of app.js/app.css anyway
-  if (process.env.NODE_ENV === "test") {
+  if (process.env.NODE_ENV !== "production") {
     return { appJs: "app.js", appCss: "app.css" };
   }
 

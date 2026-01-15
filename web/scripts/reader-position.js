@@ -50,7 +50,15 @@ class ReaderPosition extends HTMLElement {
     this.elementInput = this.shadowRoot.querySelector('input[name="element"]');
     this.offsetInput = this.shadowRoot.querySelector('input[name="offset"]');
 
+    // Restore position immediately (works for direct navigation)
     this.restorePosition();
+
+    // Also restore after HTMX settles (for hx-boost navigation)
+    document.body.addEventListener(
+      "htmx:afterSettle",
+      () => this.restorePosition(),
+      { once: true },
+    );
 
     // Add listeners
     window.addEventListener("scroll", this.handleScroll, { passive: true });

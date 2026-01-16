@@ -7,7 +7,7 @@ import {
   mock,
   spyOn,
 } from "bun:test";
-import type { Context, Next } from "hono";
+import type { Context } from "hono";
 import * as sessionLib from "../lib/session";
 import type { AppContext } from "../types/context";
 import { session } from "./session";

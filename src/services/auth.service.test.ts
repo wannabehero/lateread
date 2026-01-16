@@ -167,11 +167,11 @@ describe("auth", () => {
       const [user] = await db
         .select()
         .from(users)
-        .where(eq(users.id, result!.userId))
+        .where(eq(users.id, result?.userId))
         .limit(1);
 
       expect(user).toBeDefined();
-      expect(user?.id).toBe(result!.userId);
+      expect(user?.id).toBe(result?.userId);
 
       // Verify telegram user record exists with correct data
       const [telegramUser] = await db
@@ -181,7 +181,7 @@ describe("auth", () => {
         .limit(1);
 
       expect(telegramUser).toBeDefined();
-      expect(telegramUser?.userId).toBe(result!.userId);
+      expect(telegramUser?.userId).toBe(result?.userId);
       expect(telegramUser?.telegramId).toBe("123456789");
       expect(telegramUser?.username).toBe("testuser");
       expect(telegramUser?.firstName).toBe("Test");

@@ -4,7 +4,6 @@ import {
   describe,
   expect,
   it,
-  mock,
   setSystemTime,
   spyOn,
 } from "bun:test";
@@ -181,7 +180,7 @@ describe("routes/auth", () => {
       // Verify MaxAge is set correctly
       const maxAgeMatch = setCookie?.match(/Max-Age=(\d+)/);
       expect(maxAgeMatch).toBeTruthy();
-      const maxAge = Number.parseInt(maxAgeMatch![1]!, 10);
+      const maxAge = Number.parseInt(maxAgeMatch?.[1]!, 10);
       expect(maxAge).toBe(config.SESSION_MAX_AGE_DAYS * 24 * 60 * 60);
 
       const html = await res.text();

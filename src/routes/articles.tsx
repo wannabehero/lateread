@@ -1,5 +1,4 @@
 import { type Context, Hono } from "hono";
-import { z } from "zod";
 import { ArticleList } from "../components/ArticleList";
 import { ReaderView } from "../components/ReaderView";
 import { isLLMAvailable } from "../lib/llm";

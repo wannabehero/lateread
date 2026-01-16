@@ -1,4 +1,4 @@
-import type { Bot, Context } from "grammy";
+import type { Bot } from "grammy";
 import { InputFile } from "grammy";
 import { config } from "../lib/config";
 import { contentCache } from "../lib/content-cache";
@@ -7,7 +7,11 @@ import { addArticleJob, type TelegramContext } from "../lib/queue";
 import { createArticle } from "../services/articles.service";
 import { claimAuthToken } from "../services/auth.service";
 import { getTelegramUserByTelegramId } from "../services/telegram-users.service";
-import { extractMessageMetadata, extractUrl } from "./helpers";
+import {
+  extractFirstUrl,
+  extractMessageMetadata,
+  getMessageText,
+} from "./helpers";
 import { onlySuperAdmin } from "./middleware/admin";
 import type { BotContext } from "./types";
 
@@ -137,7 +141,7 @@ export function registerHandlers(bot: Bot<BotContext>) {
 
       // Truncate if too long
       if (output.length > 4000) {
-        output = output.substring(0, 4000) + "\n... (truncated)";
+        output = `${output.substring(0, 4000)}\n... (truncated)`;
       }
 
       // Escape HTML special characters for safety
@@ -276,7 +280,7 @@ export function registerHandlers(bot: Bot<BotContext>) {
       return;
     }
 
-    const url = extractUrl(messageText);
+    const url = extractFirstUrl(ctx);
 
     if (!url) {
       ctx.logger.info("No URL found in message, ignoring");
@@ -327,21 +331,6 @@ async function authenticateTelegramUser(ctx: BotContext) {
   });
 
   return telegramUser;
-}
-
-/**
- * Extract text or caption from message
- */
-function getMessageText(ctx: Context): string {
-  if (!ctx.message) {
-    return "";
-  }
-
-  return (
-    ("text" in ctx.message && ctx.message.text) ||
-    ("caption" in ctx.message && ctx.message.caption) ||
-    ""
-  );
 }
 
 /**

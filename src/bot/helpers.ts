@@ -1,3 +1,4 @@
+import type { Context } from "grammy";
 import { marked } from "marked";
 import type { BotContext } from "./types";
 
@@ -22,10 +23,7 @@ export async function extractMessageMetadata(
   }
 
   // Get text or caption from message
-  const messageText =
-    ("text" in ctx.message && ctx.message.text) ||
-    ("caption" in ctx.message && ctx.message.caption) ||
-    null;
+  const messageText = getMessageText(ctx);
 
   if (!messageText) {
     return null;
@@ -106,17 +104,37 @@ export async function extractMessageMetadata(
 }
 
 /**
- * Extract first URL from message text
+ * Extract first URL from message using Telegram entities
+ * Prioritizes visible URLs over text_links (hyperlinks)
+ * Handles both text messages and captions automatically
  */
-export function extractUrl(text: string): string | null {
-  // Simple URL regex - matches http:// and https://
-  const urlRegex = /(https?:\/\/[^\s]+)/gi;
-  const matches = text.match(urlRegex);
+export function extractFirstUrl(ctx: Context): string | null {
+  // First, try visible URLs in the text (type: "url")
+  const [urlEntity] = ctx.entities("url");
+  if (urlEntity) {
+    return urlEntity.text;
+  }
 
-  if (matches && matches.length > 0) {
-    // Return first URL only
-    return matches[0];
+  // Fall back to text_links (hyperlinks with hidden URLs)
+  const [textLinkEntity] = ctx.entities("text_link");
+  if (textLinkEntity?.url) {
+    return textLinkEntity.url;
   }
 
   return null;
+}
+
+/**
+ * Extract text or caption from message
+ */
+export function getMessageText(ctx: Context): string {
+  if (!ctx.message) {
+    return "";
+  }
+
+  return (
+    ("text" in ctx.message && ctx.message.text) ||
+    ("caption" in ctx.message && ctx.message.caption) ||
+    ""
+  );
 }

@@ -23,8 +23,8 @@ function createMockContext(options?: {
   userId?: string;
 }): Context<AppContext> {
   const logger = createNoopLogger();
-  const spyLoggerError = spyOn(logger, "error");
-  const spyLoggerWarn = spyOn(logger, "warn");
+  const _spyLoggerError = spyOn(logger, "error");
+  const _spyLoggerWarn = spyOn(logger, "warn");
 
   const context = {
     req: {

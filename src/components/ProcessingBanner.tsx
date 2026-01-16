@@ -2,9 +2,13 @@ import type { FC } from "hono/jsx";
 
 interface ProcessingBannerProps {
   count: number;
+  immediate?: boolean;
 }
 
-export const ProcessingBanner: FC<ProcessingBannerProps> = ({ count }) => {
+export const ProcessingBanner: FC<ProcessingBannerProps> = ({
+  count,
+  immediate,
+}) => {
   if (count === 0) {
     return null;
   }
@@ -13,7 +17,7 @@ export const ProcessingBanner: FC<ProcessingBannerProps> = ({ count }) => {
     <div
       class="processing-banner"
       hx-get="/api/articles/processing-count"
-      hx-trigger="load, every 5s"
+      hx-trigger={immediate ? "load, every 5s" : "load delay:5s"}
       hx-swap="outerHTML"
     >
       <small>

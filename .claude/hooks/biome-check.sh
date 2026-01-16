@@ -18,9 +18,9 @@ esac
 
 # Run biome check with bunx
 if command -v biome &> /dev/null; then
-  biome check --write "$FILE_PATH" 2>/dev/null || true
+  biome check --write "$FILE_PATH"
 elif command -v bunx &> /dev/null; then
-  bunx biome check --write "$FILE_PATH" 2>/dev/null || true
+  bunx biome check --write "$FILE_PATH"
 fi
 
 exit 0

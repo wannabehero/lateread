@@ -3,7 +3,6 @@ import {
   describe,
   expect,
   it,
-  mock,
   setSystemTime,
   spyOn,
 } from "bun:test";
@@ -142,7 +141,6 @@ describe("routes/health", () => {
       // Spy on db.run to simulate non-Error exception
       const spyDbRun = spyOn(dbModule.db, "run");
       spyDbRun.mockImplementation(() => {
-        // biome-ignore lint/suspicious/noExplicitAny: Testing non-Error exception
         throw "String error" as any;
       });
 

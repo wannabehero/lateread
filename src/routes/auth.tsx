@@ -41,7 +41,7 @@ auth.post("/auth/telegram", async (c) => {
       </p>
 
       {/* Polling element - checks auth status every 2 seconds */}
-      <AuthPolling token={result.token} immediate={true} back={back} />
+      <AuthPolling token={result.token} immediate back={back} />
     </div>,
   );
 });
@@ -68,7 +68,7 @@ auth.get(
       setSession(c, { userId: status.userId });
 
       // Use hx-redirect header to trigger client-side redirect
-      const redirectUrl = back && back.startsWith("/") ? back : "/";
+      const redirectUrl = back?.startsWith("/") ? back : "/";
       c.header("hx-redirect", redirectUrl);
 
       return c.html(

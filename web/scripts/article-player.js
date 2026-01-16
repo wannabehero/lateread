@@ -12,7 +12,7 @@ class ArticlePlayer extends HTMLElement {
     this.render();
   }
 
-  attributeChangedCallback(name, oldValue, newValue) {
+  attributeChangedCallback(_name, oldValue, newValue) {
     if (oldValue === newValue) return;
     if (this.shadowRoot.querySelector("audio")) {
       this.updateAttributes();

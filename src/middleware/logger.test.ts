@@ -8,7 +8,7 @@ import {
   setSystemTime,
   spyOn,
 } from "bun:test";
-import type { Context, Next } from "hono";
+import type { Context } from "hono";
 import { createNoopLogger } from "../../test/fixtures";
 import { defaultLogger } from "../lib/logger";
 import type { AppContext } from "../types/context";

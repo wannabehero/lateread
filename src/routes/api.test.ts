@@ -20,7 +20,6 @@ import {
 import { createApp } from "../app";
 import { articles } from "../db/schema";
 import type { SummaryResult } from "../lib/llm";
-import * as llm from "../lib/llm";
 import type { TTSProvider } from "../lib/tts";
 import * as tts from "../lib/tts";
 import * as contentService from "../services/content.service";
@@ -570,7 +569,6 @@ describe("routes/api", () => {
       expect(res.headers.get("content-type")).toContain("text/html");
 
       const html = await res.text();
-      const doc = parseHtml(html);
 
       // Verify SummaryView component renders
       expect(html).toContain(mockSummary.oneSentence);

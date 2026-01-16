@@ -163,7 +163,7 @@ describe("session", () => {
       expect(originalCookie).toBeTruthy();
 
       // Tamper with payload (change base64url encoded data)
-      const [payload, signature] = originalCookie!.split(".");
+      const [payload, signature] = originalCookie?.split(".");
       const tamperedPayload = `${payload}X`; // Slightly modify payload
       const tamperedCookie = `${tamperedPayload}.${signature}`;
 
@@ -195,7 +195,7 @@ describe("session", () => {
       expect(originalCookie).toBeTruthy();
 
       // Tamper with signature
-      const [payload, signature] = originalCookie!.split(".");
+      const [payload, signature] = originalCookie?.split(".");
       const tamperedSignature = `${signature?.slice(0, -1)}X`; // Change last char
       const tamperedCookie = `${payload}.${tamperedSignature}`;
 
@@ -398,8 +398,8 @@ describe("session", () => {
       expect(cookie1).not.toBe(cookie2);
 
       // Even the signatures should be different
-      const [, sig1] = cookie1!.split(".");
-      const [, sig2] = cookie2!.split(".");
+      const [, sig1] = cookie1?.split(".");
+      const [, sig2] = cookie2?.split(".");
       expect(sig1).not.toBe(sig2);
     });
 
@@ -417,7 +417,7 @@ describe("session", () => {
 
       expect(cookieValue).toBeTruthy();
 
-      const [, sig1] = cookieValue!.split(".");
+      const [, sig1] = cookieValue?.split(".");
 
       // Expected signature for SESSION_SECRET from .env.test
       expect(sig1).toBe("GmTWXHKBioNS9X5T_SV_M1xqH14O_De2cEpbpF3rht0");

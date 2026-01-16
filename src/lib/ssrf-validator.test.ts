@@ -1,13 +1,4 @@
-import {
-  afterEach,
-  beforeEach,
-  describe,
-  expect,
-  it,
-  jest,
-  mock,
-  spyOn,
-} from "bun:test";
+import { afterEach, describe, expect, it, jest, spyOn } from "bun:test";
 import dns from "node:dns/promises";
 import { isSafeUrl, isSafeUrlWithDNS } from "./ssrf-validator";
 

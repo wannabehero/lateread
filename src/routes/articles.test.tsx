@@ -51,10 +51,10 @@ describe("routes/articles", () => {
     });
 
     it("should render article list with completed articles", async () => {
-      const article1 = await createCompletedArticle(db, testUserId, {
+      await createCompletedArticle(db, testUserId, {
         title: "Test Article 1",
       });
-      const article2 = await createCompletedArticle(db, testUserId, {
+      await createCompletedArticle(db, testUserId, {
         title: "Test Article 2",
       });
 
@@ -76,11 +76,11 @@ describe("routes/articles", () => {
     });
 
     it("should render archived articles at /archive", async () => {
-      const activeArticle = await createCompletedArticle(db, testUserId, {
+      await createCompletedArticle(db, testUserId, {
         title: "Active Article",
         archived: false,
       });
-      const archivedArticle = await createCompletedArticle(db, testUserId, {
+      await createCompletedArticle(db, testUserId, {
         title: "Archived Article",
         archived: true,
       });
@@ -98,11 +98,11 @@ describe("routes/articles", () => {
     });
 
     it("should show only active articles by default", async () => {
-      const activeArticle = await createCompletedArticle(db, testUserId, {
+      await createCompletedArticle(db, testUserId, {
         title: "Active Article",
         archived: false,
       });
-      const archivedArticle = await createCompletedArticle(db, testUserId, {
+      await createCompletedArticle(db, testUserId, {
         title: "Archived Article",
         archived: true,
       });

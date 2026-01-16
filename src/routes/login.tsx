@@ -8,7 +8,7 @@ const login = new Hono<AppContext>();
 login.get("/login", async (c) => {
   const back = c.req.query("back");
   // Basic open redirect protection: ensure it starts with /
-  const isValidBack = back && back.startsWith("/");
+  const isValidBack = back?.startsWith("/");
 
   return renderWithLayout({
     c,

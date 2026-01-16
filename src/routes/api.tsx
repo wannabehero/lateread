@@ -144,7 +144,7 @@ api.post(
     z.object({
       rating: z
         .enum(["-1", "1"], { message: "Rating must be '-1' or '1'" })
-        .transform((v) => Number.parseInt(v) as -1 | 1),
+        .transform((v) => Number.parseInt(v, 10) as -1 | 1),
     }),
   ),
   async (c) => {

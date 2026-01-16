@@ -1,5 +1,5 @@
 import { beforeEach, describe, expect, it, mock } from "bun:test";
-import type { Context, Next } from "hono";
+import type { Context } from "hono";
 import type { AppContext } from "../types/context";
 import { requireAuth } from "./auth";
 

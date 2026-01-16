@@ -5,7 +5,6 @@ import {
   eq,
   getTableColumns,
   inArray,
-  like,
   lt,
   or,
   sql,

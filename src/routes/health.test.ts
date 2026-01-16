@@ -177,7 +177,7 @@ describe("routes/health", () => {
     it("should successfully execute SELECT 1 query", async () => {
       const spyDbRun = spyOn(dbModule.db, "run");
       const mockRunResult = { changes: 0, lastInsertRowid: 0, rows: [] };
-      spyDbRun.mockReturnValue(mockRunResult);
+      spyDbRun.mockReturnValue(mockRunResult as any);
 
       const res = await app.request("/health/db");
 

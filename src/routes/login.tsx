@@ -13,7 +13,6 @@ login.get("/login", async (c) => {
   return renderWithLayout({
     c,
     content: <Login back={isValidBack ? back : undefined} />,
-    title: "Login",
   });
 });
 

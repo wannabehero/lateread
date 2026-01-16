@@ -2,7 +2,7 @@ import { ElevenLabsClient } from "@elevenlabs/elevenlabs-js";
 import { config } from "./config";
 import { ExternalServiceError } from "./errors";
 
-interface TTSProvider {
+export interface TTSProvider {
   generateStream(
     text: string,
     languageCode?: string | null,

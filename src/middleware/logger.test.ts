@@ -16,17 +16,20 @@ import { loggerMiddleware } from "./logger";
 
 function createMockContext(options?: {
   requestId?: string;
+  method?: string;
+  path?: string;
+  status?: number;
 }): Context<AppContext> {
   const requestId = options?.requestId ?? "req-123";
   return {
     get: (key: string) => (key === "requestId" ? requestId : undefined),
     set: mock(() => {}),
     req: {
-      method: "GET",
-      path: "/articles",
+      method: options?.method ?? "GET",
+      path: options?.path ?? "/articles",
     },
     res: {
-      status: 200,
+      status: options?.status ?? 200,
     },
   } as unknown as Context<AppContext>;
 }
@@ -103,10 +106,11 @@ describe("middleware/logger", () => {
 
   describe("request logging", () => {
     it("should log request completion with method, path, status", async () => {
-      const c = createMockContext();
-      c.req.method = "POST";
-      c.req.path = "/api/articles/123";
-      c.res.status = 201;
+      const c = createMockContext({
+        method: "POST",
+        path: "/api/articles/123",
+        status: 201,
+      });
 
       await loggerMiddleware(c, mockNext);
 
@@ -204,10 +208,7 @@ describe("middleware/logger", () => {
       path,
       status,
     }) => {
-      const c = createMockContext();
-      c.req.method = method;
-      c.req.path = path;
-      c.res.status = status;
+      const c = createMockContext({ method, path, status });
 
       await loggerMiddleware(c, mockNext);
 

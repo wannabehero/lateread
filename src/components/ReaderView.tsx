@@ -53,10 +53,7 @@ export const ReaderView: FC<ReaderViewProps> = ({
         {article.tags.length > 0 && (
           <div class="reader-tags">
             {article.tags.map((tag) => (
-              <TagBadge
-                name={tag.name}
-                href={`/articles?tag=${encodeURIComponent(tag.name)}`}
-              />
+              <TagBadge name={tag.name} />
             ))}
           </div>
         )}
@@ -84,14 +81,12 @@ export const ReaderView: FC<ReaderViewProps> = ({
       )}
 
       {features.tts && (
-        // @ts-expect-error: Custom element
         <article-player
           src={`/api/articles/${article.id}/tts`}
           title={displayTitle}
         />
       )}
 
-      {/* @ts-expect-error: Custom element */}
       <reader-position
         article-id={article.id}
         initial-element={readingPosition?.element?.toString() ?? ""}

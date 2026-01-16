@@ -1,4 +1,4 @@
-import type { Context, Env, MiddlewareHandler, ValidationTargets } from "hono";
+import type { ValidationTargets } from "hono";
 import { validator as honoValidator } from "hono/validator";
 import type { z } from "zod";
 import { ValidationError } from "./errors";
@@ -29,38 +29,24 @@ import { ValidationError } from "./errors";
 export function validator<
   Target extends keyof ValidationTargets,
   Schema extends z.ZodType<unknown>,
-  E extends Env = Env,
->(
-  target: Target,
-  schema: Schema,
-): MiddlewareHandler<
-  E,
-  string,
-  {
-    in: { [K in Target]: z.input<Schema> };
-    out: { [K in Target]: z.output<Schema> };
-  }
-> {
-  return honoValidator(target, async (value, _c: Context) => {
+>(target: Target, schema: Schema) {
+  return honoValidator(target as keyof ValidationTargets, async (value) => {
     const result = await schema.safeParseAsync(value);
 
     if (!result.success) {
       const issues = result.error.issues;
-      const errors = issues.map((e) => ({
-        path: e.path.join("."),
-        message: e.message,
-      }));
+      const errors = issues.reduce(
+        (acc, e) => {
+          acc[e.path.join(".") || "_root"] = e.message;
+          return acc;
+        },
+        {} as Record<string, string>,
+      );
 
       throw new ValidationError("Validation failed", {
         target,
-        errors: errors.reduce(
-          (acc, err) => {
-            acc[err.path || "_root"] = err.message;
-            return acc;
-          },
-          {} as Record<string, string>,
-        ),
-      });
+        errors,
+      } as unknown as Record<string, string>);
     }
 
     return result.data as z.output<Schema>;

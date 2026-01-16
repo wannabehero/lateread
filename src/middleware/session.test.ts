@@ -34,7 +34,7 @@ describe("middleware/session", () => {
   describe("session extraction", () => {
     it("should set userId in context when session exists", async () => {
       const c = createMockContext();
-      spyGetSession.mockReturnValue({ userId: "user123" });
+      spyGetSession.mockReturnValue({ userId: "user123" } as any);
 
       const middleware = session();
       await middleware(c, mockNext);
@@ -59,7 +59,7 @@ describe("middleware/session", () => {
     it("should not set userId when session exists but has no userId", async () => {
       const c = createMockContext();
       // Session object without userId (edge case)
-      spyGetSession.mockReturnValue({} as { userId: string });
+      spyGetSession.mockReturnValue({} as any);
 
       const middleware = session();
       await middleware(c, mockNext);
@@ -72,7 +72,7 @@ describe("middleware/session", () => {
   describe("next() handling", () => {
     it("should call next() when session exists", async () => {
       const c = createMockContext();
-      spyGetSession.mockReturnValue({ userId: "user123" });
+      spyGetSession.mockReturnValue({ userId: "user123" } as any);
 
       const middleware = session();
       await middleware(c, mockNext);
@@ -92,7 +92,7 @@ describe("middleware/session", () => {
 
     it("should propagate errors from next()", async () => {
       const c = createMockContext();
-      spyGetSession.mockReturnValue({ userId: "user123" });
+      spyGetSession.mockReturnValue({ userId: "user123" } as any);
 
       const errorNext = mock(async () => {
         throw new Error("Handler error");
@@ -115,7 +115,7 @@ describe("middleware/session", () => {
 
       for (const userId of testCases) {
         const c = createMockContext();
-        spyGetSession.mockReturnValue({ userId });
+        spyGetSession.mockReturnValue({ userId } as any);
 
         const middleware = session();
         await middleware(c, mockNext);
@@ -127,7 +127,7 @@ describe("middleware/session", () => {
 
     it("should call getSession with correct context", async () => {
       const c = createMockContext();
-      spyGetSession.mockReturnValue({ userId: "user123" });
+      spyGetSession.mockReturnValue({ userId: "user123" } as any);
 
       const middleware = session();
       await middleware(c, mockNext);

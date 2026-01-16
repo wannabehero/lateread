@@ -2,7 +2,9 @@ import { beforeEach, describe, expect, it, mock } from "bun:test";
 import { getTTSProvider, htmlToPlainText, isTTSAvailable } from "./tts";
 
 // Mock ElevenLabs SDK globally
-const mockStream = mock(() => Promise.resolve());
+const mockStream = mock((_voiceId: string, _options: any) =>
+  Promise.resolve({} as any),
+);
 
 mock.module("@elevenlabs/elevenlabs-js", () => {
   return {
@@ -212,7 +214,7 @@ describe("ElevenLabsTTSProvider", () => {
       expect(result).toBe(mockReadableStream);
       expect(mockStream).toHaveBeenCalledTimes(1);
 
-      const callArgs = mockStream.mock.calls[0];
+      const callArgs = (mockStream.mock.calls as any[][])[0];
       const voiceId = callArgs?.[0];
       const options = callArgs?.[1];
 
@@ -229,7 +231,7 @@ describe("ElevenLabsTTSProvider", () => {
       const provider = getTTSProvider();
       await provider.generateStream("Hola mundo", "es");
 
-      const callArgs = mockStream.mock.calls[0];
+      const callArgs = (mockStream.mock.calls as any[][])[0];
       const voiceId = callArgs?.[0];
 
       expect(voiceId).toBe("VR6AewLTigWG4xSOukaG"); // Arnold - Spanish
@@ -242,7 +244,7 @@ describe("ElevenLabsTTSProvider", () => {
       const provider = getTTSProvider();
       await provider.generateStream("Bonjour le monde", "fr");
 
-      const callArgs = mockStream.mock.calls[0];
+      const callArgs = (mockStream.mock.calls as any[][])[0];
       const voiceId = callArgs?.[0];
 
       expect(voiceId).toBe("ThT5KcBeYPX3keUQqHPh"); // Dorothy - French
@@ -255,7 +257,7 @@ describe("ElevenLabsTTSProvider", () => {
       const provider = getTTSProvider();
       await provider.generateStream("Hallo Welt", "de");
 
-      const callArgs = mockStream.mock.calls[0];
+      const callArgs = (mockStream.mock.calls as any[][])[0];
       const voiceId = callArgs?.[0];
 
       expect(voiceId).toBe("ErXwobaYiN019PkySvjV"); // Antoni - German
@@ -268,7 +270,7 @@ describe("ElevenLabsTTSProvider", () => {
       const provider = getTTSProvider();
       await provider.generateStream("Ciao mondo", "it");
 
-      const callArgs = mockStream.mock.calls[0];
+      const callArgs = (mockStream.mock.calls as any[][])[0];
       const voiceId = callArgs?.[0];
 
       expect(voiceId).toBe("XB0fDUnXU5powFXDhCwa"); // Charlotte - Italian
@@ -281,7 +283,7 @@ describe("ElevenLabsTTSProvider", () => {
       const provider = getTTSProvider();
       await provider.generateStream("Olá mundo", "pt");
 
-      const callArgs = mockStream.mock.calls[0];
+      const callArgs = (mockStream.mock.calls as any[][])[0];
       const voiceId = callArgs?.[0];
 
       expect(voiceId).toBe("pNInz6obpgDQGcFmaJgB"); // Adam - Portuguese
@@ -294,7 +296,7 @@ describe("ElevenLabsTTSProvider", () => {
       const provider = getTTSProvider();
       await provider.generateStream("Привет мир", "ru");
 
-      const callArgs = mockStream.mock.calls[0];
+      const callArgs = (mockStream.mock.calls as any[][])[0];
       const voiceId = callArgs?.[0];
 
       expect(voiceId).toBe("yoZ06aMxZJJ28mfd3POQ"); // Freya - Russian
@@ -307,7 +309,7 @@ describe("ElevenLabsTTSProvider", () => {
       const provider = getTTSProvider();
       await provider.generateStream("こんにちは世界", "ja");
 
-      const callArgs = mockStream.mock.calls[0];
+      const callArgs = (mockStream.mock.calls as any[][])[0];
       const voiceId = callArgs?.[0];
 
       expect(voiceId).toBe("TxGEqnHWrfWFTfGW9XjX"); // Josh - Japanese
@@ -320,7 +322,7 @@ describe("ElevenLabsTTSProvider", () => {
       const provider = getTTSProvider();
       await provider.generateStream("你好世界", "zh");
 
-      const callArgs = mockStream.mock.calls[0];
+      const callArgs = (mockStream.mock.calls as any[][])[0];
       const voiceId = callArgs?.[0];
 
       expect(voiceId).toBe("onwK4e9ZLuTAKqWW03F9"); // Serena - Chinese
@@ -333,7 +335,7 @@ describe("ElevenLabsTTSProvider", () => {
       const provider = getTTSProvider();
       await provider.generateStream("안녕하세요 세계", "ko");
 
-      const callArgs = mockStream.mock.calls[0];
+      const callArgs = (mockStream.mock.calls as any[][])[0];
       const voiceId = callArgs?.[0];
 
       expect(voiceId).toBe("pqHfZKP75CvOlQylNhV4"); // Bill - Korean
@@ -346,7 +348,7 @@ describe("ElevenLabsTTSProvider", () => {
       const provider = getTTSProvider();
       await provider.generateStream("مرحبا بالعالم", "ar");
 
-      const callArgs = mockStream.mock.calls[0];
+      const callArgs = (mockStream.mock.calls as any[][])[0];
       const voiceId = callArgs?.[0];
 
       expect(voiceId).toBe("ODq5zmih8GrVes37Dizd"); // Patrick - Arabic
@@ -359,7 +361,7 @@ describe("ElevenLabsTTSProvider", () => {
       const provider = getTTSProvider();
       await provider.generateStream("नमस्ते दुनिया", "hi");
 
-      const callArgs = mockStream.mock.calls[0];
+      const callArgs = (mockStream.mock.calls as any[][])[0];
       const voiceId = callArgs?.[0];
 
       expect(voiceId).toBe("pFZP5JQG7iQjIQuC4Bku"); // Lily - Hindi
@@ -372,7 +374,7 @@ describe("ElevenLabsTTSProvider", () => {
       const provider = getTTSProvider();
       await provider.generateStream("Text", "unsupported");
 
-      const callArgs = mockStream.mock.calls[0];
+      const callArgs = (mockStream.mock.calls as any[][])[0];
       const voiceId = callArgs?.[0];
 
       expect(voiceId).toBe("21m00Tcm4TlvDq8ikWAM"); // Default - Rachel
@@ -385,7 +387,7 @@ describe("ElevenLabsTTSProvider", () => {
       const provider = getTTSProvider();
       await provider.generateStream("Text", null);
 
-      const callArgs = mockStream.mock.calls[0];
+      const callArgs = (mockStream.mock.calls as any[][])[0];
       const voiceId = callArgs?.[0];
 
       expect(voiceId).toBe("21m00Tcm4TlvDq8ikWAM"); // Default - Rachel
@@ -398,7 +400,7 @@ describe("ElevenLabsTTSProvider", () => {
       const provider = getTTSProvider();
       await provider.generateStream("Text", undefined);
 
-      const callArgs = mockStream.mock.calls[0];
+      const callArgs = (mockStream.mock.calls as any[][])[0];
       const voiceId = callArgs?.[0];
 
       expect(voiceId).toBe("21m00Tcm4TlvDq8ikWAM"); // Default - Rachel
@@ -411,7 +413,7 @@ describe("ElevenLabsTTSProvider", () => {
       const provider = getTTSProvider();
       await provider.generateStream("Text", "ES"); // Uppercase
 
-      const callArgs = mockStream.mock.calls[0];
+      const callArgs = (mockStream.mock.calls as any[][])[0];
       const voiceId = callArgs?.[0];
 
       expect(voiceId).toBe("VR6AewLTigWG4xSOukaG"); // Spanish voice
@@ -425,7 +427,7 @@ describe("ElevenLabsTTSProvider", () => {
       const longText = "a".repeat(50000);
       await provider.generateStream(longText);
 
-      const callArgs = mockStream.mock.calls[0];
+      const callArgs = (mockStream.mock.calls as any[][])[0];
       const options = callArgs?.[1];
       const sentText = options?.text;
 
@@ -441,7 +443,7 @@ describe("ElevenLabsTTSProvider", () => {
       const text = "a".repeat(30000);
       await provider.generateStream(text);
 
-      const callArgs = mockStream.mock.calls[0];
+      const callArgs = (mockStream.mock.calls as any[][])[0];
       const options = callArgs?.[1];
       const sentText = options?.text;
 
@@ -457,7 +459,7 @@ describe("ElevenLabsTTSProvider", () => {
       const text = "a".repeat(40000);
       await provider.generateStream(text);
 
-      const callArgs = mockStream.mock.calls[0];
+      const callArgs = (mockStream.mock.calls as any[][])[0];
       const options = callArgs?.[1];
       const sentText = options?.text;
 
@@ -482,7 +484,7 @@ describe("ElevenLabsTTSProvider", () => {
       const provider = getTTSProvider();
       await provider.generateStream("");
 
-      const callArgs = mockStream.mock.calls[0];
+      const callArgs = (mockStream.mock.calls as any[][])[0];
       const options = callArgs?.[1];
 
       expect(options?.text).toBe("");

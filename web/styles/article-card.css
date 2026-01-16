@@ -21,7 +21,6 @@
 .article-image {
   width: 100%;
   overflow: hidden;
-  background: var(--pico-muted-color);
 }
 
 .article-image img {

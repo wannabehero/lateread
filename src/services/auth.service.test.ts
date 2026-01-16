@@ -167,7 +167,7 @@ describe("auth", () => {
       const [user] = await db
         .select()
         .from(users)
-        .where(eq(users.id, result?.userId))
+        .where(eq(users.id, result!.userId))
         .limit(1);
 
       expect(user).toBeDefined();

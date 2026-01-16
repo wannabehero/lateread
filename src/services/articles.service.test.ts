@@ -527,6 +527,8 @@ describe("articles.service", () => {
           siteName: "Example Site",
         },
         language: "en",
+        wordCount: 100,
+        readingTimeSeconds: 60,
       });
 
       const updated = await getArticleWithTagsById(article.id, user.id);
@@ -564,6 +566,8 @@ describe("articles.service", () => {
           siteName: null,
         },
         language: "en",
+        wordCount: 100,
+        readingTimeSeconds: 60,
       });
 
       const updated = await getArticleWithTagsById(article.id, user.id);
@@ -599,6 +603,8 @@ describe("articles.service", () => {
           siteName: null,
         },
         language: "en",
+        wordCount: 100,
+        readingTimeSeconds: 60,
       });
 
       const updated = await getArticleWithTagsById(article.id, user.id);

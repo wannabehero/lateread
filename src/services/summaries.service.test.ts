@@ -147,7 +147,9 @@ describe("summaries.service", () => {
       await getOrGenerateSummary(user.id, article.id, article.url);
 
       // Check that HTML tags were stripped and whitespace normalized
-      const calledWith = mockLLMProvider.summarize.mock.calls[0]?.[0];
+      const calledWith = (
+        mockLLMProvider.summarize.mock.calls as any[][]
+      )[0]?.[0];
       expect(calledWith).not.toContain("<");
       expect(calledWith).not.toContain(">");
       expect(calledWith).toContain("Article Title");
@@ -182,7 +184,9 @@ describe("summaries.service", () => {
 
       await getOrGenerateSummary(user.id, article.id, article.url);
 
-      const calledWith = mockLLMProvider.summarize.mock.calls[0]?.[0];
+      const calledWith = (
+        mockLLMProvider.summarize.mock.calls as any[][]
+      )[0]?.[0];
       expect(calledWith).toBe(" Text with multiple spaces And newlines ");
     });
 
@@ -421,7 +425,9 @@ describe("summaries.service", () => {
 
       await getOrGenerateSummary(user.id, article.id, article.url);
 
-      const calledWith = mockLLMProvider.summarize.mock.calls[0]?.[0];
+      const calledWith = (
+        mockLLMProvider.summarize.mock.calls as any[][]
+      )[0]?.[0];
       expect(calledWith).toBe(" Content with &amp; &lt; &gt; entities ");
     });
   });

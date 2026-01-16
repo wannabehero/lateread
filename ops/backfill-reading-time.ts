@@ -9,7 +9,7 @@
  * Usage: bun run ops/backfill-reading-time.ts
  */
 
-import { eq, isNull } from "drizzle-orm";
+import { and, eq, isNull } from "drizzle-orm";
 import { articles } from "../src/db/schema";
 import { contentCache } from "../src/lib/content-cache";
 import { db } from "../src/lib/db";
@@ -45,8 +45,7 @@ async function backfillReadingTime() {
         url: articles.url,
       })
       .from(articles)
-      .where(eq(articles.status, "completed"))
-      .where(isNull(articles.wordCount));
+      .where(and(eq(articles.status, "completed"), isNull(articles.wordCount)));
 
     stats.total = articlesToProcess.length;
     logger.info("Found articles to process", { count: stats.total });

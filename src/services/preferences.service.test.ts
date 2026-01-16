@@ -25,14 +25,14 @@ describe("preferences.service", () => {
     it("should return parsed preferences for user", async () => {
       const user = await createUser(db, {
         preferences: JSON.stringify({
-          reader: { fontSize: 18, theme: "dark" },
+          reader: { fontSize: 18, fontFamily: "sans" },
         }),
       });
 
       const prefs = await getUserPreferences(user.id);
 
       expect(prefs).toEqual({
-        reader: { fontSize: 18, theme: "dark" },
+        reader: { fontSize: 18, fontFamily: "sans" },
       });
     });
 
@@ -56,11 +56,7 @@ describe("preferences.service", () => {
       const complexPrefs = {
         reader: {
           fontSize: 16,
-          theme: "light",
-        },
-        notifications: {
-          email: true,
-          push: false,
+          fontFamily: "serif" as const,
         },
       };
 
@@ -177,7 +173,7 @@ describe("preferences.service", () => {
       const user = await createUser(db, {
         preferences: JSON.stringify({
           reader: { fontSize: 16 },
-          notifications: { email: true },
+          other: { enabled: true },
         }),
       });
 
@@ -185,10 +181,10 @@ describe("preferences.service", () => {
         fontSize: 20,
       });
 
-      const allPrefs = await getUserPreferences(user.id);
+      const allPrefs = (await getUserPreferences(user.id)) as any;
 
       expect(allPrefs.reader?.fontSize).toBe(20);
-      expect(allPrefs.notifications).toEqual({ email: true });
+      expect(allPrefs.other).toEqual({ enabled: true });
     });
 
     it("should update multiple reader preference fields at once", async () => {

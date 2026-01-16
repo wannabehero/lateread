@@ -1,8 +1,7 @@
 import { beforeEach, describe, expect, it, mock } from "bun:test";
-import type Anthropic from "@anthropic-ai/sdk";
 
 // Mock Anthropic SDK globally
-const mockAnthropicCreate = mock(() => Promise.resolve());
+const mockAnthropicCreate = mock((_args: any) => Promise.resolve({} as any));
 
 mock.module("@anthropic-ai/sdk", () => {
   return {
@@ -134,7 +133,7 @@ describe("ClaudeProvider", () => {
 
   describe("extractTags", () => {
     it("should extract and normalize tags from content", async () => {
-      const mockResponse: Anthropic.Messages.Message = {
+      const mockResponse = {
         id: "msg_123",
         type: "message",
         role: "assistant",
@@ -150,7 +149,7 @@ describe("ClaudeProvider", () => {
         usage: { input_tokens: 100, output_tokens: 50 },
       };
 
-      mockAnthropicCreate.mockResolvedValue(mockResponse);
+      mockAnthropicCreate.mockResolvedValue(mockResponse as any);
 
       const provider = createProvider();
       const result = await provider.extractTags(
@@ -163,13 +162,13 @@ describe("ClaudeProvider", () => {
       expect(result.confidence).toBe(0.95);
       expect(mockAnthropicCreate).toHaveBeenCalledTimes(1);
 
-      const callArgs = mockAnthropicCreate.mock.calls[0]?.[0];
+      const callArgs = (mockAnthropicCreate.mock.calls as any[][])[0]?.[0];
       expect(callArgs?.model).toBe("claude-haiku-4-5");
       expect(callArgs?.max_tokens).toBe(1024);
     });
 
     it("should include existing tags in prompt when provided", async () => {
-      const mockResponse: Anthropic.Messages.Message = {
+      const mockResponse = {
         id: "msg_123",
         type: "message",
         role: "assistant",
@@ -185,20 +184,20 @@ describe("ClaudeProvider", () => {
         usage: { input_tokens: 100, output_tokens: 50 },
       };
 
-      mockAnthropicCreate.mockResolvedValue(mockResponse);
+      mockAnthropicCreate.mockResolvedValue(mockResponse as any);
 
       const provider = createProvider();
       const existingTags = ["programming", "javascript", "typescript"];
       await provider.extractTags("Content about JS", existingTags);
 
-      const callArgs = mockAnthropicCreate.mock.calls[0]?.[0];
+      const callArgs = (mockAnthropicCreate.mock.calls as any[][])[0]?.[0];
       const userContent = callArgs?.messages[0]?.content as string;
       expect(userContent).toContain("Existing tags to consider reusing:");
       expect(userContent).toContain("programming, javascript, typescript");
     });
 
     it("should truncate content longer than 40k characters", async () => {
-      const mockResponse: Anthropic.Messages.Message = {
+      const mockResponse = {
         id: "msg_123",
         type: "message",
         role: "assistant",
@@ -214,13 +213,13 @@ describe("ClaudeProvider", () => {
         usage: { input_tokens: 100, output_tokens: 50 },
       };
 
-      mockAnthropicCreate.mockResolvedValue(mockResponse);
+      mockAnthropicCreate.mockResolvedValue(mockResponse as any);
 
       const provider = createProvider();
       const longContent = "a".repeat(50000);
       await provider.extractTags(longContent, []);
 
-      const callArgs = mockAnthropicCreate.mock.calls[0]?.[0];
+      const callArgs = (mockAnthropicCreate.mock.calls as any[][])[0]?.[0];
       const userContent = callArgs?.messages[0]?.content as string;
       // The content should be truncated to 40k chars, plus some prompt text
       expect(userContent.length).toBeLessThan(longContent.length);
@@ -241,7 +240,7 @@ describe("ClaudeProvider", () => {
     });
 
     it("should return fallback when response has no content blocks", async () => {
-      const mockResponse: Anthropic.Messages.Message = {
+      const mockResponse = {
         id: "msg_123",
         type: "message",
         role: "assistant",
@@ -252,7 +251,7 @@ describe("ClaudeProvider", () => {
         usage: { input_tokens: 100, output_tokens: 50 },
       };
 
-      mockAnthropicCreate.mockResolvedValue(mockResponse);
+      mockAnthropicCreate.mockResolvedValue(mockResponse as any);
 
       const provider = createProvider();
       const result = await provider.extractTags("Test content", []);
@@ -265,7 +264,7 @@ describe("ClaudeProvider", () => {
     });
 
     it("should return fallback when response contains no valid JSON", async () => {
-      const mockResponse: Anthropic.Messages.Message = {
+      const mockResponse = {
         id: "msg_123",
         type: "message",
         role: "assistant",
@@ -281,7 +280,7 @@ describe("ClaudeProvider", () => {
         usage: { input_tokens: 100, output_tokens: 50 },
       };
 
-      mockAnthropicCreate.mockResolvedValue(mockResponse);
+      mockAnthropicCreate.mockResolvedValue(mockResponse as any);
 
       const provider = createProvider();
       const result = await provider.extractTags("Test content", []);
@@ -296,7 +295,7 @@ describe("ClaudeProvider", () => {
 
   describe("summarize", () => {
     it("should generate summaries in three formats", async () => {
-      const mockResponse: Anthropic.Messages.Message = {
+      const mockResponse = {
         id: "msg_123",
         type: "message",
         role: "assistant",
@@ -317,7 +316,7 @@ describe("ClaudeProvider", () => {
         usage: { input_tokens: 200, output_tokens: 100 },
       };
 
-      mockAnthropicCreate.mockResolvedValue(mockResponse);
+      mockAnthropicCreate.mockResolvedValue(mockResponse as any);
 
       const provider = createProvider();
       const result = await provider.summarize("Article content here");
@@ -331,13 +330,13 @@ describe("ClaudeProvider", () => {
       );
       expect(mockAnthropicCreate).toHaveBeenCalledTimes(1);
 
-      const callArgs = mockAnthropicCreate.mock.calls[0]?.[0];
+      const callArgs = (mockAnthropicCreate.mock.calls as any[][])[0]?.[0];
       expect(callArgs?.model).toBe("claude-sonnet-4-5");
       expect(callArgs?.max_tokens).toBe(2048);
     });
 
     it("should include language hint when languageCode is provided", async () => {
-      const mockResponse: Anthropic.Messages.Message = {
+      const mockResponse = {
         id: "msg_123",
         type: "message",
         role: "assistant",
@@ -357,19 +356,19 @@ describe("ClaudeProvider", () => {
         usage: { input_tokens: 200, output_tokens: 100 },
       };
 
-      mockAnthropicCreate.mockResolvedValue(mockResponse);
+      mockAnthropicCreate.mockResolvedValue(mockResponse as any);
 
       const provider = createProvider();
       await provider.summarize("Статья на русском", "ru");
 
-      const callArgs = mockAnthropicCreate.mock.calls[0]?.[0];
+      const callArgs = (mockAnthropicCreate.mock.calls as any[][])[0]?.[0];
       const userContent = callArgs?.messages[0]?.content as string;
       expect(userContent).toContain("The article is in RU");
       expect(userContent).toContain("Generate all summaries in RU language");
     });
 
     it("should not include language hint when languageCode is null", async () => {
-      const mockResponse: Anthropic.Messages.Message = {
+      const mockResponse = {
         id: "msg_123",
         type: "message",
         role: "assistant",
@@ -389,18 +388,18 @@ describe("ClaudeProvider", () => {
         usage: { input_tokens: 200, output_tokens: 100 },
       };
 
-      mockAnthropicCreate.mockResolvedValue(mockResponse);
+      mockAnthropicCreate.mockResolvedValue(mockResponse as any);
 
       const provider = createProvider();
       await provider.summarize("Article content", null);
 
-      const callArgs = mockAnthropicCreate.mock.calls[0]?.[0];
+      const callArgs = (mockAnthropicCreate.mock.calls as any[][])[0]?.[0];
       const userContent = callArgs?.messages[0]?.content as string;
       expect(userContent).not.toContain("IMPORTANT: The article is in");
     });
 
     it("should truncate content longer than 400k characters", async () => {
-      const mockResponse: Anthropic.Messages.Message = {
+      const mockResponse = {
         id: "msg_123",
         type: "message",
         role: "assistant",
@@ -420,13 +419,13 @@ describe("ClaudeProvider", () => {
         usage: { input_tokens: 200, output_tokens: 100 },
       };
 
-      mockAnthropicCreate.mockResolvedValue(mockResponse);
+      mockAnthropicCreate.mockResolvedValue(mockResponse as any);
 
       const provider = createProvider();
       const longContent = "a".repeat(500000);
       await provider.summarize(longContent);
 
-      const callArgs = mockAnthropicCreate.mock.calls[0]?.[0];
+      const callArgs = (mockAnthropicCreate.mock.calls as any[][])[0]?.[0];
       const userContent = callArgs?.messages[0]?.content as string;
       expect(userContent.length).toBeLessThan(longContent.length);
       expect(userContent).toContain("a".repeat(100)); // Should still have some content
@@ -443,7 +442,7 @@ describe("ClaudeProvider", () => {
     });
 
     it("should throw error when response has no content blocks", async () => {
-      const mockResponse: Anthropic.Messages.Message = {
+      const mockResponse = {
         id: "msg_123",
         type: "message",
         role: "assistant",
@@ -454,7 +453,7 @@ describe("ClaudeProvider", () => {
         usage: { input_tokens: 200, output_tokens: 100 },
       };
 
-      mockAnthropicCreate.mockResolvedValue(mockResponse);
+      mockAnthropicCreate.mockResolvedValue(mockResponse as any);
 
       const provider = createProvider();
 
@@ -464,7 +463,7 @@ describe("ClaudeProvider", () => {
     });
 
     it("should throw error when summary fields are empty - oneSentence", async () => {
-      const mockResponse: Anthropic.Messages.Message = {
+      const mockResponse = {
         id: "msg_123",
         type: "message",
         role: "assistant",
@@ -484,7 +483,7 @@ describe("ClaudeProvider", () => {
         usage: { input_tokens: 200, output_tokens: 100 },
       };
 
-      mockAnthropicCreate.mockResolvedValue(mockResponse);
+      mockAnthropicCreate.mockResolvedValue(mockResponse as any);
 
       const provider = createProvider();
 
@@ -494,7 +493,7 @@ describe("ClaudeProvider", () => {
     });
 
     it("should throw error when summary fields are empty - oneParagraph", async () => {
-      const mockResponse: Anthropic.Messages.Message = {
+      const mockResponse = {
         id: "msg_123",
         type: "message",
         role: "assistant",
@@ -514,7 +513,7 @@ describe("ClaudeProvider", () => {
         usage: { input_tokens: 200, output_tokens: 100 },
       };
 
-      mockAnthropicCreate.mockResolvedValue(mockResponse);
+      mockAnthropicCreate.mockResolvedValue(mockResponse as any);
 
       const provider = createProvider();
 
@@ -524,7 +523,7 @@ describe("ClaudeProvider", () => {
     });
 
     it("should throw error when summary fields are empty - long", async () => {
-      const mockResponse: Anthropic.Messages.Message = {
+      const mockResponse = {
         id: "msg_123",
         type: "message",
         role: "assistant",
@@ -544,7 +543,7 @@ describe("ClaudeProvider", () => {
         usage: { input_tokens: 200, output_tokens: 100 },
       };
 
-      mockAnthropicCreate.mockResolvedValue(mockResponse);
+      mockAnthropicCreate.mockResolvedValue(mockResponse as any);
 
       const provider = createProvider();
 

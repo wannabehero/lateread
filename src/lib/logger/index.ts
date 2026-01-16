@@ -8,7 +8,6 @@ import type { BaseContext, Logger, LogLevel, LogMeta } from "./types";
 export type { Logger };
 
 const isProd = process.env.NODE_ENV === "production";
-const isTest = process.env.NODE_ENV === "test";
 
 /**
  * Creates a logger instance with optional base context.
@@ -67,9 +66,9 @@ export function createLogger(baseContext: BaseContext = {}): Logger {
     }
 
     const output =
-      isProd || isTest
-        ? JSON.stringify(logObject) // Single-line JSON for production and test
-        : formatConsoleLog(logObject); // Colorful log for development
+      process.env.NODE_ENV === "development"
+        ? formatConsoleLog(logObject) // Colorful log for development
+        : JSON.stringify(logObject); // Single-line JSON for everything else (prod, test, etc)
 
     // Use appropriate console method
     if (level === "error" || level === "warn") {

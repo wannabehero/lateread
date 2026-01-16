@@ -95,6 +95,7 @@ export async function createCompletedArticle(
       processedAt: new Date(),
       createdAt: new Date(),
       archived: overrides?.archived ?? false,
+      archivedAt: overrides?.archived ? new Date() : null,
       language: overrides?.language ?? null,
       readAt: overrides?.readAt ?? null,
     })

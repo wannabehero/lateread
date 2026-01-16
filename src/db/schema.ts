@@ -81,6 +81,7 @@ export const articles = sqliteTable(
       .notNull()
       .default("pending"),
     archived: integer("archived", { mode: "boolean" }).notNull().default(false),
+    archivedAt: integer("archived_at", { mode: "timestamp" }),
     rating: integer("rating").notNull().default(0), // -1 = dislike, 0 = none, 1 = like
     processingAttempts: integer("processing_attempts").notNull().default(0),
     lastError: text("last_error"),

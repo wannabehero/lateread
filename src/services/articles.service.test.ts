@@ -7,6 +7,7 @@ import {
   createUser,
 } from "../../test/fixtures";
 import * as schema from "../db/schema";
+import { eq } from "drizzle-orm";
 import { NotFoundError } from "../lib/errors";
 import {
   countArticles,
@@ -69,6 +70,28 @@ describe("articles.service", () => {
       });
       expect(archivedArticles).toHaveLength(1);
       expect(archivedArticles[0]?.title).toBe("Archived Article");
+    });
+
+    it("should sort archived articles by archivedAt descending", async () => {
+      const user = await createUser(db);
+      
+      const article1 = await createCompletedArticle(db, user.id, { title: "First Archived" });
+      const article2 = await createCompletedArticle(db, user.id, { title: "Second Archived" });
+      
+      // Archive first article with an old date
+      await toggleArticleArchive(article1.id, user.id);
+      await db.update(schema.articles)
+        .set({ archivedAt: new Date(Date.now() - 10000) })
+        .where(eq(schema.articles.id, article1.id));
+      
+      // Archive second article with current date (newer)
+      await toggleArticleArchive(article2.id, user.id);
+      
+      const archivedArticles = await getArticlesWithTags(user.id, { archived: true });
+      
+      expect(archivedArticles).toHaveLength(2);
+      expect(archivedArticles[0]?.title).toBe("Second Archived");
+      expect(archivedArticles[1]?.title).toBe("First Archived");
     });
 
     it("should only return completed articles", async () => {

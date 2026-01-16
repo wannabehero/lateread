@@ -95,7 +95,9 @@ export async function getArticlesWithTags(
     .leftJoin(articleSummaries, eq(articles.id, articleSummaries.articleId))
     .where(and(...conditions))
     .groupBy(articles.id)
-    .orderBy(desc(articles.createdAt))
+    .orderBy(
+      filters.archived ? desc(articles.archivedAt) : desc(articles.createdAt),
+    )
     .limit(50);
 
   return results.map((row) => ({
@@ -292,7 +294,10 @@ export async function toggleArticleArchive(
   // Toggle archived status
   await db
     .update(articles)
-    .set({ archived: newArchivedStatus })
+    .set({
+      archived: newArchivedStatus,
+      archivedAt: newArchivedStatus ? new Date() : null,
+    })
     .where(eq(articles.id, articleId));
 
   return newArchivedStatus;
@@ -320,7 +325,7 @@ export async function rateArticle(
   // Set rating and archive in one update
   await db
     .update(articles)
-    .set({ rating, archived: true })
+    .set({ rating, archived: true, archivedAt: new Date() })
     .where(eq(articles.id, articleId));
 }
 

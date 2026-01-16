@@ -50,6 +50,13 @@
       "when": 1768223692387,
       "tag": "0006_black_the_phantom",
       "breakpoints": true
+    },
+    {
+      "idx": 7,
+      "version": "6",
+      "when": 1768589656622,
+      "tag": "0007_brown_wolverine",
+      "breakpoints": true
     }
   ]
 }

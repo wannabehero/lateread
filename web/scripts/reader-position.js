@@ -127,11 +127,21 @@ class ReaderPosition extends HTMLElement {
 
       if (elementBottom > viewportTop) {
         const offsetWithin = Math.max(0, viewportTop - elementTop);
-        const offsetPercent = Math.round((offsetWithin / rect.height) * 100);
+
+        // Guard against division by zero or invalid height
+        let offsetPercent = 0;
+        if (rect.height > 0) {
+          offsetPercent = Math.round((offsetWithin / rect.height) * 100);
+        }
+
+        // Ensure value is valid and within bounds
+        offsetPercent = Number.isFinite(offsetPercent)
+          ? Math.min(Math.max(offsetPercent, 0), 100)
+          : 0;
 
         return {
           element: i,
-          offset: Math.min(offsetPercent, 100),
+          offset: offsetPercent,
         };
       }
     }

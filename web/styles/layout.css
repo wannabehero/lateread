@@ -1,0 +1,10 @@
+/* iOS Safe Area Support */
+body {
+  padding-bottom: env(safe-area-inset-bottom);
+  padding-left: env(safe-area-inset-left);
+  padding-right: env(safe-area-inset-right);
+}
+
+.main-content {
+  padding-top: calc(5rem + env(safe-area-inset-top));
+}

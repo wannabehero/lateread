@@ -1,0 +1,30 @@
+/* Search Form */
+.search-form {
+  margin-bottom: 1.5rem;
+}
+
+.search-form input[type="search"] {
+  margin-bottom: 0;
+}
+
+/* Empty State */
+.empty-state {
+  text-align: center;
+  padding: 3rem 1rem;
+  color: var(--pico-muted-color);
+}
+
+.empty-state p {
+  font-size: 1.1rem;
+}
+
+/* Auth Container */
+.auth-container {
+  max-width: 500px;
+  margin: 2rem auto;
+}
+
+.help-text {
+  text-align: center;
+  margin-top: 0.5rem;
+}

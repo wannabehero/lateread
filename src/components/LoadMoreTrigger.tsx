@@ -27,14 +27,13 @@ export const LoadMoreTrigger: FC<LoadMoreTriggerProps> = ({
 
   return (
     <div
-      id="load-more-trigger"
+      class="load-more-trigger"
       hx-get={buildUrl()}
       hx-trigger="intersect once threshold:0.1"
       hx-swap="outerHTML"
-      style="grid-column: 1 / -1; display: flex; justify-content: center; padding: 2rem 0;"
     >
       <div class="loading-spinner">
-        <div class="spinner" aria-label="Loading more articles" role="status" />
+        <output class="spinner" aria-label="Loading more articles" />
       </div>
     </div>
   );

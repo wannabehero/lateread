@@ -52,6 +52,14 @@ button.htmx-request {
   }
 }
 
+/* Load More Trigger */
+.load-more-trigger {
+  grid-column: 1 / -1;
+  display: flex;
+  justify-content: center;
+  padding: 2rem 0;
+}
+
 /* Load More Trigger Spinner */
 .loading-spinner {
   display: flex;

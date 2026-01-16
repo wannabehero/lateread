@@ -1,4 +1,6 @@
 import { type Context, Hono } from "hono";
+import { z } from "zod";
+import { ArticleCards } from "../components/ArticleCards";
 import { ArticleList } from "../components/ArticleList";
 import { ReaderView } from "../components/ReaderView";
 import { isLLMAvailable } from "../lib/llm";
@@ -23,19 +25,35 @@ export async function renderArticlesList(
   c: Context<AppContext>,
   userId: string,
   archived: boolean = false,
+  cursor?: string,
 ) {
-  const [articlesWithTags, processingCount] = await Promise.all([
+  const [result, processingCount] = await Promise.all([
     getArticlesWithTags(userId, {
       archived,
+      cursor,
     }),
     countArticlesByStatus(userId, ["pending", "processing"]),
   ]);
 
+  // HTMX pagination request - return only article cards (when cursor is present)
+  if (cursor && c.req.header("hx-request") === "true") {
+    return c.html(
+      <ArticleCards
+        articles={result.articles}
+        nextCursor={result.nextCursor}
+        basePath={archived ? "/archive" : "/articles"}
+        archived={archived}
+      />,
+    );
+  }
+
+  // Full page response (regular navigation or initial load)
   const content = (
     <ArticleList
-      articles={articlesWithTags}
+      articles={result.articles}
       archived={archived}
       processingCount={processingCount}
+      nextCursor={result.nextCursor}
     />
   );
 
@@ -45,18 +63,40 @@ export async function renderArticlesList(
 /**
  * GET /articles - List articles
  */
-articlesRouter.get("/articles", requireAuth("redirect"), async (c) => {
-  const userId = c.get("userId");
-  return renderArticlesList(c, userId, false);
-});
+articlesRouter.get(
+  "/articles",
+  requireAuth("redirect"),
+  validator(
+    "query",
+    z.object({
+      cursor: z.string().optional(),
+    }),
+  ),
+  async (c) => {
+    const userId = c.get("userId");
+    const { cursor } = c.req.valid("query");
+    return renderArticlesList(c, userId, false, cursor);
+  },
+);
 
 /**
  * GET /archive - List archived articles
  */
-articlesRouter.get("/archive", requireAuth("redirect"), async (c) => {
-  const userId = c.get("userId");
-  return renderArticlesList(c, userId, true);
-});
+articlesRouter.get(
+  "/archive",
+  requireAuth("redirect"),
+  validator(
+    "query",
+    z.object({
+      cursor: z.string().optional(),
+    }),
+  ),
+  async (c) => {
+    const userId = c.get("userId");
+    const { cursor } = c.req.valid("query");
+    return renderArticlesList(c, userId, true, cursor);
+  },
+);
 
 /**
  * GET /articles/:id - Read article

@@ -1,5 +1,15 @@
 import type { SQL } from "drizzle-orm";
-import { and, desc, eq, getTableColumns, inArray, or, sql } from "drizzle-orm";
+import {
+  and,
+  desc,
+  eq,
+  getTableColumns,
+  inArray,
+  like,
+  lt,
+  or,
+  sql,
+} from "drizzle-orm";
 import { articleSummaries, articles, articleTags, tags } from "../db/schema";
 import type { Article, ArticleStatus, Tag } from "../db/types";
 import { db } from "../lib/db";
@@ -10,9 +20,19 @@ type ArticleWithTags = Article & {
   tags: Tag[];
 };
 
+const DEFAULT_ARTICLES_LIMIT = 20;
+
 export interface GetArticlesFilters {
   archived?: boolean;
   query?: string;
+  cursor?: string;
+  limit?: number;
+}
+
+export interface PaginatedArticles {
+  articles: ArticleWithTags[];
+  nextCursor: string | null;
+  hasMore: boolean;
 }
 
 /**
@@ -72,14 +92,60 @@ async function buildArticleConditions(
 }
 
 /**
- * Get articles with tags for a user using JSON aggregation
+ * Parse cursor from string format "timestamp:id"
+ */
+function parseCursor(cursor: string): { createdAt: Date; id: string } | null {
+  const parts = cursor.split(":");
+  if (parts.length !== 2) return null;
+
+  const timestamp = Number.parseInt(parts[0] ?? "", 10);
+  const id = parts[1] ?? "";
+
+  if (Number.isNaN(timestamp) || !id) return null;
+
+  return {
+    createdAt: new Date(timestamp * 1000),
+    id,
+  };
+}
+
+/**
+ * Encode cursor to string format "timestamp:id"
+ */
+function encodeCursor(createdAt: Date, id: string): string {
+  const timestamp = Math.floor(createdAt.getTime() / 1000);
+  return `${timestamp}:${id}`;
+}
+
+/**
+ * Get articles with tags for a user using JSON aggregation with cursor-based pagination
  */
 export async function getArticlesWithTags(
   userId: string,
   filters: GetArticlesFilters = {},
-): Promise<ArticleWithTags[]> {
+): Promise<PaginatedArticles> {
+  const limit = filters.limit ?? DEFAULT_ARTICLES_LIMIT;
   const conditions = await buildArticleConditions(userId, filters);
 
+  // Add cursor condition for pagination
+  if (filters.cursor) {
+    const cursorData = parseCursor(filters.cursor);
+    if (cursorData) {
+      // For keyset pagination: WHERE (createdAt, id) < (cursor_createdAt, cursor_id)
+      // This gives us stable pagination even if new articles are added
+      conditions.push(
+        or(
+          lt(articles.createdAt, cursorData.createdAt),
+          and(
+            eq(articles.createdAt, cursorData.createdAt),
+            lt(articles.id, cursorData.id),
+          ),
+        ) as SQL,
+      );
+    }
+  }
+
+  // Fetch limit + 1 to detect if there are more results
   const results = await db
     .select({
       ...getTableColumns(articles),
@@ -97,15 +163,37 @@ export async function getArticlesWithTags(
     .groupBy(articles.id)
     .orderBy(
       filters.archived ? desc(articles.archivedAt) : desc(articles.createdAt),
+      desc(articles.id),
     )
-    .limit(50);
+    .limit(limit + 1);
 
-  return results.map((row) => ({
+  const articlesWithTags = results.map((row) => ({
     ...row,
     tags: JSON.parse(row.tags).filter(
       (tag: { id: string; name: string } | null) => tag !== null,
     ),
   }));
+
+  // Check if there are more results
+  const hasMore = articlesWithTags.length > limit;
+  const paginatedArticles = hasMore
+    ? articlesWithTags.slice(0, limit)
+    : articlesWithTags;
+
+  // Generate next cursor from the last article
+  let nextCursor: string | null = null;
+  if (hasMore && paginatedArticles.length > 0) {
+    const lastArticle = paginatedArticles[paginatedArticles.length - 1];
+    if (lastArticle) {
+      nextCursor = encodeCursor(lastArticle.createdAt, lastArticle.id);
+    }
+  }
+
+  return {
+    articles: paginatedArticles,
+    nextCursor,
+    hasMore,
+  };
 }
 
 /**

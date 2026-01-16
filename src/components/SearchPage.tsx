@@ -1,6 +1,7 @@
 import type { FC } from "hono/jsx";
 import type { Article, Tag } from "../db/types";
 import { ArticleCard } from "./ArticleCard";
+import { LoadMoreTrigger } from "./LoadMoreTrigger";
 
 type ArticleWithTags = Article & {
   tags: Tag[];
@@ -9,9 +10,14 @@ type ArticleWithTags = Article & {
 interface SearchPageProps {
   query?: string;
   articles: ArticleWithTags[];
+  nextCursor?: string | null;
 }
 
-export const SearchResults: FC<SearchPageProps> = ({ query, articles }) => {
+export const SearchResults: FC<SearchPageProps> = ({
+  query,
+  articles,
+  nextCursor,
+}) => {
   return (
     <div id="search-results">
       {query ? (
@@ -20,6 +26,13 @@ export const SearchResults: FC<SearchPageProps> = ({ query, articles }) => {
             {articles.map((article) => (
               <ArticleCard article={article} />
             ))}
+            {nextCursor && (
+              <LoadMoreTrigger
+                nextCursor={nextCursor}
+                basePath="/search"
+                searchQuery={query}
+              />
+            )}
           </div>
         ) : (
           <div class="empty-state">
@@ -35,7 +48,11 @@ export const SearchResults: FC<SearchPageProps> = ({ query, articles }) => {
   );
 };
 
-export const SearchPage: FC<SearchPageProps> = ({ query, articles }) => {
+export const SearchPage: FC<SearchPageProps> = ({
+  query,
+  articles,
+  nextCursor,
+}) => {
   return (
     <div>
       <h1>Search</h1>
@@ -58,7 +75,11 @@ export const SearchPage: FC<SearchPageProps> = ({ query, articles }) => {
           autofocus
         />
       </form>
-      <SearchResults query={query} articles={articles} />
+      <SearchResults
+        query={query}
+        articles={articles}
+        nextCursor={nextCursor}
+      />
     </div>
   );
 };

@@ -2,19 +2,26 @@ import type { FC } from "hono/jsx";
 import type { Article, Tag } from "../db/types";
 import { ArticleCard } from "./ArticleCard";
 import { EmptyState } from "./EmptyState";
+import { LoadMoreTrigger } from "./LoadMoreTrigger";
 import { ProcessingBanner } from "./ProcessingBanner";
 
 interface ArticleListProps {
   articles: (Article & { tags: Tag[] })[];
   archived?: boolean;
   processingCount?: number;
+  nextCursor?: string | null;
+  searchQuery?: string;
 }
 
 export const ArticleList: FC<ArticleListProps> = ({
   articles,
   archived,
   processingCount = 0,
+  nextCursor,
+  searchQuery,
 }) => {
+  const basePath = archived ? "/archive" : "/articles";
+
   return (
     <div id="article-container">
       {!archived && <ProcessingBanner count={processingCount} immediate />}
@@ -25,6 +32,14 @@ export const ArticleList: FC<ArticleListProps> = ({
           {articles.map((article) => (
             <ArticleCard article={article} />
           ))}
+          {nextCursor && (
+            <LoadMoreTrigger
+              nextCursor={nextCursor}
+              basePath={basePath}
+              archived={archived}
+              searchQuery={searchQuery}
+            />
+          )}
         </div>
       )}
     </div>

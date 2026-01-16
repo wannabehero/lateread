@@ -1,4 +1,5 @@
 import { beforeEach, describe, expect, it } from "bun:test";
+import { eq } from "drizzle-orm";
 import { db, resetDatabase } from "../../test/bootstrap";
 import {
   addTagToArticle,
@@ -7,7 +8,6 @@ import {
   createUser,
 } from "../../test/fixtures";
 import * as schema from "../db/schema";
-import { eq } from "drizzle-orm";
 import { NotFoundError } from "../lib/errors";
 import {
   countArticles,
@@ -39,13 +39,13 @@ describe("articles.service", () => {
       const tag = await createTag(db, user.id, "javascript");
       await addTagToArticle(db, article.id, tag.id);
 
-      const articles = await getArticlesWithTags(user.id, {});
+      const result = await getArticlesWithTags(user.id, {});
 
-      expect(articles).toHaveLength(1);
-      expect(articles[0]?.id).toBe(article.id);
-      expect(articles[0]?.title).toBe("Test Article");
-      expect(articles[0]?.tags).toHaveLength(1);
-      expect(articles[0]?.tags[0]?.name).toBe("javascript");
+      expect(result.articles).toHaveLength(1);
+      expect(result.articles[0]?.id).toBe(article.id);
+      expect(result.articles[0]?.title).toBe("Test Article");
+      expect(result.articles[0]?.tags).toHaveLength(1);
+      expect(result.articles[0]?.tags[0]?.name).toBe("javascript");
     });
 
     it("should filter by archived status", async () => {
@@ -59,39 +59,44 @@ describe("articles.service", () => {
       });
       await toggleArticleArchive(archivedArticle.id, user.id);
 
-      const activeArticles = await getArticlesWithTags(user.id, {
+      const activeResult = await getArticlesWithTags(user.id, {
         archived: false,
       });
-      expect(activeArticles).toHaveLength(1);
-      expect(activeArticles[0]?.title).toBe("Active Article");
+      expect(activeResult.articles).toHaveLength(1);
+      expect(activeResult.articles[0]?.title).toBe("Active Article");
 
-      const archivedArticles = await getArticlesWithTags(user.id, {
+      const archivedResult = await getArticlesWithTags(user.id, {
         archived: true,
       });
-      expect(archivedArticles).toHaveLength(1);
-      expect(archivedArticles[0]?.title).toBe("Archived Article");
+      expect(archivedResult.articles).toHaveLength(1);
+      expect(archivedResult.articles[0]?.title).toBe("Archived Article");
     });
 
     it("should sort archived articles by archivedAt descending", async () => {
       const user = await createUser(db);
-      
-      const article1 = await createCompletedArticle(db, user.id, { title: "First Archived" });
-      const article2 = await createCompletedArticle(db, user.id, { title: "Second Archived" });
-      
+
+      const article1 = await createCompletedArticle(db, user.id, {
+        title: "First Archived",
+      });
+      const article2 = await createCompletedArticle(db, user.id, {
+        title: "Second Archived",
+      });
+
       // Archive first article with an old date
       await toggleArticleArchive(article1.id, user.id);
-      await db.update(schema.articles)
+      await db
+        .update(schema.articles)
         .set({ archivedAt: new Date(Date.now() - 10000) })
         .where(eq(schema.articles.id, article1.id));
-      
+
       // Archive second article with current date (newer)
       await toggleArticleArchive(article2.id, user.id);
-      
-      const archivedArticles = await getArticlesWithTags(user.id, { archived: true });
-      
-      expect(archivedArticles).toHaveLength(2);
-      expect(archivedArticles[0]?.title).toBe("Second Archived");
-      expect(archivedArticles[1]?.title).toBe("First Archived");
+
+      const result = await getArticlesWithTags(user.id, { archived: true });
+
+      expect(result.articles).toHaveLength(2);
+      expect(result.articles[0]?.title).toBe("Second Archived");
+      expect(result.articles[1]?.title).toBe("First Archived");
     });
 
     it("should only return completed articles", async () => {
@@ -109,9 +114,9 @@ describe("articles.service", () => {
         title: "Completed Article",
       });
 
-      const articles = await getArticlesWithTags(user.id, {});
-      expect(articles).toHaveLength(1);
-      expect(articles[0]?.title).toBe("Completed Article");
+      const result = await getArticlesWithTags(user.id, {});
+      expect(result.articles).toHaveLength(1);
+      expect(result.articles[0]?.title).toBe("Completed Article");
     });
 
     it("should only return articles for the specified user", async () => {
@@ -125,13 +130,13 @@ describe("articles.service", () => {
         title: "User 2 Article",
       });
 
-      const user1Articles = await getArticlesWithTags(user1.id, {});
-      expect(user1Articles).toHaveLength(1);
-      expect(user1Articles[0]?.title).toBe("User 1 Article");
+      const user1Result = await getArticlesWithTags(user1.id, {});
+      expect(user1Result.articles).toHaveLength(1);
+      expect(user1Result.articles[0]?.title).toBe("User 1 Article");
 
-      const user2Articles = await getArticlesWithTags(user2.id, {});
-      expect(user2Articles).toHaveLength(1);
-      expect(user2Articles[0]?.title).toBe("User 2 Article");
+      const user2Result = await getArticlesWithTags(user2.id, {});
+      expect(user2Result.articles).toHaveLength(1);
+      expect(user2Result.articles[0]?.title).toBe("User 2 Article");
     });
   });
 
@@ -738,12 +743,12 @@ describe("articles.service", () => {
         title: "Python Basics",
       });
 
-      const results = await getArticlesWithTags(user.id, {
+      const result = await getArticlesWithTags(user.id, {
         query: "JavaScript",
       });
 
-      expect(results).toHaveLength(1);
-      expect(results[0]?.title).toBe("Introduction to JavaScript");
+      expect(result.articles).toHaveLength(1);
+      expect(result.articles[0]?.title).toBe("Introduction to JavaScript");
     });
 
     it("should escape special characters in search query", async () => {
@@ -757,12 +762,12 @@ describe("articles.service", () => {
 
       // Search for "100%" - should only match the first article
       // If % was not escaped, it would match both (as wildcards)
-      const results = await getArticlesWithTags(user.id, {
+      const result = await getArticlesWithTags(user.id, {
         query: "100%",
       });
 
-      expect(results).toHaveLength(1);
-      expect(results[0]?.title).toBe("100% Guaranteed");
+      expect(result.articles).toHaveLength(1);
+      expect(result.articles[0]?.title).toBe("100% Guaranteed");
     });
 
     it("should escape underscore in search query", async () => {
@@ -776,12 +781,12 @@ describe("articles.service", () => {
 
       // Search for "test_article" - should only match the first article
       // If _ was not escaped, it would match any single character
-      const results = await getArticlesWithTags(user.id, {
+      const result = await getArticlesWithTags(user.id, {
         query: "test_article",
       });
 
-      expect(results).toHaveLength(1);
-      expect(results[0]?.title).toBe("test_article");
+      expect(result.articles).toHaveLength(1);
+      expect(result.articles[0]?.title).toBe("test_article");
     });
 
     it("should handle partial matches with escaped characters", async () => {
@@ -790,12 +795,12 @@ describe("articles.service", () => {
         title: "The 50% Rule",
       });
 
-      const results = await getArticlesWithTags(user.id, {
+      const result = await getArticlesWithTags(user.id, {
         query: "50%",
       });
 
-      expect(results).toHaveLength(1);
-      expect(results[0]?.title).toBe("The 50% Rule");
+      expect(result.articles).toHaveLength(1);
+      expect(result.articles[0]?.title).toBe("The 50% Rule");
     });
 
     it("should escape backslash in search query", async () => {
@@ -807,12 +812,12 @@ describe("articles.service", () => {
         title: "ACDC",
       });
 
-      const results = await getArticlesWithTags(user.id, {
+      const result = await getArticlesWithTags(user.id, {
         query: "AC\\DC",
       });
 
-      expect(results).toHaveLength(1);
-      expect(results[0]?.title).toBe("AC\\DC");
+      expect(result.articles).toHaveLength(1);
+      expect(result.articles[0]?.title).toBe("AC\\DC");
     });
   });
 });

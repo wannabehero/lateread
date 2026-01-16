@@ -51,3 +51,25 @@ button.htmx-request {
     transform: rotate(360deg);
   }
 }
+
+/* Load More Trigger Spinner */
+.loading-spinner {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 1rem;
+}
+
+.loading-spinner .spinner {
+  width: 2rem;
+  height: 2rem;
+  border: 3px solid var(--pico-muted-border-color);
+  border-top-color: var(--pico-primary);
+}
+
+@media (prefers-color-scheme: dark) {
+  .loading-spinner .spinner {
+    border-color: rgba(255, 255, 255, 0.2);
+    border-top-color: var(--pico-primary);
+  }
+}

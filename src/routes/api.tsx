@@ -1,6 +1,7 @@
 import { Hono } from "hono";
 import { stream } from "hono/streaming";
 import { z } from "zod";
+import { ArticleList } from "../components/ArticleList";
 import { EmptyState } from "../components/EmptyState";
 import { ProcessingBanner } from "../components/ProcessingBanner";
 import { SummaryView } from "../components/SummaryView";
@@ -12,6 +13,7 @@ import {
   countArticles,
   countArticlesByStatus,
   deleteArticle,
+  getArticlesWithTags,
   getArticleWithTagsById,
   markArticleAsRead,
   rateArticle,
@@ -221,14 +223,41 @@ api.post(
 api.get(
   "/api/articles/processing-count",
   requireAuth("json-401"),
+  validator(
+    "query",
+    z.object({
+      previous: z.coerce.number().int().min(0).optional(),
+    }),
+  ),
   async (c) => {
     const userId = c.get("userId");
+    const { previous } = c.req.valid("query");
 
     try {
       const count = await countArticlesByStatus(userId, [
         "pending",
         "processing",
       ]);
+
+      // If count has changed, refresh the article list with OOB swap
+      if (previous !== undefined && count !== previous) {
+        const result = await getArticlesWithTags(userId, { archived: false });
+
+        return c.html(
+          <>
+            <ProcessingBanner count={count} />
+            <ArticleList
+              articles={result.articles}
+              archived={false}
+              processingCount={count}
+              nextCursor={result.nextCursor}
+              hx-swap-oob="true"
+            />
+          </>,
+        );
+      }
+
+      // No change - just return the banner
       return c.html(<ProcessingBanner count={count} />);
     } catch (error) {
       c.var.logger.error("Error getting processing count", { error });

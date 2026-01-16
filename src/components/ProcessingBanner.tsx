@@ -16,7 +16,7 @@ export const ProcessingBanner: FC<ProcessingBannerProps> = ({
   return (
     <div
       class="processing-banner"
-      hx-get="/api/articles/processing-count"
+      hx-get={`/api/articles/processing-count?previous=${count}`}
       hx-trigger={immediate ? "load, every 5s" : "load delay:5s"}
       hx-swap="outerHTML"
     >

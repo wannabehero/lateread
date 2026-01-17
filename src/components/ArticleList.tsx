@@ -11,7 +11,7 @@ interface ArticleListProps {
   processingCount?: number;
   nextCursor?: string | null;
   searchQuery?: string;
-  "hx-swap-oob"?: string;
+  oobSwap?: string;
 }
 
 export const ArticleList: FC<ArticleListProps> = ({
@@ -20,12 +20,12 @@ export const ArticleList: FC<ArticleListProps> = ({
   processingCount = 0,
   nextCursor,
   searchQuery,
-  "hx-swap-oob": hxSwapOob,
+  oobSwap,
 }) => {
   const basePath = archived ? "/archive" : "/articles";
 
   return (
-    <div id="article-container" hx-swap-oob={hxSwapOob}>
+    <div id="article-container" hx-swap-oob={oobSwap}>
       {!archived && <ProcessingBanner count={processingCount} immediate />}
       {articles.length === 0 ? (
         <EmptyState archived={archived} />

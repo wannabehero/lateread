@@ -251,7 +251,7 @@ api.get(
               archived={false}
               processingCount={count}
               nextCursor={result.nextCursor}
-              hx-swap-oob="true"
+              oobSwap="true"
             />
           </>,
         );

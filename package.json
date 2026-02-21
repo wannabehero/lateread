@@ -37,7 +37,6 @@
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^0.71.2",
-    "@elevenlabs/elevenlabs-js": "^2.28.0",
     "@mozilla/readability": "^0.6.0",
     "bunline": "github:wannabehero/bunline#v0.0.3",
     "croner": "^9.1.0",

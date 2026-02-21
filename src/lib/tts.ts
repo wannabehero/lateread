@@ -1,4 +1,3 @@
-import { ElevenLabsClient } from "@elevenlabs/elevenlabs-js";
 import { config } from "./config";
 import { ExternalServiceError } from "./errors";
 
@@ -10,45 +9,39 @@ export interface TTSProvider {
 }
 
 /**
- * Default TTS configuration
- * Using Flash v2.5 - fastest model with ~75ms latency
+ * Gradium configuration
  */
-const TTS_CONFIG = {
-  modelId: "eleven_flash_v2_5", // Fastest model
-  outputFormat: "mp3_44100_128" as const,
+const GRADIUM_CONFIG = {
+  apiUrl: "https://api.gradium.ai/api/post/speech/tts",
+  // Using opus for efficient streaming and browser support
+  outputFormat: "opus",
 } as const;
 
 /**
- * Language to voice ID mapping
- * Maps ISO 639-1 language codes to native ElevenLabs voices for better accent and pronunciation
- *
- * Find and test voices here: https://elevenlabs.io/voice-library
- * Filter by language, test voices, and copy voice IDs to customize this mapping
+ * Language to voice ID mapping for Gradium
+ * Based on available voices:
+ * en: Emma (US)
+ * fr: Elise (FR)
+ * de: Mia (DE)
+ * es: Valentina (MX)
+ * pt: Alice (BR)
  */
-const VOICE_MAP: Record<string, string> = {
-  en: "21m00Tcm4TlvDq8ikWAM", // Rachel - English (US)
-  es: "VR6AewLTigWG4xSOukaG", // Arnold - Spanish
-  fr: "ThT5KcBeYPX3keUQqHPh", // Dorothy - French
-  de: "ErXwobaYiN019PkySvjV", // Antoni - German
-  it: "XB0fDUnXU5powFXDhCwa", // Charlotte - Italian
-  pt: "pNInz6obpgDQGcFmaJgB", // Adam - Portuguese
-  ru: "yoZ06aMxZJJ28mfd3POQ", // Freya - Russian
-  ja: "TxGEqnHWrfWFTfGW9XjX", // Josh - Japanese
-  zh: "onwK4e9ZLuTAKqWW03F9", // Serena - Chinese
-  ko: "pqHfZKP75CvOlQylNhV4", // Bill - Korean
-  ar: "ODq5zmih8GrVes37Dizd", // Patrick - Arabic
-  hi: "pFZP5JQG7iQjIQuC4Bku", // Lily - Hindi
+const GRADIUM_VOICE_MAP: Record<string, string> = {
+  en: "YTpq7expH9539ERJ", // Emma - English (US)
+  fr: "b35yykvVppLXyw_l", // Elise - French
+  de: "-uP9MuGtBqAvEyxI", // Mia - German
+  es: "B36pbz5_UoWn4BDl", // Valentina - Spanish (MX)
+  pt: "pYcGZz9VOo4n2ynh", // Alice - Portuguese (BR)
 };
 
-const DEFAULT_VOICE_ID = "21m00Tcm4TlvDq8ikWAM";
+const DEFAULT_VOICE_ID = "YTpq7expH9539ERJ"; // Emma
 
 /**
  * Get the best voice ID for the given language code
- * Returns a native voice for the language if available, otherwise defaults to Rachel (English)
  */
 function getVoiceForLanguage(languageCode: string | null | undefined): string {
   if (!languageCode) return DEFAULT_VOICE_ID;
-  return VOICE_MAP[languageCode.toLowerCase()] ?? DEFAULT_VOICE_ID;
+  return GRADIUM_VOICE_MAP[languageCode.toLowerCase()] ?? DEFAULT_VOICE_ID;
 }
 
 /**
@@ -78,13 +71,57 @@ export function htmlToPlainText(html: string): string {
   return text;
 }
 
-class ElevenLabsTTSProvider implements TTSProvider {
-  private client: ElevenLabsClient;
+/**
+ * Splits text into chunks respecting sentence boundaries and length limits
+ */
+export function splitTextIntoChunks(text: string, limit: number): string[] {
+  if (text.length <= limit) return [text];
+
+  const chunks: string[] = [];
+  let currentChunk = "";
+
+  // Split by sentence terminators
+  // Match sentence ending punctuation (.!?) followed by space or end of string
+  const sentences = text.match(/[^.!?]+[.!?]+(\s|$)|[^.!?]+$/g) || [text];
+
+  for (const sentence of sentences) {
+    if (currentChunk.length + sentence.length > limit) {
+      if (currentChunk.length > 0) {
+        chunks.push(currentChunk.trim());
+        currentChunk = "";
+      }
+
+      // Handle sentences longer than limit
+      if (sentence.length > limit) {
+         let remaining = sentence;
+         while (remaining.length > limit) {
+            let splitIndex = remaining.lastIndexOf(" ", limit);
+            if (splitIndex === -1) splitIndex = limit;
+
+            chunks.push(remaining.slice(0, splitIndex).trim());
+            remaining = remaining.slice(splitIndex).trim();
+         }
+         currentChunk = remaining;
+      } else {
+        currentChunk = sentence;
+      }
+    } else {
+      currentChunk += sentence;
+    }
+  }
+
+  if (currentChunk.trim().length > 0) {
+    chunks.push(currentChunk.trim());
+  }
+
+  return chunks;
+}
+
+class GradiumTTSProvider implements TTSProvider {
+  private apiKey: string;
 
   constructor(apiKey: string) {
-    this.client = new ElevenLabsClient({
-      apiKey,
-    });
+    this.apiKey = apiKey;
   }
 
   async generateStream(
@@ -92,11 +129,64 @@ class ElevenLabsTTSProvider implements TTSProvider {
     languageCode?: string | null,
   ): Promise<ReadableStream<Uint8Array>> {
     const voiceId = getVoiceForLanguage(languageCode);
+    // Use conservative limit well within Gradium's constraints
+    const chunks = splitTextIntoChunks(text, 2000);
+    const apiKey = this.apiKey;
 
-    return this.client.textToSpeech.stream(voiceId, {
-      text: text.slice(0, 40_000), // 40k chars is the limit for streaming
-      modelId: TTS_CONFIG.modelId,
-      outputFormat: TTS_CONFIG.outputFormat,
+    const iterator = async function* () {
+      for (const chunk of chunks) {
+        if (!chunk.trim()) continue;
+
+        const response = await fetch(GRADIUM_CONFIG.apiUrl, {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            "x-api-key": apiKey,
+          },
+          body: JSON.stringify({
+            text: chunk,
+            voice_id: voiceId,
+            output_format: GRADIUM_CONFIG.outputFormat,
+            only_audio: true,
+          }),
+        });
+
+        if (!response.ok) {
+          const errorText = await response.text();
+          throw new ExternalServiceError(
+            `Gradium API error: ${response.status} ${errorText}`,
+          );
+        }
+
+        if (!response.body) continue;
+
+        const reader = response.body.getReader();
+        try {
+          while (true) {
+            const { done, value } = await reader.read();
+            if (done) break;
+            if (value) yield value;
+          }
+        } finally {
+          reader.releaseLock();
+        }
+      }
+    };
+
+    const generator = iterator();
+    return new ReadableStream({
+      async pull(controller) {
+        try {
+          const { value, done } = await generator.next();
+          if (done) {
+            controller.close();
+          } else {
+            controller.enqueue(value);
+          }
+        } catch (e) {
+          controller.error(e);
+        }
+      },
     });
   }
 }
@@ -108,8 +198,8 @@ export function getTTSProvider(): TTSProvider {
     return ttsProvider;
   }
 
-  if (config.ELEVENLABS_API_KEY) {
-    ttsProvider = new ElevenLabsTTSProvider(config.ELEVENLABS_API_KEY);
+  if (config.GRADIUM_API_KEY) {
+    ttsProvider = new GradiumTTSProvider(config.GRADIUM_API_KEY);
     return ttsProvider;
   }
 
@@ -124,5 +214,9 @@ export function getTTSProvider(): TTSProvider {
 }
 
 export function isTTSAvailable() {
-  return !!config.ELEVENLABS_API_KEY;
+  return !!config.GRADIUM_API_KEY;
+}
+
+export function _resetTTSProvider() {
+  ttsProvider = null;
 }

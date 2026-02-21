@@ -297,7 +297,7 @@ api.get(
     );
 
     // Set appropriate headers for audio streaming
-    c.header("Content-Type", "audio/mpeg");
+    c.header("Content-Type", "audio/ogg");
     c.header("Cache-Control", "public, max-age=86400"); // Cache for 24 hours
 
     // Stream the audio to the response using ReadableStream reader

@@ -31,7 +31,7 @@ This is also a learning exercise for me to try out some new things:
 - [pico](https://pico.css/)
 - [htmx](https://htmx.org/)
 - [drizzle](https://drizzle.team/)
-- [elevenlabs](https://elevenlabs.io/)
+- [gradium](https://gradium.ai/)
 
 ### Webapp
 This is not exactly an SPA but rather a full SSR app. Everything is served and rendered via Hono JSX. HTMX is used to handle client-side interactions and updates. There's also some small bit of client-side vanilla js for some UI enhancements (I'm quite bad at it apparently).
@@ -42,7 +42,7 @@ The structured data is stored in SQLite database. The article's content is proce
 ### AI
 The extracted article content is fed to Claude to extract tags (the discovery of that is quite limited at the moment and it also generates too many new tags I think). The user then can also generate an on-demand summary of the article that will be cached in the db (is used for search too).
 
-Elevenlabs streaming API is integrated to provide text-to-speech functionality for the articles.
+Gradium streaming API is integrated to provide text-to-speech functionality for the articles.
 
 There's a notion of "subscription" to enable summaries and TTS as it incurs additional costs. Ping me at [@quiker](https://t.me/quiker) if you're interested. Or try it out yourself by running locally / self-hosting and creating a `subscription` row in the db for your user.
 

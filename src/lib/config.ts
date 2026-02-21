@@ -21,8 +21,8 @@ const configSchema = z.object({
   // LLM (Anthropic Claude)
   ANTHROPIC_API_KEY: z.string().optional(),
 
-  // ElevenLabs TTS
-  ELEVENLABS_API_KEY: z.string().optional(),
+  // Gradium TTS
+  GRADIUM_API_KEY: z.string().optional(),
 
   // Authentication & Session
   SESSION_SECRET: z

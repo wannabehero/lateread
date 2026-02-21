@@ -808,7 +808,7 @@ describe("routes/api", () => {
       });
 
       expect(res.status).toBe(200);
-      expect(res.headers.get("content-type")).toBe("audio/mpeg");
+      expect(res.headers.get("content-type")).toBe("audio/ogg");
       expect(res.headers.get("cache-control")).toBe("public, max-age=86400");
 
       // Verify content was fetched

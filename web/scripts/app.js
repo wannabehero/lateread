@@ -2,6 +2,7 @@ import "htmx.org";
 
 import "./header-scroll.js";
 import "./article-player.js";
+import "./ws-audio-player.js";
 import "./nav-menu.js";
 import "./reader-controls.js";
 import "./reader-position.js";

@@ -7,6 +7,7 @@ import { startCrons } from "./cron";
 import { runMigrations } from "./lib/db";
 import { defaultLogger } from "./lib/logger";
 import { initQueue, stopQueue } from "./lib/queue";
+import { websocket } from "./lib/websocket";
 
 const logger = defaultLogger.child({ module: "main" });
 
@@ -25,10 +26,11 @@ startBot().catch((error) => {
   process.exit(1);
 });
 
-// Start HTTP server
+// Start HTTP server with WebSocket support
 const server = Bun.serve({
   port: config.PORT,
   fetch: app.fetch,
+  websocket, // Enable WebSocket support
   idleTimeout: 120, // 2 minutes for long-running LLM requests
 });
 

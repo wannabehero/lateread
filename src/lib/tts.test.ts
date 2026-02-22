@@ -117,7 +117,7 @@ describe("splitTextIntoChunks", () => {
   });
 });
 
-describe("GradiumTTSProvider", () => {
+describe("GradiumHTTPTTSProvider", () => {
   beforeEach(() => {
     _resetTTSProvider();
     mockFetch.mockReset();

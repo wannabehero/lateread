@@ -23,6 +23,7 @@ const configSchema = z.object({
 
   // Gradium TTS
   GRADIUM_API_KEY: z.string().optional(),
+  GRADIUM_TTS_MODE: z.enum(["http", "websocket"]).optional().default("http"),
 
   // Authentication & Session
   SESSION_SECRET: z

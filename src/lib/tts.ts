@@ -6,6 +6,7 @@ export interface TTSProvider {
   generateStream(
     text: string,
     languageCode?: string | null,
+    signal?: AbortSignal,
   ): Promise<ReadableStream<Uint8Array>>;
 }
 
@@ -120,7 +121,7 @@ export function splitTextIntoChunks(text: string, limit: number): string[] {
   return chunks;
 }
 
-class GradiumTTSProvider implements TTSProvider {
+class GradiumHTTPTTSProvider implements TTSProvider {
   private apiKey: string;
 
   constructor(apiKey: string) {
@@ -130,6 +131,7 @@ class GradiumTTSProvider implements TTSProvider {
   async generateStream(
     text: string,
     languageCode?: string | null,
+    signal?: AbortSignal,
   ): Promise<ReadableStream<Uint8Array>> {
     const voiceId = getVoiceForLanguage(languageCode);
     // Gradium free tier limit: 1500 chars per session. Use 1200 to be safe.
@@ -138,6 +140,12 @@ class GradiumTTSProvider implements TTSProvider {
 
     const iterator = async function* () {
       for (const chunk of chunks) {
+        // Check if client disconnected
+        if (signal?.aborted) {
+          logger.debug("TTS streaming aborted by client");
+          return;
+        }
+
         if (!chunk.trim()) continue;
 
         const response = await fetch(GRADIUM_CONFIG.apiUrl, {
@@ -152,6 +160,7 @@ class GradiumTTSProvider implements TTSProvider {
             output_format: GRADIUM_CONFIG.outputFormat,
             only_audio: true,
           }),
+          signal, // Pass abort signal to cancel in-flight requests
         });
 
         if (!response.ok) {
@@ -199,6 +208,207 @@ class GradiumTTSProvider implements TTSProvider {
   }
 }
 
+class GradiumWebSocketTTSProvider implements TTSProvider {
+  private apiKey: string;
+  private wsUrl = "wss://eu.api.gradium.ai/api/speech/tts";
+
+  constructor(apiKey: string) {
+    this.apiKey = apiKey;
+  }
+
+  async generateStream(
+    text: string,
+    languageCode?: string | null,
+    signal?: AbortSignal,
+  ): Promise<ReadableStream<Uint8Array>> {
+    const voiceId = getVoiceForLanguage(languageCode);
+    const chunks = splitTextIntoChunks(text, 1200);
+
+    const iterator = async function* (
+      apiKey: string,
+      wsUrl: string,
+      voiceId: string,
+      chunks: string[],
+      signal?: AbortSignal,
+    ) {
+      const ws = new WebSocket(
+        wsUrl,
+        {
+          headers: {
+            "x-api-key": apiKey,
+          },
+        } as any, // Bun's WebSocket supports headers, but TypeScript doesn't know this
+      );
+
+      const messageQueue: Uint8Array[] = [];
+      let wsError: Error | null = null;
+      let resolveOpen: (() => void) | null = null;
+      const openPromise = new Promise<void>((resolve) => {
+        resolveOpen = resolve;
+      });
+
+      let lastAudioTime = Date.now();
+      let receivedAudioChunks = false;
+
+      // Handle WebSocket events
+      ws.addEventListener("open", () => {
+        logger.debug("WebSocket TTS connection opened");
+        if (resolveOpen) resolveOpen();
+      });
+
+      ws.addEventListener("message", (event) => {
+        try {
+          const data = JSON.parse(event.data as string);
+
+          if (data.type === "audio") {
+            // Decode base64 audio and add to queue
+            const audioBytes = Uint8Array.from(atob(data.audio), (c) =>
+              c.charCodeAt(0),
+            );
+
+            // Opus format: all chunks are just opus packets that can be concatenated
+            messageQueue.push(audioBytes);
+            lastAudioTime = Date.now();
+            receivedAudioChunks = true;
+          } else if (data.type === "error") {
+            wsError = new ExternalServiceError(
+              `Gradium WebSocket error: ${data.message} (code: ${data.code})`,
+            );
+            logger.error("WebSocket error", {
+              message: data.message,
+              code: data.code,
+            });
+          }
+        } catch (error) {
+          logger.error("Failed to parse WebSocket message", { error });
+        }
+      });
+
+      ws.addEventListener("error", (event) => {
+        wsError = new ExternalServiceError(
+          `WebSocket connection error: ${event}`,
+        );
+        logger.error("WebSocket error", { error: event });
+      });
+
+      ws.addEventListener("close", () => {
+        logger.debug("WebSocket TTS connection closed");
+      });
+
+      // Handle abort signal
+      if (signal) {
+        signal.addEventListener("abort", () => {
+          logger.debug("TTS streaming aborted by client");
+          ws.close();
+        });
+      }
+
+      try {
+        // Wait for connection to open
+        await openPromise;
+
+        // Send setup message
+        // Use opus format for better streaming (can concatenate opus packets)
+        ws.send(
+          JSON.stringify({
+            type: "setup",
+            model_name: "default",
+            voice_id: voiceId,
+            output_format: "opus",
+          }),
+        );
+
+        // Send all text chunks
+        for (const chunk of chunks) {
+          if (signal?.aborted || wsError) break;
+          if (!chunk.trim()) continue;
+
+          ws.send(
+            JSON.stringify({
+              type: "text",
+              text: chunk,
+            }),
+          );
+        }
+
+        // Now wait for all audio chunks to arrive
+        // Keep yielding chunks until we haven't received any for 5 seconds
+        const IDLE_TIMEOUT = 5000; // 5 seconds idle timeout
+        const MAX_WAIT = 30000; // 30 seconds max total wait
+        const startTime = Date.now();
+
+        let totalChunks = 0;
+        while (true) {
+          if (signal?.aborted || wsError) break;
+
+          // Yield any available chunks
+          while (messageQueue.length > 0) {
+            const audioChunk = messageQueue.shift();
+            if (audioChunk) {
+              yield audioChunk;
+              totalChunks++;
+            }
+          }
+
+          // Check if we've been idle for too long
+          const idleTime = Date.now() - lastAudioTime;
+          if (receivedAudioChunks && idleTime > IDLE_TIMEOUT) {
+            // No audio received for 5 seconds after we got some audio, we're done
+            logger.debug("WebSocket idle timeout", {
+              idleTime,
+              totalChunks,
+              totalTime: Date.now() - startTime,
+            });
+            break;
+          }
+
+          // Check for max wait timeout
+          const totalTime = Date.now() - startTime;
+          if (totalTime > MAX_WAIT) {
+            logger.warn("WebSocket TTS max wait time exceeded", {
+              totalTime,
+              receivedAudioChunks,
+              totalChunks,
+            });
+            break;
+          }
+
+          // Wait a bit before checking again
+          await new Promise((resolve) => setTimeout(resolve, 50));
+        }
+
+        if (wsError) throw wsError;
+      } finally {
+        ws.close();
+      }
+    };
+
+    const generator = iterator(
+      this.apiKey,
+      this.wsUrl,
+      voiceId,
+      chunks,
+      signal,
+    );
+
+    return new ReadableStream({
+      async pull(controller) {
+        try {
+          const { value, done } = await generator.next();
+          if (done) {
+            controller.close();
+          } else {
+            controller.enqueue(value);
+          }
+        } catch (e) {
+          logger.error("WebSocket TTS stream error", { error: e });
+          controller.error(e);
+        }
+      },
+    });
+  }
+}
+
 let ttsProvider: TTSProvider | null = null;
 
 export function getTTSProvider(): TTSProvider {
@@ -207,13 +417,24 @@ export function getTTSProvider(): TTSProvider {
   }
 
   if (config.GRADIUM_API_KEY) {
-    ttsProvider = new GradiumTTSProvider(config.GRADIUM_API_KEY);
+    const mode = config.GRADIUM_TTS_MODE;
+    if (mode === "websocket") {
+      ttsProvider = new GradiumWebSocketTTSProvider(config.GRADIUM_API_KEY);
+      logger.info("Using Gradium WebSocket TTS provider");
+    } else {
+      ttsProvider = new GradiumHTTPTTSProvider(config.GRADIUM_API_KEY);
+      logger.info("Using Gradium HTTP TTS provider");
+    }
     return ttsProvider;
   }
 
   // Noop provider
   ttsProvider = {
-    generateStream: async (_text: string, _languageCode?: string | null) => {
+    generateStream: async (
+      _text: string,
+      _languageCode?: string | null,
+      _signal?: AbortSignal,
+    ) => {
       throw new ExternalServiceError("TTS provider not configured");
     },
   };

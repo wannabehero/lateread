@@ -294,6 +294,7 @@ api.get(
     const audioStream = await ttsProvider.generateStream(
       plainText,
       article.language,
+      c.req.raw.signal, // Pass abort signal to cancel on disconnect
     );
 
     // Set appropriate headers for audio streaming

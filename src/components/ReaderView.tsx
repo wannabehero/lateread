@@ -1,5 +1,6 @@
 import type { FC } from "hono/jsx";
 import type { Article, Tag } from "../db/types";
+import { config } from "../lib/config";
 import { formatReadingTime, formatRelativeTime } from "../lib/date";
 import { TagBadge } from "./TagBadge";
 
@@ -80,12 +81,14 @@ export const ReaderView: FC<ReaderViewProps> = ({
         </section>
       )}
 
-      {features.tts && (
+      {features.tts && config.GRADIUM_TTS_MODE === "websocket" ? (
+        <ws-audio-player article-id={article.id} title={displayTitle} />
+      ) : features.tts ? (
         <article-player
           src={`/api/articles/${article.id}/tts`}
           title={displayTitle}
         />
-      )}
+      ) : null}
 
       <reader-position
         article-id={article.id}

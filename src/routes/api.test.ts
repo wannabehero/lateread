@@ -822,6 +822,7 @@ describe("routes/api", () => {
       expect(mockTTSProvider.generateStream).toHaveBeenCalledWith(
         "This is article content for TTS.",
         "en",
+        expect.any(AbortSignal),
       );
 
       // Verify stream contains data
@@ -956,6 +957,7 @@ describe("routes/api", () => {
       expect(mockTTSProvider.generateStream).toHaveBeenCalledWith(
         "Contenido en español",
         "es",
+        expect.any(AbortSignal),
       );
     });
 
@@ -987,6 +989,7 @@ describe("routes/api", () => {
       expect(mockTTSProvider.generateStream).toHaveBeenCalledWith(
         "Content",
         null,
+        expect.any(AbortSignal),
       );
     });
   });

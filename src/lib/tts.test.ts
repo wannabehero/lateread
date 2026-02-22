@@ -1,5 +1,11 @@
 import { beforeEach, describe, expect, it, mock } from "bun:test";
-import { getTTSProvider, htmlToPlainText, isTTSAvailable, splitTextIntoChunks, _resetTTSProvider } from "./tts";
+import {
+  _resetTTSProvider,
+  getTTSProvider,
+  htmlToPlainText,
+  isTTSAvailable,
+  splitTextIntoChunks,
+} from "./tts";
 
 // Mock fetch globally
 const mockFetch = mock();
@@ -59,7 +65,7 @@ describe("splitTextIntoChunks", () => {
     expect(result).toEqual([
       "Hello world.",
       "This is a test.",
-      "Another sentence."
+      "Another sentence.",
     ]);
   });
 
@@ -69,20 +75,13 @@ describe("splitTextIntoChunks", () => {
     // "Hi. How are you?" (16) -> fits
     // "I am fine." (10) -> fits in new chunk
     // Combined: 27 > 20
-    expect(result).toEqual([
-      "Hi. How are you?",
-      "I am fine."
-    ]);
+    expect(result).toEqual(["Hi. How are you?", "I am fine."]);
   });
 
   it("should hard split very long sentences", () => {
-     const longSentence = "a".repeat(30);
-     const result = splitTextIntoChunks(longSentence, 10);
-     expect(result).toEqual([
-         "a".repeat(10),
-         "a".repeat(10),
-         "a".repeat(10)
-     ]);
+    const longSentence = "a".repeat(30);
+    const result = splitTextIntoChunks(longSentence, 10);
+    expect(result).toEqual(["a".repeat(10), "a".repeat(10), "a".repeat(10)]);
   });
 
   it("should handle mixed sentence lengths and hard splits", () => {
@@ -109,11 +108,11 @@ describe("splitTextIntoChunks", () => {
     // End loop. Push current.
 
     expect(result).toEqual([
-        "Short.",
-        "a".repeat(10),
-        "a".repeat(10),
-        "a".repeat(10),
-        ".End."
+      "Short.",
+      "a".repeat(10),
+      "a".repeat(10),
+      "a".repeat(10),
+      ".End.",
     ]);
   });
 });
@@ -140,7 +139,7 @@ describe("GradiumTTSProvider", () => {
       const url = callArgs[0];
       const options = callArgs[1];
 
-      expect(url).toBe("https://api.gradium.ai/api/post/speech/tts");
+      expect(url).toBe("https://eu.api.gradium.ai/api/post/speech/tts");
       expect(options.method).toBe("POST");
       expect(options.headers["x-api-key"]).toBeDefined();
 
@@ -178,25 +177,27 @@ describe("GradiumTTSProvider", () => {
     });
 
     it("should throw ExternalServiceError on API error", async () => {
-        mockFetch.mockResolvedValue(new Response("Error", { status: 400, statusText: "Bad Request" }));
+      mockFetch.mockResolvedValue(
+        new Response("Error", { status: 400, statusText: "Bad Request" }),
+      );
 
-        const provider = getTTSProvider();
-        const stream = await provider.generateStream("Hello");
+      const provider = getTTSProvider();
+      const stream = await provider.generateStream("Hello");
 
-        // Error happens when generator yields, so we need to read from stream
-        const reader = stream.getReader();
-        try {
-            await expect(reader.read()).rejects.toThrow("Gradium API error");
-        } finally {
-            reader.releaseLock();
-        }
+      // Error happens when generator yields, so we need to read from stream
+      const reader = stream.getReader();
+      try {
+        await expect(reader.read()).rejects.toThrow("Gradium API error");
+      } finally {
+        reader.releaseLock();
+      }
     });
   });
 });
 
 describe("getTTSProvider and isTTSAvailable", () => {
   beforeEach(() => {
-     _resetTTSProvider();
+    _resetTTSProvider();
   });
 
   it("isTTSAvailable should return true when API key is set", () => {

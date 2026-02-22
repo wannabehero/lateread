@@ -1,5 +1,6 @@
 import { config } from "./config";
 import { ExternalServiceError } from "./errors";
+import { defaultLogger } from "./logger";
 
 export interface TTSProvider {
   generateStream(
@@ -8,12 +9,14 @@ export interface TTSProvider {
   ): Promise<ReadableStream<Uint8Array>>;
 }
 
+const logger = defaultLogger.child({ module: "tts" });
+
 /**
  * Gradium configuration
  */
 const GRADIUM_CONFIG = {
-  apiUrl: "https://api.gradium.ai/api/post/speech/tts",
-  // Using opus for efficient streaming and browser support
+  apiUrl: "https://eu.api.gradium.ai/api/post/speech/tts",
+  // Using opus for efficient streaming - can concatenate opus packets
   outputFormat: "opus",
 } as const;
 
@@ -93,15 +96,15 @@ export function splitTextIntoChunks(text: string, limit: number): string[] {
 
       // Handle sentences longer than limit
       if (sentence.length > limit) {
-         let remaining = sentence;
-         while (remaining.length > limit) {
-            let splitIndex = remaining.lastIndexOf(" ", limit);
-            if (splitIndex === -1) splitIndex = limit;
+        let remaining = sentence;
+        while (remaining.length > limit) {
+          let splitIndex = remaining.lastIndexOf(" ", limit);
+          if (splitIndex === -1) splitIndex = limit;
 
-            chunks.push(remaining.slice(0, splitIndex).trim());
-            remaining = remaining.slice(splitIndex).trim();
-         }
-         currentChunk = remaining;
+          chunks.push(remaining.slice(0, splitIndex).trim());
+          remaining = remaining.slice(splitIndex).trim();
+        }
+        currentChunk = remaining;
       } else {
         currentChunk = sentence;
       }
@@ -129,8 +132,8 @@ class GradiumTTSProvider implements TTSProvider {
     languageCode?: string | null,
   ): Promise<ReadableStream<Uint8Array>> {
     const voiceId = getVoiceForLanguage(languageCode);
-    // Use conservative limit well within Gradium's constraints
-    const chunks = splitTextIntoChunks(text, 2000);
+    // Gradium free tier limit: 1500 chars per session. Use 1200 to be safe.
+    const chunks = splitTextIntoChunks(text, 1200);
     const apiKey = this.apiKey;
 
     const iterator = async function* () {
@@ -158,14 +161,19 @@ class GradiumTTSProvider implements TTSProvider {
           );
         }
 
-        if (!response.body) continue;
+        if (!response.body) {
+          logger.error("No response body from Gradium API");
+          continue;
+        }
 
         const reader = response.body.getReader();
         try {
           while (true) {
             const { done, value } = await reader.read();
             if (done) break;
-            if (value) yield value;
+            if (value) {
+              yield value;
+            }
           }
         } finally {
           reader.releaseLock();

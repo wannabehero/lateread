@@ -1,4 +1,7 @@
-import Anthropic from "@anthropic-ai/sdk";
+import type { AnthropicProvider } from "@ai-sdk/anthropic";
+import { createAnthropic } from "@ai-sdk/anthropic";
+import { generateText, Output } from "ai";
+import { z } from "zod";
 import { config } from "./config";
 import { ExternalServiceError } from "./errors";
 import {
@@ -9,17 +12,21 @@ import { defaultLogger } from "./logger";
 
 const logger = defaultLogger.child({ module: "llm" });
 
-interface TagExtractionResult {
-  tags: string[];
-  language: string;
-  confidence: number;
-}
+const tagExtractionSchema = z.object({
+  tags: z.array(z.string()),
+  language: z.string(),
+  confidence: z.number(),
+});
 
-export interface SummaryResult {
-  oneSentence: string;
-  oneParagraph: string;
-  long: string;
-}
+type TagExtractionResult = z.infer<typeof tagExtractionSchema>;
+
+const summarySchema = z.object({
+  oneSentence: z.string().min(1),
+  oneParagraph: z.string().min(1),
+  long: z.string().min(1),
+});
+
+export type SummaryResult = z.infer<typeof summarySchema>;
 
 interface LLMProvider {
   extractTags(
@@ -32,43 +39,13 @@ interface LLMProvider {
   ): Promise<SummaryResult>;
 }
 
-/**
- * Extract JSON from LLM response text
- * Returns fallback value if JSON is not found or invalid
- *
- * Limitations:
- * - Extracts first JSON object found
- * - Does not support multiple separate JSON objects
- * - Designed for simple flat objects (tags, summaries)
- */
-export function extractJsonFromResponse<T>(
-  responseText: string,
-  fallback: T,
-): T {
-  const jsonMatch = responseText.match(/\{[\s\S]*\}/);
-
-  if (!jsonMatch) {
-    logger.warn("No JSON found in LLM response", { responseText });
-    return fallback;
-  }
-
-  try {
-    return JSON.parse(jsonMatch[0]) as T;
-  } catch (error) {
-    logger.error("Failed to parse JSON from LLM response", { error });
-    return fallback;
-  }
-}
-
 export class ClaudeProvider implements LLMProvider {
-  private client: Anthropic;
+  private anthropic: AnthropicProvider;
   private taggingModel = "claude-haiku-4-5";
-  private summaryModel = "claude-sonnet-4-5";
+  private summaryModel = "claude-sonnet-4-6";
 
   constructor(apiKey: string) {
-    this.client = new Anthropic({
-      apiKey,
-    });
+    this.anthropic = createAnthropic({ apiKey });
   }
 
   async extractTags(
@@ -89,36 +66,25 @@ ${existingTagsText}
 Article content:
 ${truncatedContent}`;
 
-      const message = await this.client.messages.create({
-        model: this.taggingModel,
-        max_tokens: 1024,
+      const { output } = await generateText({
+        model: this.anthropic(this.taggingModel),
+        output: Output.object({ schema: tagExtractionSchema }),
         system: TAG_EXTRACTION_SYSTEM_PROMPT,
-        messages: [
-          {
-            role: "user",
-            content: userPrompt,
-          },
-        ],
+        prompt: userPrompt,
+        maxTokens: 1024,
       });
 
-      // Extract JSON from response
-      const firstBlock = message.content[0];
-      if (!firstBlock || firstBlock.type !== "text") {
-        logger.error("Unexpected response format from LLM");
+      if (!output) {
+        logger.error("No structured output from LLM for tag extraction");
         return { tags: [], language: "en", confidence: 0 };
       }
 
-      const result = extractJsonFromResponse<TagExtractionResult>(
-        firstBlock.text,
-        { tags: [], language: "en", confidence: 0 },
-      );
-
       return {
-        ...result,
+        ...output,
         // Normalize tags to lowercase
-        tags: result.tags.map((tag: string) => tag.toLowerCase()),
+        tags: output.tags.map((tag: string) => tag.toLowerCase()),
         // Normalize language to lowercase
-        language: result.language.toLowerCase(),
+        language: output.language.toLowerCase(),
       };
     } catch (error) {
       logger.error("Claude tag extraction failed", { error });
@@ -142,37 +108,19 @@ ${truncatedContent}`;
 Article content:
 ${truncatedContent}`;
 
-      const message = await this.client.messages.create({
-        model: this.summaryModel,
-        max_tokens: 2048,
+      const { output } = await generateText({
+        model: this.anthropic(this.summaryModel),
+        output: Output.object({ schema: summarySchema }),
         system: SUMMARIZATION_SYSTEM_PROMPT,
-        messages: [
-          {
-            role: "user",
-            content: userPrompt,
-          },
-        ],
+        prompt: userPrompt,
+        maxTokens: 2048,
       });
 
-      // Extract JSON from response
-      const firstBlock = message.content[0];
-      if (!firstBlock || firstBlock.type !== "text") {
-        logger.warn("Unexpected response format from LLM");
+      if (!output) {
         throw new Error("Failed to generate summary");
       }
 
-      const result = extractJsonFromResponse<SummaryResult>(firstBlock.text, {
-        oneSentence: "",
-        oneParagraph: "",
-        long: "",
-      });
-
-      // Validate we got actual content
-      if (!result.oneSentence || !result.oneParagraph || !result.long) {
-        throw new Error("Incomplete summary response from LLM");
-      }
-
-      return result;
+      return output;
     } catch (error) {
       logger.error("Claude summarization failed", { error });
       throw new Error("Failed to generate summary");

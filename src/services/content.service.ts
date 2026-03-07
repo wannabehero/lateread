@@ -2,6 +2,7 @@ import { join } from "node:path";
 import { config } from "../lib/config";
 import { contentCache } from "../lib/content-cache";
 import { ExternalServiceError } from "../lib/errors";
+import { rewriteContentImageUrls } from "../lib/image-proxy";
 import { defaultLogger } from "../lib/logger";
 import { extractCleanContent } from "../lib/readability";
 
@@ -20,7 +21,7 @@ export async function getArticleContent(
   let content = await contentCache.get(userId, articleId);
 
   if (content) {
-    return content;
+    return rewriteContentImageUrls(content);
   }
 
   // Cache miss - fetch on-demand
@@ -42,7 +43,7 @@ export async function getArticleContent(
   // Cache for future reads
   await contentCache.set(userId, articleId, content);
 
-  return content;
+  return rewriteContentImageUrls(content);
 }
 
 /**

@@ -1,6 +1,7 @@
 import type { FC } from "hono/jsx";
 import type { Article, Tag } from "../db/types";
 import { formatReadingTime, formatRelativeTime } from "../lib/date";
+import { proxyImageUrl } from "../lib/image-proxy";
 
 interface ArticleCardProps {
   article: Article & { tags: Tag[] };
@@ -14,7 +15,11 @@ export const ArticleCard: FC<ArticleCardProps> = ({ article }) => {
     <article class={`article-card ${isRead ? "read" : ""}`}>
       {article.imageUrl && (
         <div class="article-image">
-          <img src={article.imageUrl} alt={displayTitle} loading="lazy" />
+          <img
+            src={proxyImageUrl(article.imageUrl)}
+            alt={displayTitle}
+            loading="lazy"
+          />
         </div>
       )}
 

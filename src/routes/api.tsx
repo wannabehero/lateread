@@ -5,6 +5,9 @@ import { ArticleList } from "../components/ArticleList";
 import { EmptyState } from "../components/EmptyState";
 import { ProcessingBanner } from "../components/ProcessingBanner";
 import { SummaryView } from "../components/SummaryView";
+import { ExternalServiceError, ValidationError } from "../lib/errors";
+import { decodeImageUrl } from "../lib/image-proxy";
+import { safeFetch } from "../lib/safe-fetch";
 import { getTTSProvider, htmlToPlainText } from "../lib/tts";
 import { validator } from "../lib/validator";
 import { requireAuth } from "../middleware/auth";
@@ -263,6 +266,55 @@ api.get(
       c.var.logger.error("Error getting processing count", { error });
       return c.html(<ProcessingBanner count={0} />);
     }
+  },
+);
+
+/**
+ * GET /api/image-proxy - Proxy external images to avoid CORS issues
+ * Streams the upstream response body directly with cache headers
+ */
+api.get(
+  "/api/image-proxy",
+  requireAuth("json-401"),
+  validator(
+    "query",
+    z.object({
+      url: z.string().min(1, "Image URL is required"),
+    }),
+  ),
+  async (c) => {
+    const { url: encodedUrl } = c.req.valid("query");
+    const imageUrl = decodeImageUrl(encodedUrl);
+
+    const MAX_SIZE = 10 * 1024 * 1024; // 10MB
+
+    const response = await safeFetch(imageUrl, {
+      headers: { "User-Agent": "lateread/1.0" },
+      signal: AbortSignal.timeout(15_000),
+    });
+
+    if (!response.ok) {
+      throw new ExternalServiceError("Image proxy");
+    }
+
+    const contentType = response.headers.get("content-type") ?? "";
+    if (!contentType.startsWith("image/")) {
+      throw new ValidationError("URL does not point to an image");
+    }
+
+    const contentLength = response.headers.get("content-length");
+    if (contentLength && Number.parseInt(contentLength, 10) > MAX_SIZE) {
+      throw new ValidationError("Image too large");
+    }
+
+    c.header("Content-Type", contentType);
+    c.header("Cache-Control", "public, max-age=604800"); // 7 days
+    if (contentLength) {
+      c.header("Content-Length", contentLength);
+    }
+
+    // Pass through the upstream body directly without consuming it
+    return c.body(response.body);
   },
 );
 

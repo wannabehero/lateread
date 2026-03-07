@@ -19,7 +19,9 @@ import {
 } from "../../test/fixtures";
 import { createApp } from "../app";
 import { articles } from "../db/schema";
+import { encodeImageUrl } from "../lib/image-proxy";
 import type { SummaryResult } from "../lib/llm";
+import * as safeFetchModule from "../lib/safe-fetch";
 import type { TTSProvider } from "../lib/tts";
 import * as tts from "../lib/tts";
 import * as contentService from "../services/content.service";
@@ -1462,6 +1464,122 @@ describe("routes/api", () => {
         expect(json.error).toBe("An unexpected error occurred");
         expect(json.statusCode).toBe(500);
       });
+    });
+  });
+
+  describe("GET /api/image-proxy", () => {
+    let spySafeFetch: ReturnType<typeof spyOn>;
+
+    beforeEach(() => {
+      spySafeFetch = spyOn(safeFetchModule, "safeFetch");
+    });
+
+    afterEach(() => {
+      spySafeFetch.mockRestore();
+    });
+
+    const proxyUrl = (imageUrl: string) =>
+      `/api/image-proxy?url=${encodeImageUrl(imageUrl)}`;
+
+    it("should return 401 without auth", async () => {
+      const res = await app.request(proxyUrl("https://example.com/img.jpg"));
+      expect(res.status).toBe(401);
+    });
+
+    it("should return 400 when url param is missing", async () => {
+      const res = await app.request("/api/image-proxy", {
+        headers: authHeaders,
+      });
+      expect(res.status).toBe(400);
+    });
+
+    it("should proxy image and set cache headers", async () => {
+      const imageBody = new Uint8Array([0x89, 0x50, 0x4e, 0x47]); // PNG magic bytes
+      spySafeFetch.mockResolvedValue(
+        new Response(imageBody, {
+          headers: {
+            "content-type": "image/png",
+            "content-length": "4",
+          },
+        }),
+      );
+
+      const res = await app.request(proxyUrl("https://example.com/photo.png"), {
+        headers: authHeaders,
+      });
+
+      expect(res.status).toBe(200);
+      expect(res.headers.get("content-type")).toBe("image/png");
+      expect(res.headers.get("cache-control")).toBe("public, max-age=604800");
+      expect(res.headers.get("content-length")).toBe("4");
+
+      const body = new Uint8Array(await res.arrayBuffer());
+      expect(body).toEqual(imageBody);
+    });
+
+    it("should return 503 when upstream returns non-ok", async () => {
+      spySafeFetch.mockResolvedValue(
+        new Response("Not Found", { status: 404 }),
+      );
+
+      const res = await app.request(
+        proxyUrl("https://example.com/missing.jpg"),
+        { headers: authHeaders },
+      );
+
+      expect(res.status).toBe(503);
+    });
+
+    it("should return 400 when upstream content-type is not an image", async () => {
+      spySafeFetch.mockResolvedValue(
+        new Response("<html></html>", {
+          headers: { "content-type": "text/html" },
+        }),
+      );
+
+      const res = await app.request(proxyUrl("https://example.com/page.html"), {
+        headers: authHeaders,
+      });
+
+      expect(res.status).toBe(400);
+      const json = await res.json();
+      expect(json.error).toBe("URL does not point to an image");
+    });
+
+    it("should return 400 when content-length exceeds 10MB", async () => {
+      spySafeFetch.mockResolvedValue(
+        new Response(null, {
+          headers: {
+            "content-type": "image/jpeg",
+            "content-length": String(11 * 1024 * 1024),
+          },
+        }),
+      );
+
+      const res = await app.request(proxyUrl("https://example.com/huge.jpg"), {
+        headers: authHeaders,
+      });
+
+      expect(res.status).toBe(400);
+      const json = await res.json();
+      expect(json.error).toBe("Image too large");
+    });
+
+    it("should pass through response without content-length", async () => {
+      spySafeFetch.mockResolvedValue(
+        new Response(new Uint8Array([0xff, 0xd8]), {
+          headers: { "content-type": "image/jpeg" },
+        }),
+      );
+
+      const res = await app.request(
+        proxyUrl("https://example.com/streamed.jpg"),
+        { headers: authHeaders },
+      );
+
+      expect(res.status).toBe(200);
+      expect(res.headers.get("content-type")).toBe("image/jpeg");
+      expect(res.headers.get("content-length")).toBeNull();
     });
   });
 });

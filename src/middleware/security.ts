@@ -25,7 +25,7 @@ export const securityHeaders = secureHeaders({
     defaultSrc: ["'self'"],
     scriptSrc: ["'self'", "'unsafe-eval'", "'unsafe-inline'"], // TODO: remove all inlined scripts
     styleSrc: ["'self'", "'unsafe-inline'"], // We use inline styles
-    imgSrc: ["'self'", "data:", "https:"], // Allow external article images
+    imgSrc: ["'self'", "data:"], // Images proxied through /api/image-proxy
     connectSrc: ["'self'"], // HTMX fetch requests
     fontSrc: ["'self'"],
     objectSrc: ["'none'"], // Block plugins (Flash, Java, etc.)

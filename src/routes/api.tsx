@@ -5,6 +5,7 @@ import { ArticleList } from "../components/ArticleList";
 import { EmptyState } from "../components/EmptyState";
 import { ProcessingBanner } from "../components/ProcessingBanner";
 import { SummaryView } from "../components/SummaryView";
+import { ExternalServiceError, ValidationError } from "../lib/errors";
 import { decodeImageUrl } from "../lib/image-proxy";
 import { safeFetch } from "../lib/safe-fetch";
 import { getTTSProvider, htmlToPlainText } from "../lib/tts";
@@ -293,17 +294,17 @@ api.get(
     });
 
     if (!response.ok) {
-      return c.json({ error: "Failed to fetch image" }, 502);
+      throw new ExternalServiceError("Image proxy");
     }
 
     const contentType = response.headers.get("content-type") ?? "";
     if (!contentType.startsWith("image/")) {
-      return c.json({ error: "URL does not point to an image" }, 400);
+      throw new ValidationError("URL does not point to an image");
     }
 
     const contentLength = response.headers.get("content-length");
     if (contentLength && Number.parseInt(contentLength, 10) > MAX_SIZE) {
-      return c.json({ error: "Image too large" }, 413);
+      throw new ValidationError("Image too large");
     }
 
     c.header("Content-Type", contentType);

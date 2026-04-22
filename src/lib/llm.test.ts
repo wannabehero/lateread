@@ -13,11 +13,11 @@ mock.module("ai", () => {
 });
 
 // Import after mocking
-import { ClaudeProvider, getLLMProvider, isLLMAvailable } from "./llm";
+import { getLLMProvider, isLLMAvailable, OpenRouterProvider } from "./llm";
 
-describe("ClaudeProvider", () => {
+describe("OpenRouterProvider", () => {
   // Create a new provider instance for each test
-  const createProvider = () => new ClaudeProvider("test-api-key");
+  const createProvider = () => new OpenRouterProvider("test-api-key");
 
   beforeEach(() => {
     mockGenerateText.mockReset();
@@ -45,7 +45,7 @@ describe("ClaudeProvider", () => {
       expect(mockGenerateText).toHaveBeenCalledTimes(1);
 
       const callArgs = (mockGenerateText.mock.calls as any[][])[0]?.[0];
-      expect(callArgs?.maxTokens).toBe(1024);
+      expect(callArgs?.maxOutputTokens).toBe(1024);
     });
 
     it("should include existing tags in prompt when provided", async () => {
@@ -140,7 +140,7 @@ describe("ClaudeProvider", () => {
       expect(mockGenerateText).toHaveBeenCalledTimes(1);
 
       const callArgs = (mockGenerateText.mock.calls as any[][])[0]?.[0];
-      expect(callArgs?.maxTokens).toBe(2048);
+      expect(callArgs?.maxOutputTokens).toBe(2048);
     });
 
     it("should include language hint when languageCode is provided", async () => {
@@ -223,13 +223,13 @@ describe("ClaudeProvider", () => {
 
 describe("getLLMProvider and isLLMAvailable", () => {
   it("isLLMAvailable should return true when API key is set", () => {
-    // .env.test has ANTHROPIC_API_KEY set
+    // .env.test has OPENROUTER_API_KEY set
     const result = isLLMAvailable();
     expect(result).toBe(true);
   });
 
-  it("getLLMProvider should return ClaudeProvider when API key is set", () => {
-    // .env.test has ANTHROPIC_API_KEY set
+  it("getLLMProvider should return OpenRouterProvider when API key is set", () => {
+    // .env.test has OPENROUTER_API_KEY set
     const provider = getLLMProvider();
 
     expect(provider).toBeDefined();

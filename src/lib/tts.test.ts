@@ -9,7 +9,7 @@ import {
 
 // Mock fetch globally
 const mockFetch = mock();
-global.fetch = mockFetch;
+global.fetch = mockFetch as unknown as typeof fetch;
 
 describe("htmlToPlainText", () => {
   it("should remove basic HTML tags", () => {
@@ -85,7 +85,7 @@ describe("splitTextIntoChunks", () => {
   });
 
   it("should handle mixed sentence lengths and hard splits", () => {
-    const text = "Short. " + "a".repeat(30) + ". End.";
+    const text = `Short. ${"a".repeat(30)}. End.`;
     const result = splitTextIntoChunks(text, 10);
     // "Short." (6) -> fits
     // "a"*30 (30) -> too long for current chunk (6+30 > 10) -> new chunk
@@ -135,7 +135,7 @@ describe("GradiumHTTPTTSProvider", () => {
       while (!(await reader.read()).done) {}
 
       expect(mockFetch).toHaveBeenCalledTimes(1);
-      const callArgs = mockFetch.mock.calls[0];
+      const callArgs = mockFetch.mock.calls[0]!;
       const url = callArgs[0];
       const options = callArgs[1];
 
@@ -172,7 +172,7 @@ describe("GradiumHTTPTTSProvider", () => {
       const reader = stream.getReader();
       while (!(await reader.read()).done) {}
 
-      const body = JSON.parse(mockFetch.mock.calls[0][1].body);
+      const body = JSON.parse(mockFetch.mock.calls[0]![1]!.body);
       expect(body.voice_id).toBe("b35yykvVppLXyw_l"); // Elise
     });
 

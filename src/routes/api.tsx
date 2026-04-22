@@ -314,6 +314,9 @@ api.get(
     }
 
     // Pass through the upstream body directly without consuming it
+    if (!response.body) {
+      return c.body(null, 204);
+    }
     return c.body(response.body);
   },
 );

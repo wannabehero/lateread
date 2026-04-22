@@ -1,5 +1,4 @@
-import type { AnthropicProvider } from "@ai-sdk/anthropic";
-import { createAnthropic } from "@ai-sdk/anthropic";
+import { createOpenRouter } from "@openrouter/ai-sdk-provider";
 import { generateText, Output } from "ai";
 import { z } from "zod";
 import { config } from "./config";
@@ -39,13 +38,13 @@ interface LLMProvider {
   ): Promise<SummaryResult>;
 }
 
-export class ClaudeProvider implements LLMProvider {
-  private anthropic: AnthropicProvider;
-  private taggingModel = "claude-haiku-4-5";
-  private summaryModel = "claude-sonnet-4-6";
+export class OpenRouterProvider implements LLMProvider {
+  private openrouter: ReturnType<typeof createOpenRouter>;
+  private taggingModel = "qwen/qwen3.5-9b";
+  private summaryModel = "deepseek/deepseek-v3.2";
 
   constructor(apiKey: string) {
-    this.anthropic = createAnthropic({ apiKey });
+    this.openrouter = createOpenRouter({ apiKey });
   }
 
   async extractTags(
@@ -67,11 +66,12 @@ Article content:
 ${truncatedContent}`;
 
       const { output } = await generateText({
-        model: this.anthropic(this.taggingModel),
+        model: this.openrouter(this.taggingModel),
         output: Output.object({ schema: tagExtractionSchema }),
         system: TAG_EXTRACTION_SYSTEM_PROMPT,
         prompt: userPrompt,
-        maxTokens: 1024,
+        maxOutputTokens: 1024,
+        temperature: 0.2,
       });
 
       if (!output) {
@@ -87,7 +87,7 @@ ${truncatedContent}`;
         language: output.language.toLowerCase(),
       };
     } catch (error) {
-      logger.error("Claude tag extraction failed", { error });
+      logger.error("Tag extraction failed", { error });
       return { tags: [], language: "en", confidence: 0 };
     }
   }
@@ -109,11 +109,12 @@ Article content:
 ${truncatedContent}`;
 
       const { output } = await generateText({
-        model: this.anthropic(this.summaryModel),
+        model: this.openrouter(this.summaryModel),
         output: Output.object({ schema: summarySchema }),
         system: SUMMARIZATION_SYSTEM_PROMPT,
         prompt: userPrompt,
-        maxTokens: 2048,
+        maxOutputTokens: 2048,
+        temperature: 0.3,
       });
 
       if (!output) {
@@ -122,7 +123,7 @@ ${truncatedContent}`;
 
       return output;
     } catch (error) {
-      logger.error("Claude summarization failed", { error });
+      logger.error("Summarization failed", { error });
       throw new Error("Failed to generate summary");
     }
   }
@@ -135,8 +136,8 @@ export function getLLMProvider(): LLMProvider {
     return llmProvider;
   }
 
-  if (config.ANTHROPIC_API_KEY) {
-    llmProvider = new ClaudeProvider(config.ANTHROPIC_API_KEY);
+  if (config.OPENROUTER_API_KEY) {
+    llmProvider = new OpenRouterProvider(config.OPENROUTER_API_KEY);
     return llmProvider;
   }
 
@@ -157,5 +158,5 @@ export function getLLMProvider(): LLMProvider {
 }
 
 export function isLLMAvailable() {
-  return !!config.ANTHROPIC_API_KEY;
+  return !!config.OPENROUTER_API_KEY;
 }

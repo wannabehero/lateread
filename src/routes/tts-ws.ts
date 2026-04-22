@@ -42,7 +42,7 @@ ttsWs.get(
     let gradiumWs: WebSocket | null = null;
 
     return {
-      async onOpen(event, ws) {
+      async onOpen(_event, ws) {
         const userId = c.get("userId") as string;
 
         // Manually validate article ID param
@@ -95,14 +95,12 @@ ttsWs.get(
           const voiceId = getVoiceForLanguage(article.language);
 
           // Connect to Gradium WebSocket
-          gradiumWs = new WebSocket(
-            GRADIUM_WS_URL,
-            {
-              headers: {
-                "x-api-key": config.GRADIUM_API_KEY || "",
-              },
-            } as any, // Bun's WebSocket supports headers, but TypeScript doesn't know this
-          );
+          gradiumWs = new WebSocket(GRADIUM_WS_URL, {
+            headers: {
+              "x-api-key": config.GRADIUM_API_KEY || "",
+            },
+            // biome-ignore lint/suspicious/noExplicitAny: Bun WebSocket accepts headers but TS types don't include this
+          } as any);
 
           // Handle Gradium WebSocket events
           gradiumWs.addEventListener("open", () => {
@@ -188,7 +186,7 @@ ttsWs.get(
         }
       },
 
-      onClose(event, ws) {
+      onClose(_event, _ws) {
         logger.debug("TTS WebSocket closed by client");
         // Clean up Gradium WebSocket when client disconnects
         if (
@@ -200,7 +198,7 @@ ttsWs.get(
         }
       },
 
-      onError(event, ws) {
+      onError(event, _ws) {
         logger.error("TTS WebSocket error", { error: event });
         // Clean up Gradium WebSocket on error
         if (

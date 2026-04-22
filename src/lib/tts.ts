@@ -231,14 +231,12 @@ class GradiumWebSocketTTSProvider implements TTSProvider {
       chunks: string[],
       signal?: AbortSignal,
     ) {
-      const ws = new WebSocket(
-        wsUrl,
-        {
-          headers: {
-            "x-api-key": apiKey,
-          },
-        } as any, // Bun's WebSocket supports headers, but TypeScript doesn't know this
-      );
+      const ws = new WebSocket(wsUrl, {
+        headers: {
+          "x-api-key": apiKey,
+        },
+        // biome-ignore lint/suspicious/noExplicitAny: Bun WebSocket accepts headers but TS types don't include this
+      } as any);
 
       const messageQueue: Uint8Array[] = [];
       let wsError: Error | null = null;

@@ -16,7 +16,7 @@ export const ArticleCard: FC<ArticleCardProps> = ({ article }) => {
       {article.imageUrl && (
         <div class="article-image">
           <img
-            src={proxyImageUrl(article.imageUrl)}
+            src={proxyImageUrl(article.imageUrl) ?? undefined}
             alt={displayTitle}
             loading="lazy"
           />

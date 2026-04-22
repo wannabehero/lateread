@@ -18,8 +18,8 @@ const configSchema = z.object({
   BOT_USERNAME: z.string().min(1, "BOT_USERNAME is required"),
   ADMIN_TELEGRAM_ID: z.coerce.number().optional(),
 
-  // LLM (Anthropic Claude)
-  ANTHROPIC_API_KEY: z.string().optional(),
+  // LLM (OpenRouter)
+  OPENROUTER_API_KEY: z.string().optional(),
 
   // Gradium TTS
   GRADIUM_API_KEY: z.string().optional(),

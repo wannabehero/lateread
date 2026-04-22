@@ -26,3 +26,4 @@ public/styles/*
 # IDE
 .vscode/
 .idea/
+.claude/worktrees

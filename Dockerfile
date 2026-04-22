@@ -1,4 +1,4 @@
-FROM oven/bun:1 AS build
+FROM oven/bun:1.3.13 AS build
 
 WORKDIR /app
 
@@ -9,7 +9,7 @@ RUN bun ci
 COPY ./web ./web
 RUN bun run build:web
 
-FROM oven/bun:1 AS final
+FROM oven/bun:1.3.13 AS final
 
 ARG LITESTREAM_VERSION=0.5.6
 

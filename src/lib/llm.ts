@@ -41,7 +41,7 @@ interface LLMProvider {
 export class OpenRouterProvider implements LLMProvider {
   private openrouter: ReturnType<typeof createOpenRouter>;
   private taggingModel = "qwen/qwen3.5-9b";
-  private summaryModel = "deepseek/deepseek-v3.2";
+  private summaryModel = "deepseek/deepseek-v4-flash";
 
   constructor(apiKey: string) {
     this.openrouter = createOpenRouter({ apiKey });

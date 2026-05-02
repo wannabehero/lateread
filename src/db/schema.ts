@@ -161,7 +161,6 @@ export const articleSummaries = sqliteTable(
       .references(() => articles.id, { onDelete: "cascade" }),
     oneSentence: text("one_sentence").notNull(),
     oneParagraph: text("one_paragraph").notNull(),
-    long: text("long").notNull(),
     createdAt: integer("created_at", { mode: "timestamp" })
       .notNull()
       .default(sql`(unixepoch())`),

@@ -117,13 +117,12 @@ describe("OpenRouterProvider", () => {
   });
 
   describe("summarize", () => {
-    it("should generate summaries in three formats", async () => {
+    it("should generate summaries in two formats", async () => {
       mockGenerateText.mockResolvedValue({
         output: {
           oneSentence: "This is a one sentence summary.",
           oneParagraph:
             "This is a one paragraph summary with more details about the content.",
-          long: "This is a long detailed summary that covers all the main points of the article.",
         },
       });
 
@@ -134,13 +133,10 @@ describe("OpenRouterProvider", () => {
       expect(result.oneParagraph).toBe(
         "This is a one paragraph summary with more details about the content.",
       );
-      expect(result.long).toBe(
-        "This is a long detailed summary that covers all the main points of the article.",
-      );
       expect(mockGenerateText).toHaveBeenCalledTimes(1);
 
       const callArgs = (mockGenerateText.mock.calls as any[][])[0]?.[0];
-      expect(callArgs?.maxOutputTokens).toBe(2048);
+      expect(callArgs?.maxOutputTokens).toBe(1024);
     });
 
     it("should include language hint when languageCode is provided", async () => {
@@ -148,7 +144,6 @@ describe("OpenRouterProvider", () => {
         output: {
           oneSentence: "Это краткое резюме.",
           oneParagraph: "Это параграф резюме.",
-          long: "Это длинное резюме.",
         },
       });
 
@@ -166,7 +161,6 @@ describe("OpenRouterProvider", () => {
         output: {
           oneSentence: "Summary.",
           oneParagraph: "Summary paragraph.",
-          long: "Long summary.",
         },
       });
 
@@ -178,23 +172,23 @@ describe("OpenRouterProvider", () => {
       expect(prompt).not.toContain("IMPORTANT: The article is in");
     });
 
-    it("should truncate content longer than 400k characters", async () => {
+    it("should truncate content longer than 3M characters", async () => {
       mockGenerateText.mockResolvedValue({
         output: {
           oneSentence: "Summary.",
           oneParagraph: "Summary paragraph.",
-          long: "Long summary.",
         },
       });
 
       const provider = createProvider();
-      const longContent = "a".repeat(500000);
+      const longContent = "a".repeat(3_500_000);
       await provider.summarize(longContent);
 
       const callArgs = (mockGenerateText.mock.calls as any[][])[0]?.[0];
       const prompt = callArgs?.prompt as string;
       expect(prompt.length).toBeLessThan(longContent.length);
-      expect(prompt).toContain("a".repeat(100)); // Should still have some content
+      expect(prompt).toContain("a".repeat(3_000_000));
+      expect(prompt).not.toContain("a".repeat(3_000_001));
     });
 
     it("should throw error on API errors", async () => {

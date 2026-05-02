@@ -17,13 +17,6 @@ export const SummaryView: FC<SummaryViewProps> = ({ summary }) => {
         <h4>One Paragraph</h4>
         <p>{summary.oneParagraph}</p>
       </div>
-
-      <details class="summary-section">
-        <summary>
-          <strong>Detailed</strong>
-        </summary>
-        <p style="white-space: pre-wrap; margin-top: 1rem;">{summary.long}</p>
-      </details>
     </div>
   );
 };

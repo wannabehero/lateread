@@ -63,7 +63,6 @@ async function buildArticleConditions(
       sql`${articles.description} LIKE ${searchPattern} ESCAPE '\\'`,
       sql`${articleSummaries.oneSentence} LIKE ${searchPattern} ESCAPE '\\'`,
       sql`${articleSummaries.oneParagraph} LIKE ${searchPattern} ESCAPE '\\'`,
-      sql`${articleSummaries.long} LIKE ${searchPattern} ESCAPE '\\'`,
     );
     if (dbSearchCondition) {
       searchConditions.push(dbSearchCondition);

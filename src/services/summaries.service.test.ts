@@ -44,14 +44,12 @@ describe("summaries.service", () => {
       const cachedSummary = {
         oneSentence: "Cached one sentence summary",
         oneParagraph: "Cached one paragraph summary",
-        long: "Cached long summary with more details",
       };
 
       await db.insert(articleSummaries).values({
         articleId: article.id,
         oneSentence: cachedSummary.oneSentence,
         oneParagraph: cachedSummary.oneParagraph,
-        long: cachedSummary.long,
       });
 
       const result = await getOrGenerateSummary(
@@ -73,7 +71,6 @@ describe("summaries.service", () => {
       const generatedSummary: SummaryResult = {
         oneSentence: "Generated one sentence summary",
         oneParagraph: "Generated one paragraph summary",
-        long: "Generated long summary with more details",
       };
 
       const mockLLMProvider = {
@@ -113,7 +110,6 @@ describe("summaries.service", () => {
       expect(savedSummary).toBeDefined();
       expect(savedSummary?.oneSentence).toBe(generatedSummary.oneSentence);
       expect(savedSummary?.oneParagraph).toBe(generatedSummary.oneParagraph);
-      expect(savedSummary?.long).toBe(generatedSummary.long);
     });
 
     it("should strip HTML tags from content before summarization", async () => {
@@ -131,7 +127,6 @@ describe("summaries.service", () => {
       const generatedSummary: SummaryResult = {
         oneSentence: "Summary",
         oneParagraph: "Summary paragraph",
-        long: "Long summary",
       };
 
       const mockLLMProvider = {
@@ -169,7 +164,6 @@ describe("summaries.service", () => {
       const generatedSummary: SummaryResult = {
         oneSentence: "Summary",
         oneParagraph: "Summary paragraph",
-        long: "Long summary",
       };
 
       const mockLLMProvider = {
@@ -200,7 +194,6 @@ describe("summaries.service", () => {
       const generatedSummary: SummaryResult = {
         oneSentence: "Resumen de una oración",
         oneParagraph: "Resumen de un párrafo",
-        long: "Resumen largo",
       };
 
       const mockLLMProvider = {
@@ -236,7 +229,6 @@ describe("summaries.service", () => {
       const generatedSummary: SummaryResult = {
         oneSentence: "Summary",
         oneParagraph: "Summary paragraph",
-        long: "Long summary",
       };
 
       const mockLLMProvider = {
@@ -323,7 +315,6 @@ describe("summaries.service", () => {
       const generatedSummary: SummaryResult = {
         oneSentence: "Summary",
         oneParagraph: "Summary paragraph",
-        long: "Long summary",
       };
 
       const mockLLMProvider = {
@@ -378,7 +369,6 @@ describe("summaries.service", () => {
       const generatedSummary: SummaryResult = {
         oneSentence: "Summary",
         oneParagraph: "Summary paragraph",
-        long: "Long summary",
       };
 
       const mockLLMProvider = {
@@ -410,7 +400,6 @@ describe("summaries.service", () => {
       const generatedSummary: SummaryResult = {
         oneSentence: "Summary",
         oneParagraph: "Summary paragraph",
-        long: "Long summary",
       };
 
       const mockLLMProvider = {

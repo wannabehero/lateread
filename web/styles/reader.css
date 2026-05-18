@@ -284,6 +284,10 @@
   padding: 0.5rem;
 }
 
+.elevenlabs-widget > iframe {
+  height: 90px;
+}
+
 /* Responsive adjustments */
 @media (max-width: 1024px) and (min-width: 769px) {
   :root {

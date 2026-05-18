@@ -4,7 +4,6 @@ import { ArticleCards } from "../components/ArticleCards";
 import { ArticleList } from "../components/ArticleList";
 import { ReaderView } from "../components/ReaderView";
 import { isLLMAvailable } from "../lib/llm";
-import { isTTSAvailable } from "../lib/tts";
 import { validator } from "../lib/validator";
 import { requireAuth } from "../middleware/auth";
 import { articleIdParam } from "../schemas/common";
@@ -124,7 +123,7 @@ articlesRouter.get(
         content={content}
         features={{
           summary: features.summary && isLLMAvailable(),
-          tts: features.tts && isTTSAvailable(),
+          tts: features.tts,
         }}
         readingPosition={{
           element: article.readingPositionElement,

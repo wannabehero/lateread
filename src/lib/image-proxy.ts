@@ -55,16 +55,45 @@ export function proxyImageUrl(url: string | null | undefined): string | null {
 }
 
 /**
+ * Rewrite a srcset attribute value, proxying each candidate URL
+ */
+function rewriteSrcsetValue(srcset: string): string {
+  return srcset
+    .split(",")
+    .map((candidate) => {
+      const trimmed = candidate.trim();
+      if (!trimmed) return trimmed;
+      // A candidate is "URL [descriptor]" (e.g., "https://x.com/a.jpg 2x")
+      const match = trimmed.match(/^(\S+)(\s+.*)?$/);
+      if (!match) return trimmed;
+      const [, url, descriptor = ""] = match;
+      if (!url) return trimmed;
+      return `${proxyImageUrl(url) ?? url}${descriptor}`;
+    })
+    .join(", ");
+}
+
+/**
  * Rewrite all external image URLs in HTML content to use the proxy endpoint
- * Handles src attributes in <img> tags with both double and single quotes
+ * Handles src and srcset attributes in <img> and <source> tags
  */
 export function rewriteContentImageUrls(html: string): string {
-  // Match src="http..." or src='http...' in img tags
-  return html.replace(
+  // Rewrite src="http..." in img tags
+  let result = html.replace(
     /(<img\b[^>]*?\bsrc=)(["'])(https?:\/\/[^"']*)\2/gi,
     (_match, prefix, quote, url) => {
       const proxied = proxyImageUrl(url);
       return `${prefix}${quote}${proxied}${quote}`;
     },
   );
+
+  // Rewrite srcset="..." in img and source tags
+  result = result.replace(
+    /(<(?:img|source)\b[^>]*?\bsrcset=)(["'])([^"']*)\2/gi,
+    (_match, prefix, quote, srcset) => {
+      return `${prefix}${quote}${rewriteSrcsetValue(srcset)}${quote}`;
+    },
+  );
+
+  return result;
 }

@@ -76,7 +76,6 @@ src/
 │   ├── session.ts       # HMAC-signed session cookies
 │   ├── content-cache.ts # User-scoped article content cache
 │   ├── llm.ts           # LLM provider abstraction (Claude)
-│   ├── tts.ts           # TTS provider abstraction (ElevenLabs)
 │   ├── readability.ts   # Article content extraction
 │   ├── safe-fetch.ts    # SSRF-validated HTTP requests
 │   └── queue.ts         # Bunline queue for background jobs
@@ -721,13 +720,12 @@ Run `bun run check` before committing.
 4. Web app polls `/auth/check/{token}` -> returns success when `userId` populated
 5. Tokens expire in 5 minutes, cleaned up hourly by cron
 
-## LLM/TTS Integration
+## LLM Integration
 
-Providers are optional and configured via environment:
+The LLM provider is optional and configured via environment:
 
 ```typescript
 import { getLLMProvider, isLLMAvailable } from "../lib/llm";
-import { getTTSProvider, isTTSAvailable } from "../lib/tts";
 
 // Check availability before use
 if (isLLMAvailable()) {
@@ -739,7 +737,13 @@ if (isLLMAvailable()) {
 Models used:
 - Tag extraction: `claude-haiku-4-5`
 - Summarization: `claude-sonnet-4-5`
-- TTS: `eleven_flash_v2_5` (12 language-specific voices)
+
+## TTS
+
+TTS is delivered client-side via the ElevenLabs AudioNative embed
+(`src/components/AudioNativePlayer.tsx`). Rendering is gated on
+`features.tts` from `subscription.service.ts` (full subscribers only).
+There is no backend TTS provider.
 
 ## Cron Jobs
 

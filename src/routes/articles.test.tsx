@@ -13,7 +13,6 @@ import {
 } from "../../test/fixtures";
 import { createApp } from "../app";
 import * as llm from "../lib/llm";
-import * as tts from "../lib/tts";
 import * as contentService from "../services/content.service";
 import type { AppContext } from "../types/context";
 
@@ -321,15 +320,11 @@ describe("routes/articles", () => {
       spyIsLLMAvailable.mockRestore();
     });
 
-    it("should show TTS feature when TTS is available and user has subscription", async () => {
+    it("should show AudioNative player when user has subscription", async () => {
       const article = await createCompletedArticle(db, testUserId);
       await createSubscription(db, testUserId, { type: "full" });
 
       spyGetArticleContent.mockResolvedValue("<p>Content</p>");
-
-      // Mock TTS availability
-      const spyIsTTSAvailable = spyOn(tts, "isTTSAvailable");
-      spyIsTTSAvailable.mockReturnValue(true);
 
       const res = await app.request(`/articles/${article.id}`, {
         headers: authHeaders,
@@ -338,14 +333,7 @@ describe("routes/articles", () => {
       const doc = parseHtml(html);
 
       expect(res.status).toBe(200);
-
-      // Check for audio player
-      expect(doc.querySelector("article-player")).toBeTruthy();
-      expect(doc.querySelector("article-player")?.getAttribute("src")).toBe(
-        `/api/articles/${article.id}/tts`,
-      );
-
-      spyIsTTSAvailable.mockRestore();
+      expect(doc.querySelector("#elevenlabs-audionative-widget")).toBeTruthy();
     });
 
     it("should not show summary when LLM is unavailable", async () => {
@@ -372,14 +360,10 @@ describe("routes/articles", () => {
       spyIsLLMAvailable.mockRestore();
     });
 
-    it("should not show TTS when user has no subscription", async () => {
+    it("should not show AudioNative player when user has no subscription", async () => {
       const article = await createCompletedArticle(db, testUserId);
 
       spyGetArticleContent.mockResolvedValue("<p>Content</p>");
-
-      // Mock TTS availability
-      const spyIsTTSAvailable = spyOn(tts, "isTTSAvailable");
-      spyIsTTSAvailable.mockReturnValue(true);
 
       const res = await app.request(`/articles/${article.id}`, {
         headers: authHeaders,
@@ -388,11 +372,7 @@ describe("routes/articles", () => {
       const doc = parseHtml(html);
 
       expect(res.status).toBe(200);
-
-      // Should not show audio player
-      expect(doc.querySelector("article-player")).toBeNull();
-
-      spyIsTTSAvailable.mockRestore();
+      expect(doc.querySelector("#elevenlabs-audionative-widget")).toBeNull();
     });
 
     it("should show rating buttons for unarchived articles", async () => {

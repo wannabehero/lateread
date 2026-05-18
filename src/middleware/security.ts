@@ -23,11 +23,26 @@ export const securityHeaders = secureHeaders({
 
   contentSecurityPolicy: {
     defaultSrc: ["'self'"],
-    scriptSrc: ["'self'", "'unsafe-eval'", "'unsafe-inline'"], // TODO: remove all inlined scripts
+    scriptSrc: [
+      "'self'",
+      "'unsafe-eval'",
+      "'unsafe-inline'",
+      "https://elevenlabs.io",
+    ], // TODO: remove all inlined scripts
     styleSrc: ["'self'", "'unsafe-inline'"], // We use inline styles
-    imgSrc: ["'self'", "data:"], // Images proxied through /api/image-proxy
-    connectSrc: ["'self'"], // HTMX fetch requests
+    imgSrc: ["'self'", "data:", "https://elevenlabs.io"], // Images proxied through /api/image-proxy
+    connectSrc: [
+      "'self'",
+      "https://elevenlabs.io",
+      "https://api.elevenlabs.io",
+    ], // HTMX fetch requests
     fontSrc: ["'self'"],
+    mediaSrc: [
+      "'self'",
+      "https://elevenlabs.io",
+      "https://storage.googleapis.com",
+    ],
+    frameSrc: ["https://elevenlabs.io"],
     objectSrc: ["'none'"], // Block plugins (Flash, Java, etc.)
     frameAncestors: ["'none'"], // CSP equivalent of X-Frame-Options: DENY
     baseUri: ["'self'"],

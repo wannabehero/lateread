@@ -1,5 +1,4 @@
 import { Hono } from "hono";
-import { stream } from "hono/streaming";
 import { z } from "zod";
 import { ArticleList } from "../components/ArticleList";
 import { EmptyState } from "../components/EmptyState";
@@ -8,7 +7,6 @@ import { SummaryView } from "../components/SummaryView";
 import { ExternalServiceError, ValidationError } from "../lib/errors";
 import { decodeImageUrl } from "../lib/image-proxy";
 import { safeFetch } from "../lib/safe-fetch";
-import { getTTSProvider, htmlToPlainText } from "../lib/tts";
 import { validator } from "../lib/validator";
 import { requireAuth } from "../middleware/auth";
 import { articleIdParam } from "../schemas/common";
@@ -23,7 +21,6 @@ import {
   toggleArticleArchive,
   updateReadingPosition,
 } from "../services/articles.service";
-import { getArticleContent } from "../services/content.service";
 import { updateReaderPreferences } from "../services/preferences.service";
 import { getOrGenerateSummary } from "../services/summaries.service";
 import type { AppContext } from "../types/context";
@@ -318,57 +315,6 @@ api.get(
       return c.body(null, 204);
     }
     return c.body(response.body);
-  },
-);
-
-/**
- * GET /api/articles/:id/tts - Stream text-to-speech audio for article
- */
-api.get(
-  "/api/articles/:id/tts",
-  requireAuth("json-401"),
-  validator("param", articleIdParam),
-  async (c) => {
-    const userId = c.get("userId");
-    const { id: articleId } = c.req.valid("param");
-
-    // Verify article exists and belongs to user
-    const article = await getArticleWithTagsById(articleId, userId);
-
-    // Get article content from cache
-    const htmlContent = await getArticleContent(userId, articleId, article.url);
-
-    // Convert HTML to plain text
-    const plainText = htmlToPlainText(htmlContent);
-
-    if (!plainText) {
-      return c.json({ error: "No content available for TTS" }, 400);
-    }
-
-    const ttsProvider = getTTSProvider();
-    const audioStream = await ttsProvider.generateStream(
-      plainText,
-      article.language,
-      c.req.raw.signal, // Pass abort signal to cancel on disconnect
-    );
-
-    // Set appropriate headers for audio streaming
-    c.header("Content-Type", "audio/ogg");
-    c.header("Cache-Control", "public, max-age=86400"); // Cache for 24 hours
-
-    // Stream the audio to the response using ReadableStream reader
-    return stream(c, async (streamWriter) => {
-      const reader = audioStream.getReader();
-      try {
-        while (true) {
-          const { done, value } = await reader.read();
-          if (done) break;
-          await streamWriter.write(value);
-        }
-      } finally {
-        reader.releaseLock();
-      }
-    });
   },
 );
 

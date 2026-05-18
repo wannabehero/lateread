@@ -151,5 +151,38 @@ describe("image-proxy", () => {
     it("should return empty string for empty input", () => {
       expect(rewriteContentImageUrls("")).toBe("");
     });
+
+    it("should rewrite srcset attribute on img tag", () => {
+      const html =
+        '<img src="https://example.com/a.jpg" srcset="https://example.com/a-1x.jpg 1x, https://example.com/a-2x.jpg 2x">';
+      const result = rewriteContentImageUrls(html);
+      expect(result).not.toContain("https://example.com/a-1x.jpg");
+      expect(result).not.toContain("https://example.com/a-2x.jpg");
+      expect(result).toContain("1x");
+      expect(result).toContain("2x");
+      const proxyCount = (result.match(/\/api\/image-proxy\?url=/g) || [])
+        .length;
+      expect(proxyCount).toBe(3);
+    });
+
+    it("should rewrite srcset attribute on source tag", () => {
+      const html =
+        '<picture><source srcset="https://example.com/a.webp 1264w"><img src="https://example.com/a.jpg"></picture>';
+      const result = rewriteContentImageUrls(html);
+      expect(result).not.toContain("https://example.com/a.webp");
+      expect(result).toContain("1264w");
+      const proxyCount = (result.match(/\/api\/image-proxy\?url=/g) || [])
+        .length;
+      expect(proxyCount).toBe(2);
+    });
+
+    it("should rewrite srcset with width descriptors", () => {
+      const html =
+        '<img srcset="https://readhacker.news/img_opt/S7uj7CbdI9-1264.webp 1264w, https://readhacker.news/img_opt/S7uj7CbdI9-640.webp 640w">';
+      const result = rewriteContentImageUrls(html);
+      expect(result).not.toContain("https://readhacker.news");
+      expect(result).toContain("1264w");
+      expect(result).toContain("640w");
+    });
   });
 });

@@ -12,7 +12,6 @@ import healthRoutes from "./routes/health";
 import homeRoutes from "./routes/home";
 import loginRoutes from "./routes/login";
 import searchRoutes from "./routes/search";
-import ttsWsRoutes from "./routes/tts-ws";
 import type { AppContext } from "./types/context";
 
 /**
@@ -41,7 +40,6 @@ export function createApp(): Hono<AppContext> {
   app.route("/", articlesRoutes);
   app.route("/", searchRoutes);
   app.route("/", apiRoutes);
-  app.route("/", ttsWsRoutes); // WebSocket TTS endpoint
   app.route("/", healthRoutes);
 
   app.onError(errorHandler);

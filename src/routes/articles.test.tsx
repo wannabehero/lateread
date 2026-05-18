@@ -517,19 +517,78 @@ describe("routes/articles", () => {
       expect(spyGetArticleContent).not.toHaveBeenCalled();
     });
 
-    it("should return 404 when article belongs to different user", async () => {
+    it("should render in read-only mode when article belongs to different user", async () => {
       const otherUser = await createUser(db);
-      const article = await createCompletedArticle(db, otherUser.id);
+      const article = await createCompletedArticle(db, otherUser.id, {
+        title: "Other User Article",
+      });
 
-      spyGetArticleContent.mockResolvedValue("<p>Content</p>");
+      spyGetArticleContent.mockResolvedValue("<p>Other content</p>");
 
       const res = await app.request(`/articles/${article.id}`, {
         headers: authHeaders,
       });
+      const html = await res.text();
+      const doc = parseHtml(html);
+
+      expect(res.status).toBe(200);
+      expect(html).toContain("Other User Article");
+      expect(html).toContain("Other content");
+
+      // Content is loaded from the owner's cache
+      expect(spyGetArticleContent).toHaveBeenCalledWith(
+        otherUser.id,
+        article.id,
+        article.url,
+      );
+
+      // No actions, no settings, no reader-position tracker
+      expect(doc.querySelector(".reader-footer")).toBeNull();
+      expect(doc.querySelector(".reader-settings-menu")).toBeNull();
+      expect(doc.querySelector("reader-position")).toBeNull();
+      expect(html).not.toContain(`/api/articles/${article.id}/rate`);
+      expect(html).not.toContain(`/api/articles/${article.id}/read`);
+      expect(doc.querySelector(".delete-button")).toBeNull();
+    });
+
+    it("should render in read-only mode for anonymous viewers", async () => {
+      const article = await createCompletedArticle(db, testUserId, {
+        title: "Publicly Shared Article",
+      });
+
+      spyGetArticleContent.mockResolvedValue("<p>Public content</p>");
+
+      const res = await app.request(`/articles/${article.id}`);
+      const html = await res.text();
+      const doc = parseHtml(html);
+
+      expect(res.status).toBe(200);
+      expect(html).toContain("Publicly Shared Article");
+      expect(html).toContain("Public content");
+
+      expect(spyGetArticleContent).toHaveBeenCalledWith(
+        testUserId,
+        article.id,
+        article.url,
+      );
+
+      expect(doc.querySelector(".reader-footer")).toBeNull();
+      expect(doc.querySelector(".reader-settings-menu")).toBeNull();
+      expect(doc.querySelector("reader-position")).toBeNull();
+      expect(doc.querySelector(".reader-summary")).toBeNull();
+      expect(doc.querySelector("#elevenlabs-audionative-widget")).toBeNull();
+    });
+
+    it("should return 404 for anonymous viewer when article is not completed", async () => {
+      const article = await createArticle(db, testUserId, {
+        status: "pending",
+      });
+
+      spyGetArticleContent.mockResolvedValue("<p>Content</p>");
+
+      const res = await app.request(`/articles/${article.id}`);
 
       expect(res.status).toBe(404);
-
-      // Should not call getArticleContent
       expect(spyGetArticleContent).not.toHaveBeenCalled();
     });
 
@@ -623,13 +682,12 @@ describe("routes/articles", () => {
       expect(res.headers.get("location")).toBe("/login?back=%2Farticles");
     });
 
-    it("should redirect to login when accessing /articles/:id without auth", async () => {
+    it("should not redirect to login when accessing /articles/:id without auth", async () => {
+      // Invalid UUID returns 400 (validator), not a redirect
       const res = await app.request("/articles/some-id");
 
-      expect(res.status).toBe(302);
-      expect(res.headers.get("location")).toBe(
-        "/login?back=%2Farticles%2Fsome-id",
-      );
+      expect(res.status).toBe(400);
+      expect(res.headers.get("location")).toBeNull();
     });
   });
 });

@@ -302,8 +302,13 @@ export async function updateArticleCompleted({
  */
 export async function getArticleWithTagsById(
   id: string,
-  userId: string,
+  userId?: string,
 ): Promise<ArticleWithTags> {
+  const conditions: SQL[] = [eq(articles.id, id)];
+  if (userId) {
+    conditions.push(eq(articles.userId, userId));
+  }
+
   const [result] = await db
     .select({
       ...getTableColumns(articles),
@@ -316,7 +321,7 @@ export async function getArticleWithTagsById(
     .from(articles)
     .leftJoin(articleTags, eq(articles.id, articleTags.articleId))
     .leftJoin(tags, eq(articleTags.tagId, tags.id))
-    .where(and(eq(articles.id, id), eq(articles.userId, userId)))
+    .where(and(...conditions))
     .groupBy(articles.id)
     .limit(1);
 

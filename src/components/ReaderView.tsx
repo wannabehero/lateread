@@ -17,6 +17,8 @@ interface ReaderViewProps {
     element: number | null;
     offset: number | null;
   };
+
+  readOnly?: boolean;
 }
 
 export const ReaderView: FC<ReaderViewProps> = ({
@@ -24,6 +26,7 @@ export const ReaderView: FC<ReaderViewProps> = ({
   content,
   features,
   readingPosition,
+  readOnly = false,
 }) => {
   const displayTitle = article.title || article.url;
 
@@ -83,104 +86,116 @@ export const ReaderView: FC<ReaderViewProps> = ({
 
       {features.tts && <AudioNativePlayer />}
 
-      <reader-position
-        article-id={article.id}
-        initial-element={readingPosition?.element?.toString() ?? ""}
-        initial-offset={readingPosition?.offset?.toString() ?? ""}
-      >
+      {readOnly ? (
         <div
           class="reader-content"
           dangerouslySetInnerHTML={{ __html: content }}
         />
-      </reader-position>
+      ) : (
+        <reader-position
+          article-id={article.id}
+          initial-element={readingPosition?.element?.toString() ?? ""}
+          initial-offset={readingPosition?.offset?.toString() ?? ""}
+        >
+          <div
+            class="reader-content"
+            dangerouslySetInnerHTML={{ __html: content }}
+          />
+        </reader-position>
+      )}
 
-      <footer
-        class="reader-footer"
-        {...(!article.readAt && {
-          "hx-post": `/api/articles/${article.id}/read`,
-          "hx-trigger": "intersect once",
-          "hx-swap": "none",
-        })}
-      >
-        <div class="reader-actions">
-          <share-copy-button data-url={article.url} data-title={displayTitle} />
-          {!article.archived && (
-            <>
-              <button
-                type="button"
-                class="dislike-button"
-                hx-post={`/api/articles/${article.id}/rate?rating=-1`}
-                hx-swap="none"
-                hx-disabled-elt="this"
-                title="Dislike"
+      {!readOnly && (
+        <footer
+          class="reader-footer"
+          {...(!article.readAt && {
+            "hx-post": `/api/articles/${article.id}/read`,
+            "hx-trigger": "intersect once",
+            "hx-swap": "none",
+          })}
+        >
+          <div class="reader-actions">
+            <share-copy-button
+              data-url={article.url}
+              data-title={displayTitle}
+            />
+            {!article.archived && (
+              <>
+                <button
+                  type="button"
+                  class="dislike-button"
+                  hx-post={`/api/articles/${article.id}/rate?rating=-1`}
+                  hx-swap="none"
+                  hx-disabled-elt="this"
+                  title="Dislike"
+                >
+                  <span class="button-text">
+                    <img
+                      src="/public/assets/thumbs-down.svg"
+                      alt="Dislike"
+                      class="button-icon"
+                    />
+                  </span>
+                  <span class="button-loading">
+                    <span class="spinner"></span>
+                  </span>
+                </button>
+                <button
+                  type="button"
+                  class="like-button"
+                  hx-post={`/api/articles/${article.id}/rate?rating=1`}
+                  hx-swap="none"
+                  hx-disabled-elt="this"
+                  title="Like"
+                >
+                  <span class="button-text">
+                    <img
+                      src="/public/assets/thumbs-up.svg"
+                      alt="Like"
+                      class="button-icon"
+                    />
+                  </span>
+                  <span class="button-loading">
+                    <span class="spinner"></span>
+                  </span>
+                </button>
+              </>
+            )}
+            {article.archived && article.rating !== 0 && (
+              <span
+                class="rating-indicator"
+                title={article.rating === 1 ? "Liked" : "Disliked"}
               >
-                <span class="button-text">
-                  <img
-                    src="/public/assets/thumbs-down.svg"
-                    alt="Dislike"
-                    class="button-icon"
-                  />
-                </span>
-                <span class="button-loading">
-                  <span class="spinner"></span>
-                </span>
-              </button>
-              <button
-                type="button"
-                class="like-button"
-                hx-post={`/api/articles/${article.id}/rate?rating=1`}
-                hx-swap="none"
-                hx-disabled-elt="this"
-                title="Like"
-              >
-                <span class="button-text">
-                  <img
-                    src="/public/assets/thumbs-up.svg"
-                    alt="Like"
-                    class="button-icon"
-                  />
-                </span>
-                <span class="button-loading">
-                  <span class="spinner"></span>
-                </span>
-              </button>
-            </>
-          )}
-          {article.archived && article.rating !== 0 && (
-            <span
-              class="rating-indicator"
-              title={article.rating === 1 ? "Liked" : "Disliked"}
+                <img
+                  src={`/public/assets/thumbs-${article.rating === 1 ? "up" : "down"}.svg`}
+                  alt={article.rating === 1 ? "Liked" : "Disliked"}
+                  class="rating-icon"
+                />
+              </span>
+            )}
+            <span class="spacer" />
+            <button
+              type="button"
+              hx-delete={`/api/articles/${article.id}`}
+              hx-swap="none"
+              hx-disabled-elt="this"
+              hx-confirm="Are you sure you want to delete this article? This action cannot be undone."
+              class="delete-button"
+              title="Delete"
             >
-              <img
-                src={`/public/assets/thumbs-${article.rating === 1 ? "up" : "down"}.svg`}
-                alt={article.rating === 1 ? "Liked" : "Disliked"}
-                class="rating-icon"
-              />
-            </span>
-          )}
-          <span class="spacer" />
-          <button
-            type="button"
-            hx-delete={`/api/articles/${article.id}`}
-            hx-swap="none"
-            hx-disabled-elt="this"
-            hx-confirm="Are you sure you want to delete this article? This action cannot be undone."
-            class="delete-button"
-            title="Delete"
-          >
-            <span class="button-text">
-              <img
-                src="/public/assets/trash-2.svg"
-                alt="Delete"
-                class="button-icon"
-              />
-            </span>
-            <span class="button-loading">
-              <span class="spinner"></span>
-            </span>
-          </button>
-        </div>
-      </footer>
+              <span class="button-text">
+                <img
+                  src="/public/assets/trash-2.svg"
+                  alt="Delete"
+                  class="button-icon"
+                />
+              </span>
+              <span class="button-loading">
+                <span class="spinner"></span>
+              </span>
+            </button>
+          </div>
+        </footer>
+      )}
     </div>
   );
 };

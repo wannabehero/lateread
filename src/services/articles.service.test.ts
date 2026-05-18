@@ -186,6 +186,19 @@ describe("articles.service", () => {
       expect(error).not.toBeNull();
       expect(error?.message).toContain("not found");
     });
+
+    it("should return article without userId scope when userId is omitted", async () => {
+      const user = await createUser(db);
+      const article = await createCompletedArticle(db, user.id, {
+        title: "Public Article",
+      });
+
+      const result = await getArticleWithTagsById(article.id);
+
+      expect(result.id).toBe(article.id);
+      expect(result.title).toBe("Public Article");
+      expect(result.userId).toBe(user.id);
+    });
   });
 
   describe("markArticleAsRead", () => {

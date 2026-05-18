@@ -3,6 +3,7 @@ import { z } from "zod";
 import { ArticleCards } from "../components/ArticleCards";
 import { ArticleList } from "../components/ArticleList";
 import { ReaderView } from "../components/ReaderView";
+import { NotFoundError } from "../lib/errors";
 import { isLLMAvailable } from "../lib/llm";
 import { validator } from "../lib/validator";
 import { requireAuth } from "../middleware/auth";
@@ -102,20 +103,31 @@ articlesRouter.get(
  */
 articlesRouter.get(
   "/articles/:id",
-  requireAuth("redirect"),
   validator("param", articleIdParam),
   async (c) => {
-    const userId = c.get("userId");
+    const viewerId: string | undefined = c.get("userId");
     const { id: articleId } = c.req.valid("param");
 
-    // Get article with tags
-    const [article, preferences, features] = await Promise.all([
-      getArticleWithTagsById(articleId, userId),
-      getReaderPreferences(userId),
-      getAllowedFeaturesForUser(userId),
-    ]);
+    const article = await getArticleWithTagsById(articleId);
 
-    const content = await getArticleContent(userId, articleId, article.url);
+    const isOwner = !!viewerId && viewerId === article.userId;
+
+    if (!isOwner && article.status !== "completed") {
+      throw new NotFoundError("Article", articleId);
+    }
+
+    const [preferences, features] = isOwner
+      ? await Promise.all([
+          getReaderPreferences(article.userId),
+          getAllowedFeaturesForUser(article.userId),
+        ])
+      : [null, { summary: false, tts: false }];
+
+    const content = await getArticleContent(
+      article.userId,
+      articleId,
+      article.url,
+    );
 
     const readerContent = (
       <ReaderView
@@ -129,29 +141,31 @@ articlesRouter.get(
           element: article.readingPositionElement,
           offset: article.readingPositionOffset,
         }}
+        readOnly={!isOwner}
       />
     );
 
-    const readerControls = (
-      <div class="nav-actions">
-        <div class="nav-menu reader-settings-menu">
-          <button type="button" class="nav-icon-button">
-            <img
-              src="/public/assets/settings-2.svg"
-              alt="Settings"
-              class="nav-icon"
-            />
-          </button>
-          <div class="nav-dropdown reader-settings-dropdown">
-            <reader-controls
-              data-font-family={preferences.fontFamily}
-              data-font-size={preferences.fontSize.toString()}
-              data-api-url="/api/preferences/reader"
-            />
+    const readerControls =
+      isOwner && preferences ? (
+        <div class="nav-actions">
+          <div class="nav-menu reader-settings-menu">
+            <button type="button" class="nav-icon-button">
+              <img
+                src="/public/assets/settings-2.svg"
+                alt="Settings"
+                class="nav-icon"
+              />
+            </button>
+            <div class="nav-dropdown reader-settings-dropdown">
+              <reader-controls
+                data-font-family={preferences.fontFamily}
+                data-font-size={preferences.fontSize.toString()}
+                data-api-url="/api/preferences/reader"
+              />
+            </div>
           </div>
         </div>
-      </div>
-    );
+      ) : undefined;
 
     return renderWithLayout({
       c,

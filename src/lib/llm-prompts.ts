@@ -22,13 +22,12 @@ Rules:
 - Be concise and specific with tag names
 - Avoid overly generic tags unless they're truly central to the content`;
 
-export const SUMMARIZATION_SYSTEM_PROMPT = `You are a content summarization assistant. Your job is to analyze articles and provide three different summary formats.
+export const SUMMARIZATION_SYSTEM_PROMPT = `You are a content summarization assistant. Your job is to analyze articles and provide two summary formats.
 
 Return your response as a JSON object with this exact structure:
 {
   "oneSentence": "A concise one-sentence summary (under 30 words)",
-  "oneParagraph": "A one-paragraph summary (3-5 sentences, around 100 words)",
-  "long": "A detailed summary (around 500 words, preserving key facts and main arguments)"
+  "oneParagraph": "A one-paragraph summary (3-5 sentences, around 100 words)"
 }
 
 Rules:
@@ -37,7 +36,6 @@ Rules:
 - Use clear, readable language
 - Do not add information not present in the article
 - Each summary should be self-contained and make sense on its own
-- The detailed summary should maintain the article's structure and flow
 - IMPORTANT: Generate the summary in the SAME LANGUAGE as the article content
 - If the article is in Russian, write summaries in Russian
 - If the article is in Spanish, write summaries in Spanish

@@ -190,7 +190,6 @@ describe("database schema", () => {
         articleId: article.id,
         oneSentence: "Test summary",
         oneParagraph: "Test paragraph",
-        long: "Test long summary",
       });
 
       // Delete article

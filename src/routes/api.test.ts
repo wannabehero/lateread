@@ -546,7 +546,6 @@ describe("routes/api", () => {
       const mockSummary: SummaryResult = {
         oneSentence: "This is a one sentence summary.",
         oneParagraph: "This is a one paragraph summary with more details.",
-        long: "This is a long summary with extensive information.",
       };
 
       spyGetOrGenerateSummary.mockResolvedValue(mockSummary);
@@ -564,7 +563,6 @@ describe("routes/api", () => {
       // Verify SummaryView component renders
       expect(html).toContain(mockSummary.oneSentence);
       expect(html).toContain(mockSummary.oneParagraph);
-      expect(html).toContain(mockSummary.long);
 
       // Verify service was called with correct params
       expect(spyGetOrGenerateSummary).toHaveBeenCalledWith(
@@ -583,7 +581,6 @@ describe("routes/api", () => {
       const mockSummary: SummaryResult = {
         oneSentence: "Summary",
         oneParagraph: "Summary paragraph",
-        long: "Long summary",
       };
 
       spyGetOrGenerateSummary.mockResolvedValue(mockSummary);
@@ -605,7 +602,6 @@ describe("routes/api", () => {
       spyGetOrGenerateSummary.mockResolvedValue({
         oneSentence: "Summary",
         oneParagraph: "Summary",
-        long: "Summary",
       });
 
       // Use a valid UUID that doesn't exist in the database
@@ -626,7 +622,6 @@ describe("routes/api", () => {
       spyGetOrGenerateSummary.mockResolvedValue({
         oneSentence: "Summary",
         oneParagraph: "Summary",
-        long: "Summary",
       });
 
       const res = await app.request("/api/articles/invalid-id/summarize", {
@@ -648,7 +643,6 @@ describe("routes/api", () => {
       spyGetOrGenerateSummary.mockResolvedValue({
         oneSentence: "Summary",
         oneParagraph: "Summary",
-        long: "Summary",
       });
 
       const res = await app.request(`/api/articles/${article.id}/summarize`, {

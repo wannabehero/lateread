@@ -26,7 +26,6 @@ export async function getOrGenerateSummary(
     return {
       oneSentence: existingSummary.oneSentence,
       oneParagraph: existingSummary.oneParagraph,
-      long: existingSummary.long,
     };
   }
 
@@ -44,7 +43,6 @@ export async function getOrGenerateSummary(
     articleId,
     oneSentence: summary.oneSentence,
     oneParagraph: summary.oneParagraph,
-    long: summary.long,
   });
 
   return summary;

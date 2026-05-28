@@ -22,7 +22,6 @@ type TagExtractionResult = z.infer<typeof tagExtractionSchema>;
 const summarySchema = z.object({
   oneSentence: z.string().min(1),
   oneParagraph: z.string().min(1),
-  long: z.string().min(1),
 });
 
 export type SummaryResult = z.infer<typeof summarySchema>;
@@ -97,14 +96,16 @@ ${truncatedContent}`;
     languageCode?: string | null,
   ): Promise<SummaryResult> {
     try {
-      // Truncate content if too long (max ~100k tokens = ~400k characters)
-      const truncatedContent = content.substring(0, 400000);
+      // deepseek-v4-flash has a 1M token context window. Cap input at
+      // ~3M characters (~750k tokens) to leave room for the system prompt,
+      // structured-output overhead, and a safety margin.
+      const truncatedContent = content.substring(0, 3000000);
 
       const languageHint = languageCode
         ? `\nIMPORTANT: The article is in ${languageCode.toUpperCase()}. Generate all summaries in ${languageCode.toUpperCase()} language.\n`
         : "";
 
-      const userPrompt = `Analyze this article and provide three different summaries (one sentence, one paragraph, and detailed).${languageHint}
+      const userPrompt = `Analyze this article and provide two different summaries (one sentence and one paragraph).${languageHint}
 Article content:
 ${truncatedContent}`;
 
@@ -113,7 +114,7 @@ ${truncatedContent}`;
         output: Output.object({ schema: summarySchema }),
         system: SUMMARIZATION_SYSTEM_PROMPT,
         prompt: userPrompt,
-        maxOutputTokens: 2048,
+        maxOutputTokens: 1024,
         temperature: 0.3,
       });
 

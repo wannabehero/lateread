@@ -1,0 +1,1 @@
+ALTER TABLE `article_summaries` DROP COLUMN `long`;
